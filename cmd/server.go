@@ -1,9 +1,10 @@
-// Implements a gRPC service that returns a set of digits of pi starting at a
+// Implements a JSON service that returns a set of digits of pi starting at a
 // specified index.
 package cmd
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -24,6 +25,7 @@ const (
 	DEFAULT_SENTINEL_ADDRESS = "sentinel-service:26379"
 	DEFAULT_MASTER_NAME      = "master"
 	DEFAULT_REDIS_ADDRESS    = "redis-service:6379"
+	DEFAULT_USE_CACHE        = true
 )
 
 var (
@@ -31,6 +33,8 @@ var (
 	sentinelAddress string
 	masterName      string
 	redisAddress    string
+	useCache        bool
+	ipAddress       string
 	sentinelClient  *sentinel.Client
 	poolSize        = 10
 	serverCmd       = &cobra.Command{
@@ -39,38 +43,7 @@ var (
 		Long: `Launches an HTTP server listening at the specified addresses for incoming client connections, and returns a digit of pi. 
 
 Also see 'client' command for usage.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			logger := Logger.With(
-				zap.String("address", address),
-			)
-			logger.Debug("Starting server")
-			for {
-				client, err := sentinel.NewClient("tcp", sentinelAddress, poolSize, masterName)
-				if err == nil {
-					sentinelClient = client
-					break
-				}
-				logger.Warn("Unable to connect to sentinel, sleeping",
-					zap.Error(err),
-				)
-				time.Sleep(5000 * time.Millisecond)
-			}
-			logger.Debug("Starting to listen")
-			chain := xhandler.Chain{}
-			chain.UseC(xhandler.CloseHandler)
-			chain.UseC(xhandler.TimeoutHandler(120 * time.Second))
-			mux := xmux.New()
-			mux.GET("/v1/digit/:index", xhandler.HandlerFuncC(getDigit))
-			mux.GET("/healthz", xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, "OK")
-			}))
-			err := http.ListenAndServe(address, chain.Handler(mux))
-			if err != nil {
-				logger.Error("Error returned from Serve",
-					zap.Error(err),
-				)
-			}
-		},
+		Run: service,
 	}
 )
 
@@ -79,10 +52,12 @@ func init() {
 	serverCmd.PersistentFlags().StringVarP(&sentinelAddress, "sentinel", "s", DEFAULT_SENTINEL_ADDRESS, "Address for Redis Sentinel instance")
 	serverCmd.PersistentFlags().StringVarP(&masterName, "mastername", "m", DEFAULT_MASTER_NAME, "Name of master as configured in Redis Sentinels")
 	serverCmd.PersistentFlags().StringVarP(&redisAddress, "redis", "r", DEFAULT_REDIS_ADDRESS, "Address for Redis instance")
+	serverCmd.PersistentFlags().BoolVarP(&useCache, "cache", "c", DEFAULT_USE_CACHE, "Use Redis cache")
 	viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address"))
 	viper.BindPFlag("sentinel", serverCmd.PersistentFlags().Lookup("sentinel"))
 	viper.BindPFlag("mastername", serverCmd.PersistentFlags().Lookup("mastername"))
 	viper.BindPFlag("redisAddress", serverCmd.PersistentFlags().Lookup("redisAddress"))
+	viper.BindPFlag("cache", serverCmd.PersistentFlags().Lookup("cache"))
 	RootCmd.AddCommand(serverCmd)
 }
 
@@ -99,7 +74,7 @@ func getDigit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		zap.Int64("index", index),
 	)
 	logger.Debug("GetDigit: enter")
-	digit, err := cachedDigit(ctx, index)
+	digit, cached, err := cachedDigit(ctx, index)
 	if err != nil {
 		logger.Error("Error retrieving digit from cache",
 			zap.Error(err),
@@ -110,7 +85,9 @@ func getDigit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	if digit == "" {
 		calcIndex := int64(index/9) * 9
 		digits := piDigits(calcIndex)
-		err = writeDigits(ctx, calcIndex, digits)
+		if useCache {
+			err = writeDigits(ctx, calcIndex, digits)
+		}
 		if err != nil {
 			logger.Error("Error writing digits to cache",
 				zap.Error(err),
@@ -121,11 +98,14 @@ func getDigit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 		digit = string(digits[index%9])
 	}
 	logger.Debug("GetDigit: exit",
+		zap.Bool("cached", cached),
 		zap.String("digit", digit),
 	)
 	piResponse := transfer.PiResponse{
-		Index: index,
-		Digit: digit,
+		Index:     index,
+		Digit:     digit,
+		Cached:    cached,
+		IPAddress: ipAddress,
 	}
 	err = piResponse.MarshalResponse(ctx, w)
 	if err != nil {
@@ -135,17 +115,21 @@ func getDigit(ctx context.Context, w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func cachedDigit(ctx context.Context, index int64) (string, error) {
+func cachedDigit(ctx context.Context, index int64) (string, bool, error) {
 	logger := Logger.With(
 		zap.Int64("index", index),
 	)
 	logger.Debug("cachedDigit: enter")
+	if !useCache {
+		logger.Info("Cache is disabled, returning empty string")
+		return "", false, nil
+	}
 	client, err := redis.Dial("tcp", redisAddress)
 	if err != nil {
 		logger.Error("Error connecting to Redis",
 			zap.Error(err),
 		)
-		return "", err
+		return "", false, err
 	}
 	defer client.Close()
 
@@ -156,14 +140,14 @@ func cachedDigit(ctx context.Context, index int64) (string, error) {
 			zap.String("key", key),
 			zap.Error(err),
 		)
-		return "", nil
+		return "", false, nil
 	}
 	if err != nil {
 		logger.Error("Error returned from Redis cache",
 			zap.String("key", key),
 			zap.Error(err),
 		)
-		return "", err
+		return "", false, err
 	}
 	logger.Debug("Cache lookup returned",
 		zap.String("digits", digits),
@@ -172,7 +156,7 @@ func cachedDigit(ctx context.Context, index int64) (string, error) {
 	logger.Debug("cachedDigit: exit",
 		zap.String("result", digit),
 	)
-	return digit, nil
+	return digit, true, nil
 }
 
 func writeDigits(ctx context.Context, index int64, digits string) error {
@@ -199,4 +183,68 @@ func writeDigits(ctx context.Context, index int64, digits string) error {
 		return err
 	}
 	return nil
+}
+
+// Returns the first non-loopback IP address found
+func getIPAddress() string {
+	Logger.Debug("Getting IP address")
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		Logger.Error("Error getting interface addresses, returning empty string",
+			zap.Error(err),
+		)
+		return ""
+	}
+
+	for _, addr := range addrs {
+		if net, ok := addr.(*net.IPNet); ok && !net.IP.IsLoopback() {
+			ipAddress := net.IP.String()
+			Logger.Debug("Returning IP address",
+				zap.String("ipAddress", ipAddress),
+			)
+			return ipAddress
+		}
+	}
+	Logger.Warn("Didn't find a valid IP address, returning empty string")
+	return ""
+}
+
+func service(cmd *cobra.Command, args []string) {
+	logger := Logger.With(
+		zap.String("address", address),
+		zap.Bool("useCache", useCache),
+		zap.String("ipAddress", ipAddress),
+	)
+	logger.Debug("Starting server")
+	ipAddress = getIPAddress()
+	if useCache {
+		for {
+			client, err := sentinel.NewClient("tcp", sentinelAddress, poolSize, masterName)
+			if err == nil {
+				sentinelClient = client
+				break
+			}
+			logger.Warn("Unable to connect to sentinel, sleeping",
+				zap.Error(err),
+			)
+			time.Sleep(5000 * time.Millisecond)
+		}
+	} else {
+		logger.Info("Cache is disabled")
+	}
+	logger.Debug("Starting to listen")
+	chain := xhandler.Chain{}
+	chain.UseC(xhandler.CloseHandler)
+	chain.UseC(xhandler.TimeoutHandler(120 * time.Second))
+	mux := xmux.New()
+	mux.GET("/v1/digit/:index", xhandler.HandlerFuncC(getDigit))
+	mux.GET("/healthz", xhandler.HandlerFuncC(func(ctx context.Context, w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "OK")
+	}))
+	err := http.ListenAndServe(address, chain.Handler(mux))
+	if err != nil {
+		logger.Error("Error returned from Serve",
+			zap.Error(err),
+		)
+	}
 }
