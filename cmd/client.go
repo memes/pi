@@ -1,4 +1,4 @@
-// Implements a gRPC client that requests a set of digits of pi starting at a
+// Implements a JSON client that requests a set of digits of pi starting at a
 // specified index.
 package cmd
 
@@ -66,7 +66,7 @@ var (
 				}(index)
 			}
 			wg.Wait()
-			fmt.Printf("Result is: 3.%s", strings.Join(digits, ""))
+			fmt.Printf("Result is: 3.%s\n", strings.Join(digits, ""))
 		},
 	}
 )
