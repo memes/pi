@@ -3,3 +3,5 @@
 fileignoreconfig:
 - filename: .github/workflows/release.yml
   checksum: 86c9335a9f6ec186b33ccd3a9e51c0e77dd7ca1229cd1fe25bcac6bb840fdad0
+- filename: go.sum
+  checksum: 4cf2a7a763e09f773620eca4025349e02ea4eeeba0565122f8191d14baf79de1
