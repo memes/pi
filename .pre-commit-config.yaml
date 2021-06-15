@@ -1,0 +1,33 @@
+# TODO: @memes - remove unused plugins for project
+---
+# spell-checker:disable
+repos:
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.40.1
+    hooks:
+      - id: golangci-lint
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.26.1
+    hooks:
+      - id: yamllint
+        files: \.(yml|yaml|talismanrc)$
+        types: [file, yaml]
+        entry: yamllint --strict
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.7.2.1
+    hooks:
+      - id: shellcheck
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: check-executables-have-shebangs
+      - id: check-merge-conflict
+      - id: check-yaml
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: sort-simple-yaml
+      - id: trailing-whitespace
+  - repo: https://github.com/thoughtworks/talisman
+    rev: v1.11.0
+    hooks:
+      - id: talisman-commit
