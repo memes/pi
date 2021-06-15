@@ -5,7 +5,7 @@ RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -o pi
 
 # TODO: @memes - set base alpine
 FROM alpine:3.13.5
-ARG COMMIT_SHA="master"
+ARG COMMIT_SHA="main"
 ARG TAG_NAME="unreleased"
 LABEL maintainer="Matthew Emes <memes@matthewemes.com>" \
       org.opencontainers.image.title="pi" \
