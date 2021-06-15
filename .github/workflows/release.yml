@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        os: ["linux", "darwin", "windows"]
+        os: ["linux", "darwin"]
         arch: ["amd64"]
     steps:
       - uses: actions/checkout@v2
@@ -58,4 +58,32 @@ jobs:
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: ./pi-${{ github.event.release.tag_name }}-${{ matrix.os }}-${{ matrix.arch }}
           asset_name: pi-${{ github.event.release.tag_name }}-${{ matrix.os }}-${{ matrix.arch }}
+          asset_content_type: application/octet-stream
+  win-binary-release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: ["windows"]
+        arch: ["amd64"]
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '^1.16'
+      - name: Build for ${{ matrix.os }} ${{ matrix.arch }}
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+          CGO_ENABLE: 0
+          # yamllint disable-line rule:truthy
+          GO111MODULE: on
+        run: go build -o pi-${{ github.event.release.tag_name }}-${{ matrix.os }}-${{ matrix.arch }}.exe
+      - name: "Upload release binaries"
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./pi-${{ github.event.release.tag_name }}-${{ matrix.os }}-${{ matrix.arch }}.exe
+          asset_name: pi-${{ github.event.release.tag_name }}-${{ matrix.os }}-${{ matrix.arch }}.exe
           asset_content_type: application/octet-stream
