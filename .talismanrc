@@ -1,0 +1,5 @@
+# spell-checker: ignore fileignoreconfig
+---
+fileignoreconfig:
+- filename: .github/workflows/release.yml
+  checksum: 86c9335a9f6ec186b33ccd3a9e51c0e77dd7ca1229cd1fe25bcac6bb840fdad0
