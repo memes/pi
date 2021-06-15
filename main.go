@@ -8,7 +8,7 @@ import (
 func main() {
 	defer func() {
 		if cmd.Logger != nil {
-			cmd.Logger.Sync()
+			_ = cmd.Logger.Sync()
 		}
 	}()
 	if err := cmd.RootCmd.Execute(); err != nil {

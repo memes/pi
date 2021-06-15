@@ -9,7 +9,7 @@ I.e. the first 6 digits of pi are 3.14159; if a request is made for index 0, the
 | index | return |
 |-------|--------|
 | 0 | 1 |
-| 1 | 4 | 
+| 1 | 4 |
 | 2 | 1 |
 | 3 | 5 |
 | 4 | 9 |
@@ -49,4 +49,3 @@ This is a fully contained Go application; after checkout a simple
 The application can be deployed to Docker and pre-built images can be
 pulled directly from the public
 [repo](https://hub.docker.com/r/memes/pi/).
-

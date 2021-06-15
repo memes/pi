@@ -75,9 +75,9 @@ func init() {
 	clientCmd.PersistentFlags().StringVarP(&url, "url", "u", DEFAULT_REMOTE_URL, "Remote URL to connect to")
 	clientCmd.PersistentFlags().IntVarP(&count, "count", "c", DEFAULT_COUNT, "Number of digits of pi to return ")
 	clientCmd.PersistentFlags().BoolVarP(&waitaminute, "waitaminute", "w", false, "Wait 60s before initiating connections")
-	viper.BindPFlag("url", clientCmd.PersistentFlags().Lookup("url"))
-	viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count"))
-	viper.BindPFlag("waitaminute", clientCmd.PersistentFlags().Lookup("waitaminute"))
+	_ = viper.BindPFlag("url", clientCmd.PersistentFlags().Lookup("url"))
+	_ = viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count"))
+	_ = viper.BindPFlag("waitaminute", clientCmd.PersistentFlags().Lookup("waitaminute"))
 	RootCmd.AddCommand(clientCmd)
 }
 
@@ -98,7 +98,7 @@ func fetchDigit(index int64) (string, error) {
 		return "", err
 	}
 	req.Header.Set("User-Agent", "pi-client")
-	client := pester.New()
+	client = pester.New()
 	client.KeepLog = false
 	client.LogHook = func(e pester.ErrEntry) {
 		Logger.Debug("HTTP request",

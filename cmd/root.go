@@ -27,7 +27,7 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 	RootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-	viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
+	_ = viper.BindPFlag("verbose", RootCmd.PersistentFlags().Lookup("verbose"))
 }
 
 func initConfig() {

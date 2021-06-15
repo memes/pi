@@ -40,7 +40,7 @@ var (
 	serverCmd       = &cobra.Command{
 		Use:   "server",
 		Short: "Run a JSON servive to return pi digits",
-		Long: `Launches an HTTP server listening at the specified addresses for incoming client connections, and returns a digit of pi. 
+		Long: `Launches an HTTP server listening at the specified addresses for incoming client connections, and returns a digit of pi.
 
 Also see 'client' command for usage.`,
 		Run: service,
@@ -53,11 +53,11 @@ func init() {
 	serverCmd.PersistentFlags().StringVarP(&masterName, "mastername", "m", DEFAULT_MASTER_NAME, "Name of master as configured in Redis Sentinels")
 	serverCmd.PersistentFlags().StringVarP(&redisAddress, "redis", "r", DEFAULT_REDIS_ADDRESS, "Address for Redis instance")
 	serverCmd.PersistentFlags().BoolVarP(&useCache, "cache", "c", DEFAULT_USE_CACHE, "Use Redis cache")
-	viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address"))
-	viper.BindPFlag("sentinel", serverCmd.PersistentFlags().Lookup("sentinel"))
-	viper.BindPFlag("mastername", serverCmd.PersistentFlags().Lookup("mastername"))
-	viper.BindPFlag("redisAddress", serverCmd.PersistentFlags().Lookup("redisAddress"))
-	viper.BindPFlag("cache", serverCmd.PersistentFlags().Lookup("cache"))
+	_ = viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address"))
+	_ = viper.BindPFlag("sentinel", serverCmd.PersistentFlags().Lookup("sentinel"))
+	_ = viper.BindPFlag("mastername", serverCmd.PersistentFlags().Lookup("mastername"))
+	_ = viper.BindPFlag("redisAddress", serverCmd.PersistentFlags().Lookup("redisAddress"))
+	_ = viper.BindPFlag("cache", serverCmd.PersistentFlags().Lookup("cache"))
 	RootCmd.AddCommand(serverCmd)
 }
 
