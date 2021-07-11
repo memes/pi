@@ -1,0 +1,14 @@
+{
+    "version": "0.1",
+    "language": "en",
+    "words": [
+        "grpc",
+        "openapiv",
+        "openapiv2",
+        "protobuf",
+        "protoc"
+    ],
+    "flagWords": [
+        "hte"
+    ]
+}

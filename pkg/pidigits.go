@@ -1,4 +1,4 @@
-package cmd
+package pkg
 
 // Calculates and returns the n-th and 8 following digits of Pi
 //
@@ -11,13 +11,23 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	logger = zap.NewNop()
+)
+
+func SetLogger(l *zap.Logger) {
+	if l != nil {
+		logger = l
+	}
+}
+
 // Returns the inverse of x mod y
 func invMod(x int64, y int64) int64 {
-	logger := Logger.With(
+	l := logger.With(
 		zap.Int64("x", x),
 		zap.Int64("y", y),
 	)
-	logger.Debug("invMod: enter")
+	l.Debug("invMod: enter")
 	var u, v, c, a int64 = x, y, 1, 0
 	for {
 		q := v / u
@@ -35,7 +45,7 @@ func invMod(x int64, y int64) int64 {
 	if a < 0 {
 		a = y + a
 	}
-	logger.Debug("invMod: exit",
+	l.Debug("invMod: exit",
 		zap.Int64("result", a),
 	)
 	return a
@@ -43,12 +53,12 @@ func invMod(x int64, y int64) int64 {
 
 // Returns (a^b) mod m
 func powMod(a int64, b int64, m int64) int64 {
-	logger := Logger.With(
+	l := logger.With(
 		zap.Int64("a", a),
 		zap.Int64("b", b),
 		zap.Int64("m", m),
 	)
-	Logger.Debug("powMod: entered")
+	l.Debug("powMod: entered")
 	var r, aa int64 = 1, a
 	for {
 		if b&1 > 0 {
@@ -60,7 +70,7 @@ func powMod(a int64, b int64, m int64) int64 {
 		}
 		aa = (aa * aa) % m
 	}
-	logger.Debug("powMod: exit",
+	l.Debug("powMod: exit",
 		zap.Int64("result", r),
 	)
 	return r
@@ -68,12 +78,12 @@ func powMod(a int64, b int64, m int64) int64 {
 
 // Return true if n is a prime
 func isPrime(n int64) bool {
-	logger := Logger.With(
+	l := logger.With(
 		zap.Int64("n", n),
 	)
-	logger.Debug("isPrime: entered")
+	l.Debug("isPrime: entered")
 	if n%2 == 0 {
-		logger.Debug("isPrime: exit",
+		l.Debug("isPrime: exit",
 			zap.Bool("result", false),
 		)
 		return false
@@ -82,13 +92,13 @@ func isPrime(n int64) bool {
 	var i int64 = 3
 	for ; i <= r; i += 2 {
 		if n%i == 0 {
-			logger.Debug("isPrime: exit",
+			l.Debug("isPrime: exit",
 				zap.Bool("result", false),
 			)
 			return false
 		}
 	}
-	logger.Debug("isPrime: exit",
+	l.Debug("isPrime: exit",
 		zap.Bool("result", true),
 	)
 	return true
@@ -96,29 +106,29 @@ func isPrime(n int64) bool {
 
 // Return the next prime number greater than n
 func nextPrime(n int64) int64 {
-	logger := Logger.With(
+	l := logger.With(
 		zap.Int64("n", n),
 	)
-	logger.Debug("nextPrime: enter")
+	l.Debug("nextPrime: enter")
 	next := n + 1
 	for ; !isPrime(next); next++ {
 	}
-	logger.Debug("nextPrime: exit",
+	l.Debug("nextPrime: exit",
 		zap.Int64("result", next),
 	)
 	return next
 }
 
 // Returns a 9 chararcter string containing the decimal digits of pi starting
-// at the specififed offset. E.g. piDigits(0) -> "141592653",
+// at the specified offset. E.g. piDigits(0) -> "141592653",
 // piDigits(1) -> 415926535, etc.
 //
 // Note that this has been modified to be zero-based, unlike original code
-func piDigits(n int64) string {
-	logger := Logger.With(
-		zap.Int64("n", n),
+func PiDigits(n uint64) string {
+	l := logger.With(
+		zap.Uint64("n", n),
 	)
-	logger.Debug("piDigit: enter")
+	l.Debug("PiDigits: enter")
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
@@ -175,12 +185,12 @@ func piDigits(n int64) string {
 			}
 		}
 
-		t = powMod(10, n, av)
+		t = powMod(10, int64(n), av)
 		s = (s * t) % av
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}
 	result := fmt.Sprintf("%09d", int(sum*1e9))
-	logger.Debug("piDigit: exit",
+	l.Debug("PiDigits: exit",
 		zap.String("result", result),
 	)
 	return result

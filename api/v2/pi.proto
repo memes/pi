@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package api.v2;
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/memes/pi/api/v2";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+    info: {
+      title: "pi";
+      version: "2.0.0";
+      contact: {
+        name: "Matthew Emes";
+        url: "https://github.com/memes/pi/issues/new/choose";
+      };
+      license: {
+        name: "MIT";
+        url: "github.com/memes/pi/blob/main/LICENSE";
+      };
+    };
+    external_docs: {
+      description: "GitHub repo";
+      url: "https://github.com/memes/pi";
+    };
+    schemes: HTTP;
+    schemes: HTTPS;
+    consumes: "application/json";
+    produces: "application/json";
+};
+
+message GetDigitRequest {
+  uint64 index = 1;
+};
+
+message GetDigitResponse {
+  uint64 index = 1;
+  string digit = 2;
+  bool cached = 3;
+  repeated string addresses = 4;
+};
+
+service PiService {
+  rpc GetDigit(GetDigitRequest) returns (GetDigitResponse) {
+    option(google.api.http) = {
+      get: "/api/v2/digit/{index}"
+    };
+  }
+}

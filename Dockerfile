@@ -1,7 +1,7 @@
 FROM golang:1.16.5-alpine AS builder
 WORKDIR /src
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -o pi
+RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -o pi ./cmd/pi
 
 # TODO: @memes - set base alpine
 FROM alpine:3.13.5
