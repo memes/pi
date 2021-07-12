@@ -48,7 +48,7 @@ func init() {
 	serverCmd.PersistentFlags().StringVarP(&redisAddress, "redis", "r", "", "Address for Redis instance")
 	_ = viper.BindPFlag("grpcaddress", serverCmd.PersistentFlags().Lookup("grpcaddress"))
 	_ = viper.BindPFlag("restaddress", serverCmd.PersistentFlags().Lookup("restaddress"))
-	_ = viper.BindPFlag("redisAddress", serverCmd.PersistentFlags().Lookup("redisAddress"))
+	_ = viper.BindPFlag("redisaddress", serverCmd.PersistentFlags().Lookup("redisaddress"))
 	rootCmd.AddCommand(serverCmd)
 }
 
