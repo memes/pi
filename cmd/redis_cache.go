@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-
+	// spell-checker: ignore gomodule redigo
 	"github.com/gomodule/redigo/redis"
 	"go.uber.org/zap"
 )

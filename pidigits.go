@@ -132,6 +132,7 @@ func nextPrime(n int64) int64 {
 // piDigits(1) -> 415926535, etc.
 //
 // Note that this has been modified to be zero-based, unlike original code
+// spell-checker: ignore vmax
 func piDigits(n uint64) string {
 	l := logger.With(
 		zap.Uint64("n", n),
