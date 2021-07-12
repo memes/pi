@@ -91,6 +91,26 @@
         }
       }
     },
+    "v2GetDigitMetadata": {
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "string"
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "v2GetDigitResponse": {
       "type": "object",
       "properties": {
@@ -101,11 +121,8 @@
         "digit": {
           "type": "string"
         },
-        "addresses": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+        "metadata": {
+          "$ref": "#/definitions/v2GetDigitMetadata"
         }
       }
     }

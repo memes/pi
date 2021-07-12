@@ -33,10 +33,16 @@ message GetDigitRequest {
   uint64 index = 1;
 };
 
+message GetDigitMetadata {
+  string identity = 1;
+  repeated string addresses = 2;
+  repeated string labels = 3;
+};
+
 message GetDigitResponse {
   uint64 index = 1;
   string digit = 2;
-  repeated string addresses = 3;
+  GetDigitMetadata metadata = 3;
 };
 
 service PiService {

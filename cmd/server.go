@@ -31,7 +31,8 @@ var (
 	grpcAddress  string
 	restAddress  string
 	redisAddress string
-	addresses    []string
+	labels       []string
+	metadata     *v2.GetDigitMetadata
 	serverCmd    = &cobra.Command{
 		Use:   "server",
 		Short: "Run gRPC/REST service to return pi digits",
@@ -43,12 +44,15 @@ Also see 'client' command for usage.`,
 )
 
 func init() {
+	// spell-checker: ignore grpcaddress
 	serverCmd.PersistentFlags().StringVarP(&grpcAddress, "grpcaddress", "g", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to use to listen for gRPC connections")
 	serverCmd.PersistentFlags().StringVarP(&restAddress, "restaddress", "a", DEFAULT_REST_LISTEN_ADDRESS, "Address to use to listen for REST connections")
 	serverCmd.PersistentFlags().StringVarP(&redisAddress, "redis", "r", "", "Address for Redis instance")
+	serverCmd.PersistentFlags().StringArrayVarP(&labels, "labels", "l", []string{}, "Optional labels to apply to server. Can be repeated.")
 	_ = viper.BindPFlag("grpcaddress", serverCmd.PersistentFlags().Lookup("grpcaddress"))
 	_ = viper.BindPFlag("restaddress", serverCmd.PersistentFlags().Lookup("restaddress"))
 	_ = viper.BindPFlag("redisaddress", serverCmd.PersistentFlags().Lookup("redisaddress"))
+	_ = viper.BindPFlag("labels", serverCmd.PersistentFlags().Lookup("lables"))
 	rootCmd.AddCommand(serverCmd)
 }
 
@@ -78,32 +82,31 @@ func (s *piServer) GetDigit(ctx context.Context, in *v2.GetDigitRequest) (*v2.Ge
 		zap.String("digit", digit),
 	)
 	return &v2.GetDigitResponse{
-		Index:     index,
-		Digit:     digit,
-		Addresses: addresses,
+		Index:    index,
+		Digit:    digit,
+		Metadata: metadata,
 	}, nil
 }
 
-// Returns all non-loopback IP addresses found
-func getIPAddresses() []string {
-	logger.Debug("Getting IP addresses")
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		logger.Error("Error getting interface addresses, returning empty string",
-			zap.Error(err),
-		)
-		return []string{}
+// Populate a metadata structure for this instance
+func getMetadata() *v2.GetDigitMetadata {
+	logger.Debug("Getting Metadata")
+	metadata := v2.GetDigitMetadata{
+		Labels: labels,
 	}
-	addresses := make([]string, 0, len(addrs))
-	for _, addr := range addrs {
-		if net, ok := addr.(*net.IPNet); ok && !net.IP.IsLoopback() && !net.IP.IsMulticast() && !net.IP.IsLinkLocalUnicast() {
-			addresses = append(addresses, net.IP.String())
+	if hostname, err := os.Hostname(); err == nil {
+		metadata.Identity = hostname
+	}
+	if addrs, err := net.InterfaceAddrs(); err == nil {
+		addresses := make([]string, 0, len(addrs))
+		for _, addr := range addrs {
+			if net, ok := addr.(*net.IPNet); ok && !net.IP.IsLoopback() && !net.IP.IsMulticast() && !net.IP.IsLinkLocalUnicast() {
+				addresses = append(addresses, net.IP.String())
+			}
 		}
+		metadata.Addresses = addresses
 	}
-	logger.Debug("Returning IP addresses",
-		zap.Strings("addresses", addresses),
-	)
-	return addresses
+	return &metadata
 }
 
 func service(cmd *cobra.Command, args []string) error {
@@ -113,7 +116,7 @@ func service(cmd *cobra.Command, args []string) error {
 	)
 	pi.SetLogger(logger)
 	logger.Debug("Preparing servers")
-	addresses = getIPAddresses()
+	metadata = getMetadata()
 	logger.Debug("Starting to listen")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
