@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis"
-	"github.com/memes/pi/pkg"
+	"github.com/memes/pi"
 )
 
 const (
@@ -60,10 +60,10 @@ func TestPiDigitsWithRedisCache(t *testing.T) {
 	if cache == nil {
 		t.Error("Redis cache is nil")
 	}
-	pkg.SetCache(cache)
+	pi.SetCache(cache)
 	for i := 0; i < len(PI_DIGITS); i++ {
 		expected := string(PI_DIGITS[i])
-		actual, err := pkg.PiDigits(ctx, uint64(i))
+		actual, err := pi.PiDigits(ctx, uint64(i))
 		if err != nil {
 			t.Errorf("Error calling PiDigits: %v", err)
 		}

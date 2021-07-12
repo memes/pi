@@ -1,9 +1,8 @@
 FROM golang:1.16.5-alpine AS builder
 WORKDIR /src
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -o pi ./cmd/pi
+RUN CGO_ENABLED=0 GOOS=linux go build -o pi ./cmd
 
-# TODO: @memes - set base alpine
 FROM alpine:3.13.5
 ARG COMMIT_SHA="main"
 ARG TAG_NAME="unreleased"
@@ -27,11 +26,11 @@ LABEL maintainer="Matthew Emes <memes@matthewemes.com>" \
       org.label-schema.vcs-ref="${COMMIT_SHA}" \
       org.label-schema.license="MIT"
 
-# TODO: @memes - review if updated package required
 RUN apk --no-cache add ca-certificates=20191127-r5
 WORKDIR /run
 COPY --from=builder /src/pi /usr/local/bin/
 EXPOSE 8080
+EXPOSE 9090
 USER nobody
 ENTRYPOINT ["/usr/local/bin/pi"]
 CMD ["server"]

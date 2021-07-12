@@ -5,4 +5,3 @@
 # Don't commit built packages
 pi
 pi.exe
-!cmd/pi

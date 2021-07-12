@@ -1,4 +1,4 @@
-package pkg
+package pi
 
 // Calculates and returns the n-th and 8 following digits of Pi
 //

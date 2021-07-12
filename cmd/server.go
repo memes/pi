@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/memes/pi"
 	v2 "github.com/memes/pi/api/v2"
-	"github.com/memes/pi/pkg"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -64,10 +64,10 @@ func (s *piServer) GetDigit(ctx context.Context, in *v2.GetDigitRequest) (*v2.Ge
 	logger.Debug("GetDigit: enter")
 
 	if redisAddress != "" {
-		pkg.SetCache(NewRedisCache(ctx, redisAddress))
+		pi.SetCache(NewRedisCache(ctx, redisAddress))
 
 	}
-	digit, err := pkg.PiDigits(ctx, index)
+	digit, err := pi.PiDigits(ctx, index)
 	if err != nil {
 		logger.Error("Error retrieving digit",
 			zap.Error(err),
@@ -111,7 +111,7 @@ func service(cmd *cobra.Command, args []string) error {
 		zap.String("grpcAddress", grpcAddress),
 		zap.String("restAddress", restAddress),
 	)
-	pkg.SetLogger(logger)
+	pi.SetLogger(logger)
 	logger.Debug("Preparing servers")
 	addresses = getIPAddresses()
 	logger.Debug("Starting to listen")
