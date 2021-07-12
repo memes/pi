@@ -21,10 +21,9 @@ const (
 )
 
 var (
-	count       int
-	waitaminute bool
-	timeout     time.Duration
-	clientCmd   = &cobra.Command{
+	count     int
+	timeout   time.Duration
+	clientCmd = &cobra.Command{
 		Use:   "client",
 		Short: "Run a gRPC client to request pi digits",
 		Long:  "Launch a client that attempts to connect to servers and return a subset of the mantissa of pi.",
@@ -33,12 +32,7 @@ var (
 			logger := logger.With(
 				zap.Int("count", count),
 				zap.Strings("args", args),
-				zap.Bool("waitaminute", waitaminute),
 			)
-			if waitaminute {
-				logger.Info("Sleeping as requested")
-				time.Sleep(60 * time.Second)
-			}
 			logger.Debug("Running client")
 			// Randomize the retrieval of numbers
 			indices := rand.Perm(count)
@@ -70,11 +64,8 @@ var (
 
 func init() {
 	clientCmd.PersistentFlags().IntVarP(&count, "count", "c", DEFAULT_COUNT, "Number of digits of pi to return ")
-	clientCmd.PersistentFlags().BoolVarP(&waitaminute, "waitaminute", "w", false, "Wait 60s before initiating connections")
 	clientCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", DEFAULT_TIMEOUT, "Client timeout")
-	_ = viper.BindPFlag("url", clientCmd.PersistentFlags().Lookup("url"))
 	_ = viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count"))
-	_ = viper.BindPFlag("waitaminute", clientCmd.PersistentFlags().Lookup("waitaminute"))
 	_ = viper.BindPFlag("timeout", clientCmd.PersistentFlags().Lookup("timeout"))
 	rootCmd.AddCommand(clientCmd)
 }
@@ -107,6 +98,9 @@ func fetchDigit(endpoints []string, index uint64) (string, error) {
 	}
 	logger.Debug("Response from remote",
 		zap.String("result", response.Digit),
+		zap.String("metadata.identity", response.Metadata.Identity),
+		zap.Strings("metadata.addresses", response.Metadata.Addresses),
+		zap.Strings("metadata.labels", response.Metadata.Labels),
 	)
 
 	return response.Digit, nil
