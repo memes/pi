@@ -2,11 +2,14 @@ package main
 
 import (
 	"log"
+	"os"
+
 	// spell-checker: ignore mitchellh
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -16,6 +19,7 @@ const (
 var (
 	logger  *zap.Logger = zap.NewNop()
 	verbose bool
+	quiet   bool
 	cfgFile string
 	rootCmd = &cobra.Command{
 		Use:   APP_NAME,
@@ -27,7 +31,9 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
+	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Enable quiet logging")
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
+	_ = viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 }
 
 func initConfig() {
@@ -44,10 +50,15 @@ func initConfig() {
 	viper.SetEnvPrefix(APP_NAME)
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
+	config := zap.NewProductionEncoderConfig()
+	encoder := zapcore.NewJSONEncoder(config)
+	level := zap.NewAtomicLevel()
+	logger = zap.New(zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), level))
 	if verbose {
-		logger, _ = zap.NewDevelopment()
-	} else {
-		logger, _ = zap.NewProduction()
+		level.SetLevel(zapcore.DebugLevel)
+	}
+	if quiet {
+		level.SetLevel(zapcore.ErrorLevel)
 	}
 	if logger == nil {
 		log.Fatal("Error creating logger", err)
