@@ -36,8 +36,7 @@ message GetDigitRequest {
 message GetDigitResponse {
   uint64 index = 1;
   string digit = 2;
-  bool cached = 3;
-  repeated string addresses = 4;
+  repeated string addresses = 3;
 };
 
 service PiService {

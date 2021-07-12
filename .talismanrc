@@ -4,8 +4,14 @@ fileignoreconfig:
 - filename: .github/workflows/release.yml
   checksum: 86c9335a9f6ec186b33ccd3a9e51c0e77dd7ca1229cd1fe25bcac6bb840fdad0
 - filename: go.sum
-  checksum: 82971d4920dba9bacbf99eb5cd3787765ec2b4837621308df373843b2b44b95b
+  checksum: 55d351eb26b43cfd6e03d65af2cca3accbca76a91645f22454a7bb61ea5c08dd
 - filename: buf.lock
   checksum: 2dd742997372526c8be5d52b768ecbb8e40c2bd6a63078a3a6fc3c384fdab42a
 - filename: cmd/pi/server.go
   checksum: 38eab0cfdb6d05ff081d026fe37ef0d9c0a6b17796f2c6b1ad6396544de3f94b
+- filename: cmd/pi/redis_cache_test.go
+  checksum: 3e2f0a0605ad135f0a2b0d4e663aaf785cf0b270047d3955b4efabc26e521ef8
+- filename: pkg/cache_test.go
+  checksum: 5c96a28f8c7036886115a99a723592ec727cc6c4a1270054816e4fc509cd6bfd
+- filename: pkg/pidigits.go
+  checksum: 8706ef430862846977f09b43e0b8b4a461d245896ebc465d55b532f0addd171e

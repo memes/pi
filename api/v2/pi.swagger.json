@@ -101,9 +101,6 @@
         "digit": {
           "type": "string"
         },
-        "cached": {
-          "type": "boolean"
-        },
         "addresses": {
           "type": "array",
           "items": {

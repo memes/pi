@@ -14,7 +14,7 @@ const (
 )
 
 var (
-	logger  *zap.Logger
+	logger  *zap.Logger = zap.NewNop()
 	verbose bool
 	cfgFile string
 	rootCmd = &cobra.Command{

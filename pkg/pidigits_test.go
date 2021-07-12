@@ -13,7 +13,7 @@ const (
 func TestPiDigits(t *testing.T) {
 	for i := 0; i < len(PI_DIGITS); i += 9 {
 		expected := PI_DIGITS[i : i+9]
-		if actual := PiDigits(uint64(i)); actual != expected {
+		if actual := piDigits(uint64(i)); actual != expected {
 			t.Errorf("Checking offset: %d: expected %s got %s", i, expected, actual)
 		}
 	}
@@ -21,11 +21,11 @@ func TestPiDigits(t *testing.T) {
 
 func BenchmarkPiDigits(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		PiDigits(uint64(0))
+		piDigits(uint64(0))
 	}
 }
 
 func ExamplePiDigits() {
-	fmt.Printf("3.%s\n", PiDigits(0))
+	fmt.Printf("3.%s\n", piDigits(0))
 	// Output: 3.141592653
 }
