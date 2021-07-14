@@ -32,6 +32,7 @@ var (
 	restAddress  string
 	redisAddress string
 	labels       []string
+	enableREST   bool
 	metadata     *v2.GetDigitMetadata
 	serverCmd    = &cobra.Command{
 		Use:   "server",
@@ -49,10 +50,12 @@ func init() {
 	serverCmd.PersistentFlags().StringVarP(&restAddress, "restaddress", "a", DEFAULT_REST_LISTEN_ADDRESS, "Address to use to listen for REST connections")
 	serverCmd.PersistentFlags().StringVarP(&redisAddress, "redis", "r", "", "Address for Redis instance")
 	serverCmd.PersistentFlags().StringArrayVarP(&labels, "labels", "l", []string{}, "Optional labels to apply to server. Can be repeated.")
+	serverCmd.PersistentFlags().BoolVarP(&enableREST, "enable-rest", "e", false, "Enable REST gateway for gRPC service")
 	_ = viper.BindPFlag("grpcaddress", serverCmd.PersistentFlags().Lookup("grpcaddress"))
 	_ = viper.BindPFlag("restaddress", serverCmd.PersistentFlags().Lookup("restaddress"))
 	_ = viper.BindPFlag("redisaddress", serverCmd.PersistentFlags().Lookup("redisaddress"))
-	_ = viper.BindPFlag("labels", serverCmd.PersistentFlags().Lookup("lables"))
+	_ = viper.BindPFlag("labels", serverCmd.PersistentFlags().Lookup("labels"))
+	_ = viper.BindPFlag("enable-rest", serverCmd.PersistentFlags().Lookup("enable-rest"))
 	rootCmd.AddCommand(serverCmd)
 }
 
@@ -113,6 +116,7 @@ func service(cmd *cobra.Command, args []string) error {
 	logger := logger.With(
 		zap.String("grpcAddress", grpcAddress),
 		zap.String("restAddress", restAddress),
+		zap.Bool("enableREST", enableREST),
 	)
 	pi.SetLogger(logger)
 	logger.Debug("Preparing servers")
@@ -141,26 +145,29 @@ func service(cmd *cobra.Command, args []string) error {
 		healthServer.SetServingStatus("api.v2.PiService", grpc_health_v1.HealthCheckResponse_SERVING)
 		return grpcServer.Serve(listener)
 	})
-	g.Go(func() error {
-		mux := runtime.NewServeMux()
-		opts := []grpc.DialOption{grpc.WithInsecure()}
-		if err := v2.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
-			return err
-		}
-		if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-			w.WriteHeader(http.StatusGone)
-		}); err != nil {
-			return err
-		}
-		restServer = &http.Server{
-			Addr:    restAddress,
-			Handler: mux,
-		}
-		if err := restServer.ListenAndServe(); err != http.ErrServerClosed {
-			return err
-		}
-		return nil
-	})
+	if enableREST {
+		logger.Debug("Enabling REST gateway")
+		g.Go(func() error {
+			mux := runtime.NewServeMux()
+			opts := []grpc.DialOption{grpc.WithInsecure()}
+			if err := v2.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
+				return err
+			}
+			if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+				w.WriteHeader(http.StatusGone)
+			}); err != nil {
+				return err
+			}
+			restServer = &http.Server{
+				Addr:    restAddress,
+				Handler: mux,
+			}
+			if err := restServer.ListenAndServe(); err != http.ErrServerClosed {
+				return err
+			}
+			return nil
+		})
+	}
 
 	select {
 	case <-interrupt:
