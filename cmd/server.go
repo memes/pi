@@ -138,7 +138,7 @@ func service(cmd *cobra.Command, args []string) error {
 		grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 		v2.RegisterPiServiceServer(grpcServer, &piServer{})
 		reflection.Register(grpcServer)
-		healthServer.SetServingStatus("grpc.health.v1.Health", grpc_health_v1.HealthCheckResponse_SERVING)
+		healthServer.SetServingStatus("api.v2.PiService", grpc_health_v1.HealthCheckResponse_SERVING)
 		return grpcServer.Serve(listener)
 	})
 	g.Go(func() error {
@@ -169,7 +169,7 @@ func service(cmd *cobra.Command, args []string) error {
 		break
 	}
 	logger.Info("Shutting down on signal")
-	healthServer.SetServingStatus("grpc.health.v1.Health", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
+	healthServer.SetServingStatus("api.v2.PiService", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 	cancel()
 	ctx, shutdown := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdown()
