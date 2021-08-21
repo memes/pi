@@ -5,3 +5,5 @@
 # Don't commit built packages
 pi
 pi.exe
+
+dist/
