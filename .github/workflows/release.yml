@@ -1,7 +1,6 @@
-# spell-checker: ignore yamllint goreleaser
+# spell-checker: ignore yamllint goreleaser DOCKERHUB
 ---
-# yamllint disable rule:line-length
-name: go-release
+name: release
 
 # yamllint disable-line rule:truthy
 on:
