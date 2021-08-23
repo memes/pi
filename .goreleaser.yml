@@ -39,6 +39,7 @@ dockers:
     dockerfile: Dockerfile
     use: docker
     build_flag_templates:
+      - "--pull"
       # yamllint disable rule:line-length
       - "--label=org.opencontainers.image.created={{ .Date }}"
       - "--label=org.opencontainers.image.source=https://github.com/memes/pi/tree/{{ .FullCommit }}"
