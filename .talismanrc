@@ -7,3 +7,5 @@ fileignoreconfig:
   checksum: 55d351eb26b43cfd6e03d65af2cca3accbca76a91645f22454a7bb61ea5c08dd
 - filename: buf.lock
   checksum: 4cb52e58e1b3fa2b00845e149357b098789ad12db667a6b9d60e80279facbf05
+- filename: cmd/server.go
+  checksum: a047cd72f68bfbd8d8bbe9e9acdae813cd6de8b1493ef6a679df8ed7267382ed

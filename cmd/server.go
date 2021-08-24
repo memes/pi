@@ -31,7 +31,7 @@ var (
 	grpcAddress  string
 	restAddress  string
 	redisAddress string
-	labels       []string
+	labels       map[string]string
 	enableREST   bool
 	metadata     *v2.GetDigitMetadata
 	serverCmd    = &cobra.Command{
@@ -49,7 +49,7 @@ func init() {
 	serverCmd.PersistentFlags().StringVarP(&grpcAddress, "grpcaddress", "g", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to use to listen for gRPC connections")
 	serverCmd.PersistentFlags().StringVarP(&restAddress, "restaddress", "a", DEFAULT_REST_LISTEN_ADDRESS, "Address to use to listen for REST connections")
 	serverCmd.PersistentFlags().StringVarP(&redisAddress, "redis", "r", "", "Address for Redis instance")
-	serverCmd.PersistentFlags().StringArrayVarP(&labels, "labels", "l", []string{}, "Optional labels to apply to server. Can be repeated.")
+	serverCmd.PersistentFlags().StringToStringVarP(&labels, "label", "l", nil, "Optional label key=value to apply to server. Can be repeated.")
 	serverCmd.PersistentFlags().BoolVarP(&enableREST, "enable-rest", "e", false, "Enable REST gateway for gRPC service")
 	_ = viper.BindPFlag("grpcaddress", serverCmd.PersistentFlags().Lookup("grpcaddress"))
 	_ = viper.BindPFlag("restaddress", serverCmd.PersistentFlags().Lookup("restaddress"))

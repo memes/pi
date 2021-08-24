@@ -100,7 +100,7 @@ func fetchDigit(endpoints []string, index uint64) (string, error) {
 		zap.String("result", response.Digit),
 		zap.String("metadata.identity", response.Metadata.Identity),
 		zap.Strings("metadata.addresses", response.Metadata.Addresses),
-		zap.Strings("metadata.labels", response.Metadata.Labels),
+		zap.Any("metadata.labels", response.Metadata.Labels),
 	)
 
 	return response.Digit, nil
