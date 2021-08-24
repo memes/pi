@@ -7,7 +7,11 @@
         "openapiv2",
         "protobuf",
         "protoc",
-        "goreleaser"
+        "goreleaser",
+        "borwein",
+        "ploufee",
+        "yamllint",
+        "markdownlint"
     ],
     "flagWords": [
         "hte"

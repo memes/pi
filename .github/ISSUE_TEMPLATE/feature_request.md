@@ -15,7 +15,6 @@ and link it to this issue where prompted.
 What are you proposing to add and what is the value added by this feature? Please
 provide as much detail as possible.
 
-<!-- spell-checker: ignore markdownlint -->
 <!-- markdownlint-disable MD026 -->
 ## Are you willing to contribute?
 

@@ -1,4 +1,4 @@
-# spell-checker: ignore grpc logtostderr openapiv
+# spell-checker: ignore logtostderr openapiv
 ---
 version: v1
 plugins:

@@ -1,4 +1,4 @@
-# spell-checker: ignore yamllint goreleaser DOCKERHUB
+# spell-checker: ignore DOCKERHUB
 ---
 name: release
 

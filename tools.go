@@ -1,5 +1,3 @@
-// spell-checker: ignore grpc openapiv protobuf
-
 // +build tools
 
 package tools

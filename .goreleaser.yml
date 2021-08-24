@@ -1,5 +1,5 @@
 # use goreleaser for builds and containers
-# spell-checker: ignore goreleaser yamllint incpatch goarch opencontainers
+# spell-checker: ignore incpatch goarch opencontainers
 ---
 before:
   hooks:
