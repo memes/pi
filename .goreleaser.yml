@@ -1,6 +1,7 @@
 # use goreleaser for builds and containers
 # spell-checker: ignore incpatch goarch opencontainers
 ---
+project_name: pi
 before:
   hooks:
     - go mod tidy
@@ -11,7 +12,7 @@ builds:
       - linux
       - windows
       - darwin
-    main: ./cmd/pi/
+    main: ./cmd/{{ .ProjectName }}/
 archives:
   - replacements:
       darwin: Darwin
@@ -33,23 +34,34 @@ dockers:
   - goos: linux
     goarch: amd64
     image_templates:
-      - memes/pi:latest
-      - memes/pi:{{ .Tag }}
-      - memes/pi:{{ .Major }}
+      - memes/{{ .ProjectName }}:latest
+      - memes/{{ .ProjectName }}:{{ .Tag }}
+      - memes/{{ .ProjectName }}:{{ .Major }}
     dockerfile: Dockerfile
     use: docker
     build_flag_templates:
-      - "--pull"
       # yamllint disable rule:line-length
+      - "--pull"
+      - "--label=maintainer=Matthew Emes <memes@matthewemes.com>"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.authors=memes@matthewemes.com"
+      - "--label=org.opencontainers.image.description=Return the decimal digit of pi at an index"
+      - "--label=org.opencontainers.image.licenses=MIT"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/memes/pi/tree/{{ .FullCommit }}"
-      - "--label=org.opencontainers.image.documentation=https://github.com/memes/pi/tree/{{ .FullCommit }}/README.md"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}/tree/{{ .FullCommit }}"
+      - "--label=org.opencontainers.image.documentation={{ .GitURL }}/tree/{{ .FullCommit }}/README.md"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.label-schema.vcs-url=https://github.com/memes/pi/tree/{{ .FullCommit }}"
-      - "--label=org.label-schema.usage=https://github.com/memes/pi/tree/{{ .FullCommit }}/README.md"
+      - "--label=org.opencontainers.image.url={{ .GitURL }}"
+      - "--label=org.label-schema.schema-version=1.0"
+      - "--label=org.label-schema.description=Return the decimal digit of pi at an index"
+      - "--label=org.label-schema.name={{ .ProjectName }}"
+      - "--label=org.label-schema.vcs-url={{ .GitURL }}/tree/{{ .FullCommit }}"
+      - "--label=org.label-schema.usage={{ .GitURL }}/tree/{{ .FullCommit }}/README.md"
       - "--label=org.label-schema.version={{ .Version }}"
       - "--label=org.label-schema.vcs-ref={{ .FullCommit }}"
+      - "--label=org.label-schema.url={{ .GitURL }}"
+      - "--label=org.label-schema.license=MIT"
       # yamllint enable rule:line-length
 release:
   draft: false
