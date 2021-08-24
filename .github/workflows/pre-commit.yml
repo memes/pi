@@ -1,5 +1,5 @@
 # These github actions will perform linting using pre-commit.
-# spell-checker: ignore chmod brpaz hadolint
+# spell-checker: ignore chmod hadolint
 # yamllint disable rule:line-length
 ---
 name: pre-commit
@@ -25,6 +25,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: brpaz/hadolint-action@v1.4.0
+      - uses: hadolint/hadolint-action@v1.5.0
         with:
           dockerfile: "Dockerfile"
