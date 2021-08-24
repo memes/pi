@@ -6,7 +6,8 @@
         "openapiv",
         "openapiv2",
         "protobuf",
-        "protoc"
+        "protoc",
+        "goreleaser"
     ],
     "flagWords": [
         "hte"
