@@ -3,11 +3,11 @@
 # spell-checker:disable
 repos:
   - repo: https://github.com/golangci/golangci-lint
-    rev: v1.40.1
+    rev: v1.42.0
     hooks:
       - id: golangci-lint
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.26.1
+    rev: v1.26.3
     hooks:
       - id: yamllint
         files: \.(yml|yaml|talismanrc)$
@@ -28,6 +28,6 @@ repos:
       - id: sort-simple-yaml
       - id: trailing-whitespace
   - repo: https://github.com/thoughtworks/talisman
-    rev: v1.11.0
+    rev: v1.22.0
     hooks:
       - id: talisman-commit
