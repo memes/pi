@@ -12,7 +12,7 @@ builds:
       - linux
       - windows
       - darwin
-    main: ./cmd/{{ .ProjectName }}/
+    main: ./cmd/pi/
 archives:
   - replacements:
       darwin: Darwin
