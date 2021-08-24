@@ -54,3 +54,7 @@ dockers:
 release:
   draft: false
   prerelease: auto
+milestones:
+  - close: true
+    fail_on_error: false
+    name_template: "{{ .Tag }}"
