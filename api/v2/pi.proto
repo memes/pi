@@ -36,7 +36,7 @@ message GetDigitRequest {
 message GetDigitMetadata {
   string identity = 1;
   repeated string addresses = 2;
-  repeated string labels = 3;
+  map<string, string> labels = 3;
 };
 
 message GetDigitResponse {
