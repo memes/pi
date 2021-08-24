@@ -11,7 +11,7 @@ builds:
       - linux
       - windows
       - darwin
-    main: ./cmd/
+    main: ./cmd/pi/
 archives:
   - replacements:
       darwin: Darwin
