@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	// spell-checker: ignore mitchellh
 	homedir "github.com/mitchellh/go-homedir"
@@ -18,10 +19,7 @@ const (
 
 var (
 	logger  *zap.Logger = zap.NewNop()
-	verbose bool
-	quiet   bool
-	cfgFile string
-	rootCmd = &cobra.Command{
+	rootCmd             = &cobra.Command{
 		Use:   APP_NAME,
 		Short: "Utility to get the digits of pi at an arbitrary index",
 		Long:  "Pi is a client/server application that will fetch 9 digits of pi from an arbitrary index.",
@@ -30,34 +28,33 @@ var (
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
-	rootCmd.PersistentFlags().BoolVarP(&quiet, "quiet", "q", false, "Enable quiet logging")
+	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose logging")
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Enable quiet logging")
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	_ = viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 }
 
 func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
+	viper.AddConfigPath(".")
+	home, err := homedir.Dir()
+	if err != nil {
+		log.Printf("Error locating home dir: %+v", err)
 	} else {
-		home, err := homedir.Dir()
-		if err != nil {
-			log.Fatal("Error locating home dir", err)
-		}
 		viper.AddConfigPath(home)
-		viper.SetConfigName("." + APP_NAME)
 	}
+	viper.SetConfigName("." + APP_NAME)
 	viper.SetEnvPrefix(APP_NAME)
+	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
-	err := viper.ReadInConfig()
+	err = viper.ReadInConfig()
 	config := zap.NewProductionEncoderConfig()
 	encoder := zapcore.NewJSONEncoder(config)
 	level := zap.NewAtomicLevel()
 	logger = zap.New(zapcore.NewCore(encoder, zapcore.Lock(os.Stdout), level))
-	if verbose {
+	if viper.GetBool("verbose") {
 		level.SetLevel(zapcore.DebugLevel)
 	}
-	if quiet {
+	if viper.GetBool("quiet") {
 		level.SetLevel(zapcore.ErrorLevel)
 	}
 	if logger == nil {
@@ -68,7 +65,7 @@ func initConfig() {
 	}
 	switch t := err.(type) {
 	case viper.ConfigFileNotFoundError:
-		logger.Debug("Error reading configuration file",
+		logger.Debug("Configuration file not found",
 			zap.Error(t),
 		)
 

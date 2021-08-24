@@ -21,18 +21,18 @@ const (
 )
 
 var (
-	count     int
-	timeout   time.Duration
 	clientCmd = &cobra.Command{
 		Use:   "client",
 		Short: "Run a gRPC client to request pi digits",
 		Long:  "Launch a client that attempts to connect to servers and return a subset of the mantissa of pi.",
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			count := viper.GetInt("count")
 			logger := logger.With(
 				zap.Int("count", count),
 				zap.Strings("args", args),
 			)
+			timeout := viper.GetDuration("timeout")
 			logger.Debug("Running client")
 			// Randomize the retrieval of numbers
 			indices := rand.Perm(count)
@@ -46,7 +46,7 @@ var (
 						zap.Uint64("index", index),
 					)
 					log.Debug("In goroutine")
-					digit, err := fetchDigit(args, index)
+					digit, err := fetchDigit(args, index, timeout)
 					if err != nil {
 						log.Error("Error getting digit",
 							zap.Error(err),
@@ -63,17 +63,18 @@ var (
 )
 
 func init() {
-	clientCmd.PersistentFlags().IntVarP(&count, "count", "c", DEFAULT_COUNT, "Number of digits of pi to return ")
-	clientCmd.PersistentFlags().DurationVarP(&timeout, "timeout", "t", DEFAULT_TIMEOUT, "Client timeout")
+	clientCmd.PersistentFlags().IntP("count", "c", DEFAULT_COUNT, "Number of digits of pi to return ")
+	clientCmd.PersistentFlags().DurationP("timeout", "t", DEFAULT_TIMEOUT, "Client timeout")
 	_ = viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count"))
 	_ = viper.BindPFlag("timeout", clientCmd.PersistentFlags().Lookup("timeout"))
 	rootCmd.AddCommand(clientCmd)
 }
 
-func fetchDigit(endpoints []string, index uint64) (string, error) {
+func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string, error) {
 	logger := logger.With(
 		zap.Strings("endpoints", endpoints),
 		zap.Uint64("index", index),
+		zap.Duration("timeout", timeout),
 	)
 	logger.Debug("Starting connection to service")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
