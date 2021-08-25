@@ -40,15 +40,14 @@ Also see 'client' command for usage.`,
 )
 
 func init() {
-	// spell-checker: ignore grpcaddress
-	serverCmd.PersistentFlags().StringP("grpcaddress", "g", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to use to listen for gRPC connections")
-	serverCmd.PersistentFlags().StringP("restaddress", "a", DEFAULT_REST_LISTEN_ADDRESS, "Address to use to listen for REST connections")
-	serverCmd.PersistentFlags().StringP("redis", "r", "", "Address for Redis instance")
+	serverCmd.PersistentFlags().StringP("grpc-address", "g", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to listen for gRPC connections")
+	serverCmd.PersistentFlags().StringP("rest-address", "a", DEFAULT_REST_LISTEN_ADDRESS, "Address to listen for REST connections")
+	serverCmd.PersistentFlags().StringP("redis-address", "r", "", "Address for Redis instance")
 	serverCmd.PersistentFlags().StringToStringP("label", "l", nil, "Optional label key=value to apply to server. Can be repeated.")
 	serverCmd.PersistentFlags().BoolP("enable-rest", "e", false, "Enable REST gateway for gRPC service")
-	_ = viper.BindPFlag("grpcaddress", serverCmd.PersistentFlags().Lookup("grpcaddress"))
-	_ = viper.BindPFlag("restaddress", serverCmd.PersistentFlags().Lookup("restaddress"))
-	_ = viper.BindPFlag("redisaddress", serverCmd.PersistentFlags().Lookup("redisaddress"))
+	_ = viper.BindPFlag("grpc-address", serverCmd.PersistentFlags().Lookup("grpc-address"))
+	_ = viper.BindPFlag("rest-address", serverCmd.PersistentFlags().Lookup("rest-address"))
+	_ = viper.BindPFlag("redis-address", serverCmd.PersistentFlags().Lookup("redis-address"))
 	_ = viper.BindPFlag("label", serverCmd.PersistentFlags().Lookup("label"))
 	_ = viper.BindPFlag("enable-rest", serverCmd.PersistentFlags().Lookup("enable-rest"))
 	rootCmd.AddCommand(serverCmd)
@@ -65,7 +64,7 @@ func (s *piServer) GetDigit(ctx context.Context, in *v2.GetDigitRequest) (*v2.Ge
 	)
 	logger.Debug("GetDigit: enter")
 
-	redisAddress := viper.GetString("redisaddress")
+	redisAddress := viper.GetString("redis-address")
 	if redisAddress != "" {
 		pi.SetCache(NewRedisCache(ctx, redisAddress))
 
@@ -109,8 +108,8 @@ func getMetadata() *v2.GetDigitMetadata {
 }
 
 func service(cmd *cobra.Command, args []string) error {
-	grpcAddress := viper.GetString("grpcaddress")
-	restAddress := viper.GetString("restaddress")
+	grpcAddress := viper.GetString("grpc-address")
+	restAddress := viper.GetString("rest-address")
 	enableREST := viper.GetBool("enable-rest")
 	logger := logger.With(
 		zap.String("grpcAddress", grpcAddress),

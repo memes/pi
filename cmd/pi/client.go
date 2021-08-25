@@ -22,7 +22,7 @@ const (
 
 var (
 	clientCmd = &cobra.Command{
-		Use:   "client",
+		Use:   "client gRPCEndpoint...",
 		Short: "Run a gRPC client to request pi digits",
 		Long:  "Launch a client that attempts to connect to servers and return a subset of the mantissa of pi.",
 		Args:  cobra.MinimumNArgs(1),
@@ -63,8 +63,8 @@ var (
 )
 
 func init() {
-	clientCmd.PersistentFlags().IntP("count", "c", DEFAULT_COUNT, "Number of digits of pi to return ")
-	clientCmd.PersistentFlags().DurationP("timeout", "t", DEFAULT_TIMEOUT, "Client timeout")
+	clientCmd.PersistentFlags().IntP("count", "c", DEFAULT_COUNT, "number of decimal digits of pi to request")
+	clientCmd.PersistentFlags().DurationP("timeout", "t", DEFAULT_TIMEOUT, "client timeout")
 	_ = viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count"))
 	_ = viper.BindPFlag("timeout", clientCmd.PersistentFlags().Lookup("timeout"))
 	rootCmd.AddCommand(clientCmd)

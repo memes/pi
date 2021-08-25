@@ -18,18 +18,20 @@ const (
 )
 
 var (
+	version             = "unknown"
 	logger  *zap.Logger = zap.NewNop()
 	rootCmd             = &cobra.Command{
-		Use:   APP_NAME,
-		Short: "Utility to get the digits of pi at an arbitrary index",
-		Long:  "Pi is a client/server application that will fetch 9 digits of pi from an arbitrary index.",
+		Use:     APP_NAME,
+		Version: version,
+		Short:   "Utility to get the digit of pi at an arbitrary index",
+		Long:    "Pi is a client/server application that will fetch one of the decimal digits of pi from an arbitrary index.",
 	}
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "Enable verbose logging")
-	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Enable quiet logging")
+	rootCmd.PersistentFlags().BoolP("quiet", "q", false, "Disable most logging; quiet has a higher priority than verbose if both are provided")
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	_ = viper.BindPFlag("quiet", rootCmd.PersistentFlags().Lookup("quiet"))
 }
