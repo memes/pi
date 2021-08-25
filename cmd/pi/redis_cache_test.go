@@ -50,7 +50,7 @@ func TestRedisCache(t *testing.T) {
 	}
 }
 
-func TestPiDigitsWithRedisCache(t *testing.T) {
+func TestPiDigitWithRedisCache(t *testing.T) {
 	ctx := context.Background()
 	mock, err := miniredis.Run()
 	if err != nil {
@@ -63,7 +63,7 @@ func TestPiDigitsWithRedisCache(t *testing.T) {
 	pi.SetCache(cache)
 	for i := 0; i < len(PI_DIGITS); i++ {
 		expected := string(PI_DIGITS[i])
-		actual, err := pi.PiDigits(ctx, uint64(i))
+		actual, err := pi.PiDigit(ctx, uint64(i))
 		if err != nil {
 			t.Errorf("Error calling PiDigits: %v", err)
 		}

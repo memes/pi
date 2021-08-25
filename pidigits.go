@@ -128,16 +128,16 @@ func nextPrime(n int64) int64 {
 }
 
 // Returns a 9 chararcter string containing the decimal digits of pi starting
-// at the specified offset. E.g. piDigits(0) -> "141592653",
-// piDigits(1) -> 415926535, etc.
+// at the specified offset. E.g. CalcDigits(0) -> "141592653",
+// CalcDigits(1) -> 415926535, etc.
 //
 // Note that this has been modified to be zero-based, unlike original code
 // spell-checker: ignore vmax
-func piDigits(n uint64) string {
+func CalcDigits(n uint64) string {
 	l := logger.With(
 		zap.Uint64("n", n),
 	)
-	l.Debug("piDigits: enter")
+	l.Debug("CalcDigits: enter")
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
@@ -199,13 +199,13 @@ func piDigits(n uint64) string {
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}
 	result := fmt.Sprintf("%09d", int(sum*1e9))
-	l.Debug("piDigits: exit",
+	l.Debug("CalcDigits: exit",
 		zap.String("result", result),
 	)
 	return result
 }
 
-func PiDigits(ctx context.Context, n uint64) (string, error) {
+func PiDigit(ctx context.Context, n uint64) (string, error) {
 	l := logger.With(
 		zap.Uint64("n", n),
 	)
@@ -220,7 +220,7 @@ func PiDigits(ctx context.Context, n uint64) (string, error) {
 		return "", err
 	}
 	if digits == "" {
-		digits = piDigits(index)
+		digits = CalcDigits(index)
 		err = cache.SetValue(ctx, key, digits)
 		if err != nil {
 			logger.Error("Error writing digits to cache",
@@ -230,7 +230,7 @@ func PiDigits(ctx context.Context, n uint64) (string, error) {
 		}
 	}
 	digit := string(digits[n%9])
-	logger.Debug("GetDigit: exit",
+	logger.Debug("PiDigit: exit",
 		zap.String("digit", digit),
 	)
 	return digit, nil

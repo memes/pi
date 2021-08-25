@@ -69,7 +69,7 @@ func (s *piServer) GetDigit(ctx context.Context, in *v2.GetDigitRequest) (*v2.Ge
 		pi.SetCache(NewRedisCache(ctx, redisAddress))
 
 	}
-	digit, err := pi.PiDigits(ctx, index)
+	digit, err := pi.PiDigit(ctx, index)
 	if err != nil {
 		logger.Error("Error retrieving digit",
 			zap.Error(err),
