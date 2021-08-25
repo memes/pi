@@ -30,3 +30,49 @@ integrate the tool before pushing changes to GitHub.
 
 The hook will ensure that `pre-commit` will be run against all staged changes
 during `git commit`.
+
+## Buf
+
+[buf](https://buf.build/) is used to generate Go and Swagger files from protobuf
+sources. This tool and the supporting protoc plugins will be required if the
+protobuf definitions need to be changed.
+
+1. Validate the (updated) buf configuration
+
+   ```shell
+   buf lint
+   ```
+
+2. Bring in any upstream changes from declared protobuf repositories
+
+   ```shell
+   buf mod update
+   ```
+
+3. Regenerate Go implementation and OpenAPI files
+
+   ```shell
+   buf generate
+   ```
+
+## Goreleaser
+
+[goreleaser](https://goreleaser.com/) is used to generate binaries and containers
+from this source. Any changes to [.goreleaser.yml](.goreleaser.yml) or GitHub
+[release](.github/workflows/release.yml) will need to be checked before PR is
+approved.
+
+1. Validate goreleaser configuration
+
+   ```shell
+   goreleaser check
+   ```
+
+2. Execute the build locally - but do not publish binaries!
+
+   ```shell
+   goreleaser release --auto-snapshot --rm-dist --skip-publish
+   ```
+
+   Binaries for the supported OS and architecture combinations will be in the
+   `dist` folder.
