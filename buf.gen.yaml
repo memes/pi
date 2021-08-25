@@ -15,5 +15,6 @@ plugins:
     opt:
       - paths=source_relative
       - logtostderr=true
+      - omit_package_doc=true
   - name: openapiv2
     out: .
