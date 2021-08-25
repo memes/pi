@@ -2,71 +2,22 @@
 
 <!-- markdownlint-disable MD024 -->
 
-All notable changes to this project will be documented in this file.
+All released changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-rc5] - 2021-08-24
+## [2.0.0] - TBD
 
-### Added
-
-### Changed
-
-- release action: rename to `release`
-- metadata labels is now a map of strings
-- updated buf repository for googleapis; regenerated files from protobuf
-
-### Removed
-
-## [2.0.0-rc4] - 2021-08-21
-
-### Added
-
-### Changed
-
-- go-release action: login to Docker hub before attempting to publish image
-
-### Removed
-
-## [2.0.0-rc3] - 2021-08-21
-
-Switch to [goreleaser](https://goreleaser.com/intro/) for building cross-platform
-binaries and container image.
-
-### Added
-
-- `goreleaser` configuration for binaries and publishing
-
-### Changed
-
-- go-release action to use `goreleaser`
-- `server`: default to not starting REST gateway
-- `server`: add option to enable REST gateway
-- `server`: corrected gRPC health check path
-
-### Removed
-
-## [2.0.0-rc2] - 2021-07-12
-
-### Added
-
-### Changed
-
-- Response metadata as a distinct and extensible protobuf type
-
-### Removed
-
-## [2.0.0-rc1] - 2021-07-11
-
-First test of refactored Pi code as v2; gRPC is primary transport with a REST
-gateway for compatibility.
+Refactored Pi code as v2 to support use as a library and application. When used as a server the primary transport is through gRPC, with an optional REST
+gateway for compatibility. The client app is always gRPC.
 
 ### Added
 
 - protobuf definition for data transfer with [buf](https://buf.build) tooling for
   code generation
-- Cache interface definition, with Redis implementation for sample server
+- Cache interface definition, with optional Redis implementation for sample server
+- goreleaser for binary and container building
 
 ### Changed
 
@@ -120,11 +71,7 @@ gateway for compatibility.
 
 ### Removed
 
-[2.0.0-rc5]: https://github.com/memes/pi/compare/2.0.0-rc4...2.0.0-rc5
-[2.0.0-rc4]: https://github.com/memes/pi/compare/2.0.0-rc3...2.0.0-rc4
-[2.0.0-rc3]: https://github.com/memes/pi/compare/2.0.0-rc2...2.0.0-rc3
-[2.0.0-rc2]: https://github.com/memes/pi/compare/2.0.0-rc1...2.0.0-rc2
-[2.0.0-rc1]: https://github.com/memes/pi/compare/1.0.4...2.0.0-rc1
+[2.0.0]: https://github.com/memes/pi/compare/1.0.4-rc6...2.0.0
 [1.0.4]: https://github.com/memes/pi/compare/1.0.3...1.0.4
 [1.0.3]: https://github.com/memes/pi/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/memes/pi/compare/1.0.1...1.0.2
