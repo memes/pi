@@ -1,7 +1,6 @@
 package pi
 
 import (
-	"context"
 	"fmt"
 	"testing"
 )
@@ -29,18 +28,4 @@ func BenchmarkCalcDigits(b *testing.B) {
 func ExampleCalcDigits() {
 	fmt.Printf("3.%s\n", CalcDigits(0))
 	// Output: 3.141592653
-}
-
-func TestPiDigit(t *testing.T) {
-	ctx := context.Background()
-	for i := 0; i < 100; i++ {
-		expected := string(PI_DIGITS[i])
-		actual, err := PiDigit(ctx, uint64(i))
-		if err != nil {
-			t.Errorf("Error calling PiDigit: %v", err)
-		}
-		if actual != expected {
-			t.Errorf("Checking offset: %d: expected %s got %s", i, expected, actual)
-		}
-	}
 }

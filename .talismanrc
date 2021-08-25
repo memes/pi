@@ -1,4 +1,4 @@
-# spell-checker: ignore fileignoreconfig
+# spell-checker: ignore fileignoreconfig pidigit
 ---
 fileignoreconfig:
 - filename: .github/workflows/release.yml
@@ -9,3 +9,5 @@ fileignoreconfig:
   checksum: 4cb52e58e1b3fa2b00845e149357b098789ad12db667a6b9d60e80279facbf05
 - filename: cmd/server.go
   checksum: d001e6d3be9dac780f0227fc12acb47a8b9ac41eff3ff9ff2b8519494b9af231
+- filename: pidigit.go
+  checksum: df2216585c99b4a9cce0bac906968b250292ff01efffcbf952053bbd9b3211da
