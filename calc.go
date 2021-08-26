@@ -2,7 +2,7 @@ package pi
 
 // Calculates and returns the n-th and 8 following digits of Pi
 //
-// Based on source provided by Fabrice Bellard, taken from https://bellard.org/pi/pi.c
+// Based on source provided by Fabrice Bellard, published at https://bellard.org/pi/pi.c
 
 import (
 	"fmt"
@@ -67,9 +67,9 @@ func powMod(a int64, b int64, m int64) int64 {
 }
 
 // Return true if n is a prime
-func isPrime(n int64) bool {
+func isPrime(n uint64) bool {
 	l := logger.With(
-		zap.Int64("n", n),
+		zap.Uint64("n", n),
 	)
 	l.Debug("isPrime: entered")
 	if n%2 == 0 {
@@ -78,8 +78,8 @@ func isPrime(n int64) bool {
 		)
 		return false
 	}
-	r := int64(math.Sqrt(float64(n)))
-	var i int64 = 3
+	r := uint64(math.Sqrt(float64(n)))
+	var i uint64 = 3
 	for ; i <= r; i += 2 {
 		if n%i == 0 {
 			l.Debug("isPrime: exit",
@@ -95,16 +95,20 @@ func isPrime(n int64) bool {
 }
 
 // Return the next prime number greater than n
-func nextPrime(n int64) int64 {
+func nextPrime(n uint64) uint64 {
 	l := logger.With(
-		zap.Int64("n", n),
+		zap.Uint64("n", n),
 	)
+	var next uint64
 	l.Debug("nextPrime: enter")
-	next := n + 1
-	for ; !isPrime(next); next++ {
+	if n < 2 {
+		next = 2
+	} else {
+		for next = n + 1; !isPrime(next); next++ {
+		}
 	}
 	l.Debug("nextPrime: exit",
-		zap.Int64("result", next),
+		zap.Uint64("result", next),
 	)
 	return next
 }
@@ -113,8 +117,7 @@ func nextPrime(n int64) int64 {
 // at the specified offset. E.g. CalcDigits(0) -> "141592653",
 // CalcDigits(1) -> 415926535, etc.
 //
-// Note that this has been modified to be zero-based, unlike original code
-// spell-checker: ignore vmax
+// NOTE: this function has been modified to be zero-based, unlike original code
 func CalcDigits(n uint64) string {
 	l := logger.With(
 		zap.Uint64("n", n),
@@ -123,7 +126,8 @@ func CalcDigits(n uint64) string {
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
-	for a := int64(3); a <= (2 * N); a = nextPrime(a) {
+	for a := int64(3); a <= (2 * N); a = int64(nextPrimeFn(uint64(a))) {
+		// spell-checker: ignore vmax
 		vmax := int64(math.Log(float64(2*N)) / math.Log(float64(a)))
 		av := int64(1)
 		for i := int64(0); i < vmax; i++ {

@@ -11,3 +11,5 @@ fileignoreconfig:
   checksum: d001e6d3be9dac780f0227fc12acb47a8b9ac41eff3ff9ff2b8519494b9af231
 - filename: pidigit.go
   checksum: df2216585c99b4a9cce0bac906968b250292ff01efffcbf952053bbd9b3211da
+- filename: calc_test.go
+  checksum: 7112a0732eab23f0ea2f1136137057a4665afe80989c23ccd79da132513c1347
