@@ -21,7 +21,7 @@ jobs:
         with:
           go-version: 1.16
       - name: Run go tests
-        run: go test -v ./...
+        run: go test -v -short ./...
       - name: Login to Docker hub
         if: ${{ success() }}
         uses: docker/login-action@v1
