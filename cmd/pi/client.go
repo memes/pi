@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	DEFAULT_COUNT   = 1000
+	DEFAULT_COUNT   = 100
 	DEFAULT_TIMEOUT = 10 * time.Second
 )
 
