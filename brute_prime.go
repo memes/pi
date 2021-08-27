@@ -47,7 +47,12 @@ func BruteFindNextPrime(n uint64) uint64 {
 	if n < 2 {
 		next = 2
 	} else {
-		for next = n + 1; !bruteIsPrime(next); next++ {
+		if n%2 == 0 {
+			next = n + 1
+		} else {
+			next = n + 2
+		}
+		for ; !bruteIsPrime(next); next++ {
 		}
 	}
 	l.Debug("BruteFindNextPrime: exit",

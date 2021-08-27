@@ -7,11 +7,14 @@ import (
 )
 
 const (
+	// The number of MR rounds to use when determining if the number is
+	// probably a prime. A value of zero will apply a Baillie-PSW only test
+	// and required Go 1.8+.
 	MILLER_RABIN_ROUNDS = 0
 )
 
 var (
-	unit = big.NewInt(1)
+	two = big.NewInt(2)
 )
 
 // Determine the next prime number greater than n by iterating over the set of
@@ -25,8 +28,14 @@ func BigFindNextPrime(n uint64) uint64 {
 	if n < 2 {
 		result = 2
 	} else {
-		next := big.NewInt(int64(n + 1))
-		for ; !next.ProbablyPrime(MILLER_RABIN_ROUNDS); next = next.Add(next, unit) {
+		var offset uint64
+		if n%2 == 0 {
+			offset++
+		} else {
+			offset += 2
+		}
+		next := big.NewInt(int64(n + offset))
+		for ; !next.ProbablyPrime(MILLER_RABIN_ROUNDS); next = next.Add(next, two) {
 		}
 		result = next.Uint64()
 	}
