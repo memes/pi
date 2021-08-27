@@ -11,7 +11,8 @@
         "borwein",
         "ploufee",
         "yamllint",
-        "markdownlint"
+        "markdownlint",
+        "sprp"
     ],
     "flagWords": [
         "hte"
