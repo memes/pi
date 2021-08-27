@@ -13,11 +13,6 @@ import (
 
 // Returns the inverse of x mod y
 func invMod(x int64, y int64) int64 {
-	l := logger.With(
-		zap.Int64("x", x),
-		zap.Int64("y", y),
-	)
-	l.Debug("invMod: enter")
 	var u, v, c, a int64 = x, y, 1, 0
 	for {
 		q := v / u
@@ -35,82 +30,23 @@ func invMod(x int64, y int64) int64 {
 	if a < 0 {
 		a = y + a
 	}
-	l.Debug("invMod: exit",
-		zap.Int64("result", a),
-	)
 	return a
 }
 
 // Returns (a^b) mod m
-func powMod(a int64, b int64, m int64) int64 {
-	l := logger.With(
-		zap.Int64("a", a),
-		zap.Int64("b", b),
-		zap.Int64("m", m),
-	)
-	l.Debug("powMod: entered")
-	var r, aa int64 = 1, a
+func powMod(a uint64, b uint64, m uint64) uint64 {
+	var r uint64 = 1
 	for {
 		if b&1 > 0 {
-			r = (r * aa) % m
+			r = (r * a) % m
 		}
 		b = b >> 1
 		if b == 0 {
 			break
 		}
-		aa = (aa * aa) % m
+		a = (a * a) % m
 	}
-	l.Debug("powMod: exit",
-		zap.Int64("result", r),
-	)
 	return r
-}
-
-// Return true if n is a prime
-func isPrime(n uint64) bool {
-	l := logger.With(
-		zap.Uint64("n", n),
-	)
-	l.Debug("isPrime: entered")
-	if n%2 == 0 {
-		l.Debug("isPrime: exit",
-			zap.Bool("result", false),
-		)
-		return false
-	}
-	r := uint64(math.Sqrt(float64(n)))
-	var i uint64 = 3
-	for ; i <= r; i += 2 {
-		if n%i == 0 {
-			l.Debug("isPrime: exit",
-				zap.Bool("result", false),
-			)
-			return false
-		}
-	}
-	l.Debug("isPrime: exit",
-		zap.Bool("result", true),
-	)
-	return true
-}
-
-// Return the next prime number greater than n
-func nextPrime(n uint64) uint64 {
-	l := logger.With(
-		zap.Uint64("n", n),
-	)
-	var next uint64
-	l.Debug("nextPrime: enter")
-	if n < 2 {
-		next = 2
-	} else {
-		for next = n + 1; !isPrime(next); next++ {
-		}
-	}
-	l.Debug("nextPrime: exit",
-		zap.Uint64("result", next),
-	)
-	return next
 }
 
 // Returns a 9 chararcter string containing the decimal digits of pi starting
@@ -126,7 +62,7 @@ func CalcDigits(n uint64) string {
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
-	for a := int64(3); a <= (2 * N); a = int64(nextPrimeFn(uint64(a))) {
+	for a := int64(3); a <= (2 * N); a = int64(findNextPrime(uint64(a))) {
 		// spell-checker: ignore vmax
 		vmax := int64(math.Log(float64(2*N)) / math.Log(float64(a)))
 		av := int64(1)
@@ -179,8 +115,11 @@ func CalcDigits(n uint64) string {
 				}
 			}
 		}
+		if av < 0 {
+			panic(fmt.Sprintf("av is %d", av))
+		}
 
-		t = powMod(10, int64(n), av)
+		t = int64(powMod(10, n, uint64(av)))
 		s = (s * t) % av
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}

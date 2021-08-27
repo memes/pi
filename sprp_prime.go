@@ -3,6 +3,8 @@ package pi
 import (
 	"math"
 	"sort"
+
+	"go.uber.org/zap"
 )
 
 // Based on CPP code published by Olivier Langlois <olivier@olivierlanglois.net>
@@ -116,6 +118,11 @@ var (
 
 // Implements a Strong Probable Prime test for the base b.
 func baseSPRP(n uint64, b uint64) bool {
+	l := logger.With(
+		zap.Uint64("n", n),
+		zap.Uint64("b", b),
+	)
+	l.Debug("baseSPRP: entered")
 	t := n - 1
 	nMinus1 := t
 	a := uint64(0)
@@ -133,26 +140,36 @@ func baseSPRP(n uint64, b uint64) bool {
 	 * from 0 to a - 1. If any one is correct, then n passes.
 	 * Otherwise, n fails.
 	 */
-	test := uint64(powMod(int64(b), int64(t), int64(n)))
+	test := powMod(b, t, n)
 	if test == 1 || test == nMinus1 {
+		l.Debug("baseSPRP: probably prime")
 		return true
 	}
 	for a--; a > 0; a-- {
 		test = (test * test) % n
 		if test == nMinus1 {
+			l.Debug("baseSPRP: probably prime")
 			return true
 		}
 	}
+	l.Debug("baseSPRP: not a prime")
 	return false
 }
 
 // Perform a trial division test on n using the set of primes in the lookup table.
 func trialDivision(n uint64, maxIdx int) bool {
+	l := logger.With(
+		zap.Uint64("n", n),
+		zap.Int("maxIdx", maxIdx),
+	)
+	l.Debug("trialDivision: entered")
 	for ; maxIdx > 0; maxIdx-- {
 		if n%primeTab[maxIdx] == 0 {
+			l.Debug("trialDivision: not a prime")
 			return false
 		}
 	}
+	l.Debug("trialDivision: potentially a prime")
 	return true
 }
 
@@ -164,16 +181,22 @@ func findUpperIdx(n uint64, limit int) int {
 
 // Returns the next prime number that is greater than the supplied number. If n
 // is a prime, then next largest prime will be returned.
-// E.g. findUpperPrime(1) returns 2, findUpperPrime(2) returns 3, etc.
-func findUpperPrime(n uint64) uint64 {
+// E.g. SPRPFindNextPrime(1) returns 2, SPRPFindNextPrime(2) returns 3, etc.
+func SPRPFindNextPrime(n uint64) uint64 {
+	l := logger.With(
+		zap.Uint64("n", n),
+	)
+	l.Debug("SPRPFindNextPrime: entered")
 	var result uint64
 	nWasEven := n&1 == 0
 
 	switch {
 	case n < uint64(7919):
+		l.Debug("SPRPFindNextPrime: using lookup")
 		result = primeTab[findUpperIdx(n, 1000)]
 
 	case n < uint64(55000):
+		l.Debug("SPRPFindNextPrime: using trial division")
 		if nWasEven {
 			n++
 		}
@@ -194,6 +217,7 @@ func findUpperPrime(n uint64) uint64 {
 		}
 
 	default:
+		l.Debug("SPRPFindNextPrime: using trial division and SPRP with bases 2, 3, 5, and 7")
 		if nWasEven {
 			n++
 		} else {
@@ -225,5 +249,8 @@ func findUpperPrime(n uint64) uint64 {
 			n += 2
 		}
 	}
+	l.Debug("SPRPFindNextPrime: exit",
+		zap.Uint64("result", result),
+	)
 	return result
 }

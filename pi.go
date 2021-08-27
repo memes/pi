@@ -9,7 +9,7 @@ import (
 
 // Defines the signature of a function that will return the next largest prime
 // number that is greater than the supplied value.
-type NextPrimeFunc func(uint64) uint64
+type FindNextPrimeFunc func(uint64) uint64
 
 var (
 	// Zap logger to use in this package; default is a no-op logger.
@@ -18,7 +18,7 @@ var (
 	cache Cache = NewNoopCache()
 	// The next prime function to use in this package; default is a naive
 	// brute-force calculator.
-	nextPrimeFn NextPrimeFunc = nextPrime
+	findNextPrime FindNextPrimeFunc = BruteFindNextPrime
 )
 
 // Change the Zap logger instance used by this package.
@@ -36,8 +36,8 @@ func SetCache(c Cache) {
 }
 
 // Change the next prime calculation function used by this package.
-func SetNextPrimeFunc(f NextPrimeFunc) {
-	nextPrimeFn = f
+func SetFindNextPrimeFunction(f FindNextPrimeFunc) {
+	findNextPrime = f
 }
 
 //

@@ -7,8 +7,14 @@ import (
 	"testing"
 )
 
+const (
+	BENCHMARK_PRIME_EXPONENT_LIMIT = 8
+)
+
 var (
-	firstTenKPrimes = []uint64{
+	// Use a set of the first 10,000 prime numbers to verify the prime
+	// solvers.
+	verificationPrimes = []uint64{
 		2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
 		31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
 		73, 79, 83, 89, 97, 101, 103, 107, 109, 113,
@@ -1010,44 +1016,38 @@ var (
 		104549, 104551, 104561, 104579, 104593, 104597, 104623, 104639, 104651, 104659,
 		104677, 104681, 104683, 104693, 104701, 104707, 104711, 104717, 104723, 104729,
 	}
+	primeTableSize   = len(verificationPrimes)
+	primeVerifyLimit = verificationPrimes[primeTableSize-1]
 )
 
-func testFindNextPrime(fn NextPrimeFunc, start uint64, expected uint64, t *testing.T) {
-	if actual := fn(start); actual != expected {
+func testSPRPPrimeFindNext(start uint64, expected uint64, t *testing.T) {
+	t.Parallel()
+	if actual := SPRPFindNextPrime(start); actual != expected {
 		t.Errorf("Checking start: %d: expected %d got %d", start, expected, actual)
 	}
 }
 
-func TestNextPrime(t *testing.T) {
-	for i := uint64(0); i < 104729; i++ {
-		expected := firstTenKPrimes[sort.Search(10000, func(idx int) bool { return firstTenKPrimes[idx] > i })]
-		t.Run(fmt.Sprintf("start=%d", i), func(t *testing.T) { testFindNextPrime(nextPrime, i, expected, t) })
+// Verify that the brute force prime solver gives the correct next greater prime
+// number for the set of integers [0, largest prime in table).
+func TestSPRPPrimeFindNext(t *testing.T) {
+	for i := uint64(0); i < primeVerifyLimit; i++ {
+		expected := verificationPrimes[sort.Search(primeTableSize, func(idx int) bool { return verificationPrimes[idx] > i })]
+		t.Run(fmt.Sprintf("start=%d", i), func(t *testing.T) {
+			testSPRPPrimeFindNext(i, expected, t)
+		})
 	}
 }
 
-func TestFindUpperPrime(t *testing.T) {
-	for i := uint64(0); i < 104729; i++ {
-		expected := firstTenKPrimes[sort.Search(10000, func(idx int) bool { return firstTenKPrimes[idx] > i })]
-		t.Run(fmt.Sprintf("start=%d", i), func(t *testing.T) { testFindNextPrime(findUpperPrime, i, expected, t) })
-	}
-}
-
-func benchmarkFindNextPrime(fn NextPrimeFunc, start uint64, b *testing.B) {
+func benchmarkSPRPPrimeFindNext(start uint64, b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = fn(start)
+		_ = SPRPFindNextPrime(start)
 	}
 }
 
-func BenchmarkNextPrime(b *testing.B) {
-	for exp := 0; exp < 8; exp++ {
+// Benchmark the SPRP prime solver method with starting points as a power of 10.
+func BenchmarkSPRPPrimeFindNext(b *testing.B) {
+	for exp := 0; exp < BENCHMARK_PRIME_EXPONENT_LIMIT; exp++ {
 		start := uint64(math.Pow10(exp))
-		b.Run(fmt.Sprintf("start=%d", start), func(b *testing.B) { benchmarkFindNextPrime(nextPrime, start, b) })
-	}
-}
-
-func BenchmarkFindUpperPrime(b *testing.B) {
-	for exp := 0; exp < 8; exp++ {
-		start := uint64(math.Pow10(exp))
-		b.Run(fmt.Sprintf("start=%d", start), func(b *testing.B) { benchmarkFindNextPrime(findUpperPrime, start, b) })
+		b.Run(fmt.Sprintf("start=%d", start), func(b *testing.B) { benchmarkSPRPPrimeFindNext(start, b) })
 	}
 }
