@@ -1,4 +1,4 @@
-# TODO: @memes - remove unused plugins for project
+# Pre-commit hooks to run on commit
 ---
 # spell-checker:disable
 repos:
@@ -13,10 +13,6 @@ repos:
         files: \.(yml|yaml|talismanrc)$
         types: [file, yaml]
         entry: yamllint --strict
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.7.2.1
-    hooks:
-      - id: shellcheck
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
     hooks:
