@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	"github.com/memes/pi"
-	v2 "github.com/memes/pi/api/v2"
+	api "github.com/memes/pi/api/v2"
+	pi "github.com/memes/pi/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -28,7 +28,7 @@ const (
 )
 
 var (
-	metadata  *v2.GetDigitMetadata
+	metadata  *api.GetDigitMetadata
 	serverCmd = &cobra.Command{
 		Use:   "server",
 		Short: "Run gRPC/REST service to return pi digits",
@@ -54,10 +54,10 @@ func init() {
 }
 
 type piServer struct {
-	v2.UnimplementedPiServiceServer
+	api.UnimplementedPiServiceServer
 }
 
-func (s *piServer) GetDigit(ctx context.Context, in *v2.GetDigitRequest) (*v2.GetDigitResponse, error) {
+func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
 	index := in.Index
 	logger := logger.With(
 		zap.Uint64("index", index),
@@ -79,7 +79,7 @@ func (s *piServer) GetDigit(ctx context.Context, in *v2.GetDigitRequest) (*v2.Ge
 	logger.Debug("GetDigit: exit",
 		zap.String("digit", digit),
 	)
-	return &v2.GetDigitResponse{
+	return &api.GetDigitResponse{
 		Index:    index,
 		Digit:    digit,
 		Metadata: metadata,
@@ -87,9 +87,9 @@ func (s *piServer) GetDigit(ctx context.Context, in *v2.GetDigitRequest) (*v2.Ge
 }
 
 // Populate a metadata structure for this instance
-func getMetadata() *v2.GetDigitMetadata {
+func getMetadata() *api.GetDigitMetadata {
 	logger.Debug("Getting Metadata")
-	metadata := v2.GetDigitMetadata{
+	metadata := api.GetDigitMetadata{
 		Labels: viper.GetStringMapString("label"),
 	}
 	if hostname, err := os.Hostname(); err == nil {
@@ -138,7 +138,7 @@ func service(cmd *cobra.Command, args []string) error {
 		}
 		grpcServer = grpc.NewServer()
 		grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-		v2.RegisterPiServiceServer(grpcServer, &piServer{})
+		api.RegisterPiServiceServer(grpcServer, &piServer{})
 		reflection.Register(grpcServer)
 		healthServer.SetServingStatus("api.v2.PiService", grpc_health_v1.HealthCheckResponse_SERVING)
 		return grpcServer.Serve(listener)
@@ -148,7 +148,7 @@ func service(cmd *cobra.Command, args []string) error {
 		g.Go(func() error {
 			mux := runtime.NewServeMux()
 			opts := []grpc.DialOption{grpc.WithInsecure()}
-			if err := v2.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
+			if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
 				return err
 			}
 			if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {

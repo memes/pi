@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	v2 "github.com/memes/pi/api/v2"
+	api "github.com/memes/pi/api/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -87,8 +87,8 @@ func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string
 		return "", err
 	}
 	defer conn.Close()
-	client := v2.NewPiServiceClient(conn)
-	response, err := client.GetDigit(ctx, &v2.GetDigitRequest{
+	client := api.NewPiServiceClient(conn)
+	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
 		Index: index,
 	})
 	if err != nil {
