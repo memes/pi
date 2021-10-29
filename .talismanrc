@@ -1,15 +1,24 @@
 # spell-checker: ignore fileignoreconfig pidigit
 ---
+version: "1.0"
 fileignoreconfig:
 - filename: .github/workflows/release.yml
-  checksum: 66d721a5cae557294d5d493cd7af722fa0e528d270106dfddd454ba7d425725c
+  checksum: aeeabea5e393deb884e73617a3a1c8e46c1fc50ad26e64d5284b2492fcc47080
 - filename: go.sum
-  checksum: 55d351eb26b43cfd6e03d65af2cca3accbca76a91645f22454a7bb61ea5c08dd
+  checksum: 8a89ca53ffe2614979749e535c2ec6158b7de96c8396cbe9eda45c36ca2dcc03
 - filename: buf.lock
   checksum: 4cb52e58e1b3fa2b00845e149357b098789ad12db667a6b9d60e80279facbf05
-- filename: cmd/server.go
-  checksum: d001e6d3be9dac780f0227fc12acb47a8b9ac41eff3ff9ff2b8519494b9af231
-- filename: pidigit.go
-  checksum: df2216585c99b4a9cce0bac906968b250292ff01efffcbf952053bbd9b3211da
-- filename: calc_test.go
-  checksum: 7112a0732eab23f0ea2f1136137057a4665afe80989c23ccd79da132513c1347
+- filename: buf.lock
+  checksum: 4cb52e58e1b3fa2b00845e149357b098789ad12db667a6b9d60e80279facbf05
+- filename: v2/pi_solver_test.go
+  checksum: 101b821c5c203672dd8ac97413d211525da85c2fb5820af344791ded01bbb547
+- filename: v2/go.sum
+  checksum: d62e478af0de679416e1d81c1e972a5fd4a3626d32a31618477f642742fede77
+- filename: v2/redis_cache_test.go
+  checksum: 354c292e9693e3efff25ccff74f5a6fadf1592c112fc7acb3f5fdd801326029e
+- filename: v2/pi.go
+  checksum: 9b3c89157e55fe88d1e3a58733df9a9f4aff3e53c4c229356e4daa3faec7e24c
+- filename: v2/cache_test.go
+  checksum: 78f56a372dc70d4b9cde0318e5e039d1a39a924a40367e014cee7ecf19330cf1
+- filename: v2/cmd/pi/server.go
+  checksum: a95d54cc5120b37b241558c12bfd14cb062afd3d6b0d92c83b1fb007d9171835
