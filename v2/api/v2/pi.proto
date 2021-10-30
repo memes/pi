@@ -21,7 +21,7 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
     };
     external_docs: {
       description: "GitHub repo";
-      url: "https://github.com/memes/pi";
+      url: "https://github.com/memes/pi/blob/main/v2/";
     };
     schemes: HTTP;
     schemes: HTTPS;
