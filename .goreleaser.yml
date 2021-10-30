@@ -1,5 +1,5 @@
 # use goreleaser for builds and containers
-# spell-checker: ignore incpatch goarch opencontainers
+# spell-checker: ignore trimpath ldflags incpatch goarch opencontainers
 ---
 project_name: pi
 before:
@@ -60,7 +60,7 @@ dockers:
       - memes/{{ .ProjectName }}:latest
       - memes/{{ .ProjectName }}:{{ .Tag }}
       - memes/{{ .ProjectName }}:{{ .Major }}
-    dockerfile: Dockerfile
+    dockerfile: v2/Dockerfile
     use: docker
     build_flag_templates:
       # yamllint disable rule:line-length
@@ -71,19 +71,19 @@ dockers:
       - "--label=org.opencontainers.image.description=Return the decimal digit of pi at an index"
       - "--label=org.opencontainers.image.licenses=MIT"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}/tree/{{ .FullCommit }}"
-      - "--label=org.opencontainers.image.documentation={{ .GitURL }}/tree/{{ .FullCommit }}/README.md"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}/tree/{{ .FullCommit }}/v2"
+      - "--label=org.opencontainers.image.documentation={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.url={{ .GitURL }}"
+      - "--label=org.opencontainers.image.url={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
       - "--label=org.label-schema.schema-version=1.0"
       - "--label=org.label-schema.description=Return the decimal digit of pi at an index"
       - "--label=org.label-schema.name={{ .ProjectName }}"
-      - "--label=org.label-schema.vcs-url={{ .GitURL }}/tree/{{ .FullCommit }}"
-      - "--label=org.label-schema.usage={{ .GitURL }}/tree/{{ .FullCommit }}/README.md"
+      - "--label=org.label-schema.vcs-url={{ .GitURL }}/tree/{{ .FullCommit }}/v2/"
+      - "--label=org.label-schema.usage={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
       - "--label=org.label-schema.version={{ .Version }}"
       - "--label=org.label-schema.vcs-ref={{ .FullCommit }}"
-      - "--label=org.label-schema.url={{ .GitURL }}"
+      - "--label=org.label-schema.url={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
       - "--label=org.label-schema.license=MIT"
       # yamllint enable rule:line-length
 release:
