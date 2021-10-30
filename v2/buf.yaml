@@ -1,0 +1,13 @@
+# spell-checker: ignore deps googleapis
+---
+version: v1
+name: buf.build/memes/pi
+deps:
+  - buf.build/googleapis/googleapis
+  - buf.build/grpc-ecosystem/grpc-gateway
+lint:
+  use:
+    - DEFAULT
+breaking:
+  use:
+    - FILE

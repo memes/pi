@@ -1,0 +1,96 @@
+# use goreleaser for builds and containers
+# spell-checker: ignore trimpath ldflags incpatch goarch opencontainers
+---
+project_name: pi
+before:
+  hooks:
+    - go mod tidy
+    - cd ./v2 && go mod tidy
+builds:
+  - id: v2
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - '-s -w -X main.version={{ .Version }}'
+    goos:
+      - freebsd
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - '386'
+      - arm
+      - arm64
+    ignore:
+      - goos: darwin
+        goarch: '386'
+    dir: v2
+    main: ./cmd/pi/
+    mod_timestamp: '{{ .CommitTimestamp }}'
+archives:
+  - format: binary
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
+  algorithm: sha256
+signs:
+  - artifacts: checksum
+    args:
+      - --batch
+      - --local-user
+      - '{{ .Env.GPG_FINGERPRINT }}'
+      - --output
+      - '${signature}'
+      - --detach-sign
+      - '${artifact}'
+snapshot:
+  name_template: "{{ incpatch .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+dockers:
+  - goos: linux
+    goarch: amd64
+    image_templates:
+      - memes/{{ .ProjectName }}:latest
+      - memes/{{ .ProjectName }}:{{ .Tag }}
+      - memes/{{ .ProjectName }}:{{ .Major }}
+    dockerfile: v2/Dockerfile
+    use: docker
+    build_flag_templates:
+      # yamllint disable rule:line-length
+      - "--pull"
+      - "--label=maintainer=Matthew Emes <memes@matthewemes.com>"
+      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
+      - "--label=org.opencontainers.image.authors=memes@matthewemes.com"
+      - "--label=org.opencontainers.image.description=Return the decimal digit of pi at an index"
+      - "--label=org.opencontainers.image.licenses=MIT"
+      - "--label=org.opencontainers.image.created={{ .Date }}"
+      - "--label=org.opencontainers.image.source={{ .GitURL }}/tree/{{ .FullCommit }}/v2"
+      - "--label=org.opencontainers.image.documentation={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
+      - "--label=org.opencontainers.image.version={{ .Version }}"
+      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
+      - "--label=org.opencontainers.image.url={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
+      - "--label=org.label-schema.schema-version=1.0"
+      - "--label=org.label-schema.description=Return the decimal digit of pi at an index"
+      - "--label=org.label-schema.name={{ .ProjectName }}"
+      - "--label=org.label-schema.vcs-url={{ .GitURL }}/tree/{{ .FullCommit }}/v2/"
+      - "--label=org.label-schema.usage={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
+      - "--label=org.label-schema.version={{ .Version }}"
+      - "--label=org.label-schema.vcs-ref={{ .FullCommit }}"
+      - "--label=org.label-schema.url={{ .GitURL }}/tree/{{ .FullCommit }}/v2/README.md"
+      - "--label=org.label-schema.license=MIT"
+      # yamllint enable rule:line-length
+release:
+  draft: false
+  prerelease: auto
+milestones:
+  - close: true
+    fail_on_error: false
+    name_template: "{{ .Tag }}"

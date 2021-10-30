@@ -1,7 +1,22 @@
 # spell-checker: ignore fileignoreconfig
 ---
+version: "1.0"
 fileignoreconfig:
 - filename: .github/workflows/release.yml
-  checksum: 86c9335a9f6ec186b33ccd3a9e51c0e77dd7ca1229cd1fe25bcac6bb840fdad0
+  checksum: aeeabea5e393deb884e73617a3a1c8e46c1fc50ad26e64d5284b2492fcc47080
 - filename: go.sum
   checksum: 4cf2a7a763e09f773620eca4025349e02ea4eeeba0565122f8191d14baf79de1
+- filename: v2/buf.lock
+  checksum: e61042ab38014194f272501854986d8232323171f673e8b4e3826cf97b22d934
+- filename: v2/pi_solver_test.go
+  checksum: 101b821c5c203672dd8ac97413d211525da85c2fb5820af344791ded01bbb547
+- filename: v2/go.sum
+  checksum: d62e478af0de679416e1d81c1e972a5fd4a3626d32a31618477f642742fede77
+- filename: v2/redis_cache_test.go
+  checksum: 354c292e9693e3efff25ccff74f5a6fadf1592c112fc7acb3f5fdd801326029e
+- filename: v2/pi.go
+  checksum: 9b3c89157e55fe88d1e3a58733df9a9f4aff3e53c4c229356e4daa3faec7e24c
+- filename: v2/cache_test.go
+  checksum: 78f56a372dc70d4b9cde0318e5e039d1a39a924a40367e014cee7ecf19330cf1
+- filename: v2/cmd/pi/server.go
+  checksum: c795f1148d4abf0f513f447d941d7c1e19d2b64db830f7848c6ec71976b898b4

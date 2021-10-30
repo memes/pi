@@ -1,0 +1,134 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "pi",
+    "version": "2.0.0",
+    "contact": {
+      "name": "Matthew Emes",
+      "url": "https://github.com/memes/pi/issues/new/choose"
+    },
+    "license": {
+      "name": "MIT",
+      "url": "github.com/memes/pi/blob/main/LICENSE"
+    }
+  },
+  "tags": [
+    {
+      "name": "PiService"
+    }
+  ],
+  "schemes": [
+    "http",
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/api/v2/digit/{index}": {
+      "get": {
+        "operationId": "PiService_GetDigit",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/v2GetDigitResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/rpcStatus"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "format": "uint64"
+          }
+        ],
+        "tags": [
+          "PiService"
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v2GetDigitMetadata": {
+      "type": "object",
+      "properties": {
+        "identity": {
+          "type": "string"
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "v2GetDigitResponse": {
+      "type": "object",
+      "properties": {
+        "index": {
+          "type": "string",
+          "format": "uint64"
+        },
+        "digit": {
+          "type": "string"
+        },
+        "metadata": {
+          "$ref": "#/definitions/v2GetDigitMetadata"
+        }
+      }
+    }
+  },
+  "externalDocs": {
+    "description": "GitHub repo",
+    "url": "https://github.com/memes/pi"
+  }
+}

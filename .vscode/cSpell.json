@@ -1,0 +1,20 @@
+{
+    "version": "0.2",
+    "language": "en",
+    "words": [
+        "grpc",
+        "openapiv",
+        "openapiv2",
+        "protobuf",
+        "protoc",
+        "goreleaser",
+        "borwein",
+        "ploufee",
+        "yamllint",
+        "markdownlint",
+        "sprp"
+    ],
+    "flagWords": [
+        "hte"
+    ]
+}
