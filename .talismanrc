@@ -11,7 +11,7 @@ fileignoreconfig:
 - filename: v2/pi_solver_test.go
   checksum: 101b821c5c203672dd8ac97413d211525da85c2fb5820af344791ded01bbb547
 - filename: v2/go.sum
-  checksum: d62e478af0de679416e1d81c1e972a5fd4a3626d32a31618477f642742fede77
+  checksum: 4b72bcab5aa070a7ead612f3e21af0320b950ad4b6916e1f5e8e0900b85db41e
 - filename: v2/redis_cache_test.go
   checksum: 354c292e9693e3efff25ccff74f5a6fadf1592c112fc7acb3f5fdd801326029e
 - filename: v2/pi.go

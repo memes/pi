@@ -11,7 +11,6 @@ import (
 	api "github.com/memes/pi/v2/api/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 	"google.golang.org/grpc"
 )
 
@@ -28,12 +27,9 @@ var (
 		Args:  cobra.MinimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			count := viper.GetInt("count")
-			logger := logger.With(
-				zap.Int("count", count),
-				zap.Strings("args", args),
-			)
+			logger := logger.WithValues("count", count, "args", args)
 			timeout := viper.GetDuration("timeout")
-			logger.Debug("Running client")
+			logger.V(0).Info("Running client")
 			// Randomize the retrieval of numbers
 			indices := rand.Perm(count)
 			digits := make([]string, count)
@@ -42,15 +38,11 @@ var (
 				wg.Add(1)
 				go func(index uint64) {
 					defer wg.Done()
-					log := logger.With(
-						zap.Uint64("index", index),
-					)
-					log.Debug("In goroutine")
+					log := logger.WithValues("index", index)
+					log.V(1).Info("In goroutine")
 					digit, err := fetchDigit(args, index, timeout)
 					if err != nil {
-						log.Error("Error getting digit",
-							zap.Error(err),
-						)
+						log.Error(err, "Error getting digit")
 						digit = "#"
 					}
 					digits[index] = digit
@@ -71,19 +63,12 @@ func init() {
 }
 
 func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string, error) {
-	logger := logger.With(
-		zap.Strings("endpoints", endpoints),
-		zap.Uint64("index", index),
-		zap.Duration("timeout", timeout),
-	)
-	logger.Debug("Starting connection to service")
+	logger := logger.V(1).WithValues("endpoints", endpoints, "index", index, "timeout", timeout)
+	logger.Info("Starting connection to service")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, endpoints[0], grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
-		logger.Error("Error creating gRPC connection",
-			zap.Error(err),
-		)
 		return "", err
 	}
 	defer conn.Close()
@@ -92,17 +77,9 @@ func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string
 		Index: index,
 	})
 	if err != nil {
-		logger.Error("Error in gRPC request",
-			zap.Error(err),
-		)
 		return "", err
 	}
-	logger.Debug("Response from remote",
-		zap.String("result", response.Digit),
-		zap.String("metadata.identity", response.Metadata.Identity),
-		zap.Strings("metadata.addresses", response.Metadata.Addresses),
-		zap.Any("metadata.labels", response.Metadata.Labels),
-	)
+	logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
 
 	return response.Digit, nil
 }

@@ -13,7 +13,6 @@ import (
 	api "github.com/memes/pi/v2/api/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -59,10 +58,8 @@ type piServer struct {
 
 func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
 	index := in.Index
-	logger := logger.With(
-		zap.Uint64("index", index),
-	)
-	logger.Debug("GetDigit: enter")
+	logger := logger.WithValues("index", index)
+	logger.Info("GetDigit: enter")
 
 	redisAddress := viper.GetString("redis-address")
 	if redisAddress != "" {
@@ -71,14 +68,9 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	}
 	digit, err := pi.PiDigit(ctx, index)
 	if err != nil {
-		logger.Error("Error retrieving digit",
-			zap.Error(err),
-		)
 		return nil, err
 	}
-	logger.Debug("GetDigit: exit",
-		zap.String("digit", digit),
-	)
+	logger.Info("GetDigit: exit", "digit", digit)
 	return &api.GetDigitResponse{
 		Index:    index,
 		Digit:    digit,
@@ -88,7 +80,7 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 
 // Populate a metadata structure for this instance
 func getMetadata() *api.GetDigitMetadata {
-	logger.Debug("Getting Metadata")
+	logger.V(1).Info("Getting Metadata")
 	metadata := api.GetDigitMetadata{
 		Labels: viper.GetStringMapString("label"),
 	}
@@ -104,6 +96,7 @@ func getMetadata() *api.GetDigitMetadata {
 		}
 		metadata.Addresses = addresses
 	}
+	logger.V(1).Info("Returning metadata", "metadata.identity", metadata.Identity, "metadata.addresses", metadata.Addresses, "metadata.labels", metadata.Labels)
 	return &metadata
 }
 
@@ -111,15 +104,11 @@ func service(cmd *cobra.Command, args []string) error {
 	grpcAddress := viper.GetString("grpc-address")
 	restAddress := viper.GetString("rest-address")
 	enableREST := viper.GetBool("enable-rest")
-	logger := logger.With(
-		zap.String("grpcAddress", grpcAddress),
-		zap.String("restAddress", restAddress),
-		zap.Bool("enableREST", enableREST),
-	)
+	logger := logger.V(0).WithValues("grpcAddress", grpcAddress, "restAddress", restAddress, "enableREST", enableREST)
 	pi.SetLogger(logger)
-	logger.Debug("Preparing servers")
+	logger.Info("Preparing servers")
 	metadata = getMetadata()
-	logger.Debug("Starting to listen")
+	logger.Info("Starting to listen")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -144,7 +133,7 @@ func service(cmd *cobra.Command, args []string) error {
 		return grpcServer.Serve(listener)
 	})
 	if enableREST {
-		logger.Debug("Enabling REST gateway")
+		logger.Info("Enabling REST gateway")
 		g.Go(func() error {
 			mux := runtime.NewServeMux()
 			opts := []grpc.DialOption{grpc.WithInsecure()}

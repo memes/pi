@@ -7,8 +7,6 @@ package pi
 import (
 	"fmt"
 	"math"
-
-	"go.uber.org/zap"
 )
 
 // Returns the inverse of x mod y
@@ -55,10 +53,8 @@ func powMod(a uint64, b uint64, m uint64) uint64 {
 //
 // NOTE: this function has been modified to be zero-based, unlike original code
 func CalcDigits(n uint64) string {
-	l := logger.With(
-		zap.Uint64("n", n),
-	)
-	l.Debug("CalcDigits: enter")
+	l := logger.V(0).WithValues("n", n)
+	l.Info("CalcDigits: enter")
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
@@ -124,8 +120,6 @@ func CalcDigits(n uint64) string {
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}
 	result := fmt.Sprintf("%09d", int(sum*1e9))
-	l.Debug("CalcDigits: exit",
-		zap.String("result", result),
-	)
+	l.Info("CalcDigits: exit", "result", result)
 	return result
 }

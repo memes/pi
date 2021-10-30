@@ -4,7 +4,6 @@ import (
 	"context"
 	// spell-checker: ignore gomodule redigo
 	"github.com/gomodule/redigo/redis"
-	"go.uber.org/zap"
 )
 
 type redisCache struct {
@@ -22,46 +21,33 @@ func NewRedisCache(ctx context.Context, address string) *redisCache {
 }
 
 func (r *redisCache) GetValue(ctx context.Context, key string) (string, error) {
-	l := logger.With(
-		zap.String("key", key),
-	)
-	l.Debug("GetValue: enter")
+	l := logger.V(1).WithValues("key", key)
+	l.Info("GetValue: enter")
 	conn := r.Get()
 	defer conn.Close()
 
 	value, err := redis.String(conn.Do("GET", key))
 	if err != nil && err == redis.ErrNil {
-		l.Info("Value is not cached",
-			zap.Error(err),
-		)
+		l.Info("Value is not cached")
 		return "", nil
 	}
 	if err != nil {
-		l.Error("Error returned from Redis cache",
-			zap.Error(err),
-		)
+		l.Error(err, "Error returned from Redis cache")
 		return "", err
 	}
-	l.Debug("GetValue: exit",
-		zap.String("value", value),
-	)
+	l.Info("GetValue: exit", "value", value)
 	return value, nil
 }
 
 func (r *redisCache) SetValue(ctx context.Context, key string, value string) error {
-	l := logger.With(
-		zap.String("key", key),
-		zap.String("value", value),
-	)
-	l.Debug("SetValue: enter")
+	l := logger.WithValues("key", key, "value", value)
+	l.Info("SetValue: enter")
 	conn := r.Get()
 	defer conn.Close()
 
 	_, err := conn.Do("SET", key, value)
 	if err != nil {
-		logger.Error("Error writing to Redis cache",
-			zap.Error(err),
-		)
+		logger.Error(err, "Error writing to Redis cache")
 		return err
 	}
 	return nil

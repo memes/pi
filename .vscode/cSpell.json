@@ -12,7 +12,9 @@
         "ploufee",
         "yamllint",
         "markdownlint",
-        "sprp"
+        "sprp",
+        "logr",
+        "zerologr"
     ],
     "flagWords": [
         "hte"
