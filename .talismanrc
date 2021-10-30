@@ -20,3 +20,5 @@ fileignoreconfig:
   checksum: 78f56a372dc70d4b9cde0318e5e039d1a39a924a40367e014cee7ecf19330cf1
 - filename: v2/cmd/pi/server.go
   checksum: c795f1148d4abf0f513f447d941d7c1e19d2b64db830f7848c6ec71976b898b4
+- filename: v2/README.md
+  checksum: 2d4a3ead8c464d7f24a4b68a119b6ba0efe6c5f001376a18d4ea6c61bec24ce6

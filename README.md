@@ -1,5 +1,7 @@
 # Pi
 
+> DEPRECATED: Development of v1 package has been superseded by [v2](/v2/).
+
 A simple distributed computing example that calculates the mantissa of
 pi at the requested index. Using a spigot algorithm, digits of the
 mantissa can be calculated independently, and in parallel.
@@ -16,6 +18,7 @@ I.e. the first 6 digits of pi are 3.14159; if a request is made for index 0, the
 
 ## pi server
 
+<!-- spell-checker: ignore pidigits -->
 Launches a service that listens for incoming requests and returns the
 matching digit from a Redis cache. If there is a cache-miss, the
 service calculates the digits using a [Bailey-Borwein-Ploufee
@@ -36,16 +39,18 @@ Result is: 3.1415926535897932384626433832795028841971693993751058209749445923078
 ```
 
 ## Devolution and gRPC
-The orignal application used gRPC for client-server communication but
+
+> NOTE: [v2](/v2/) of `pi` has gRPC support.
+
+The original application used gRPC for client-server communication but
 this was replaced by HTTP and JSON since gRPC support on major cloud
 platforms is limited.
 
-# Building
+## Building
 
 This is a fully contained Go application; after checkout a simple
-```go install github.com/memes/pi``` will build the apps;
-[dep](https://github.com/golang/dep) is used for vendoring.
+```go install github.com/memes/pi``` will build the apps.
 
-The application can be deployed to Docker and pre-built images can be
+Pre-built Docker images can be
 pulled directly from the public
 [repo](https://hub.docker.com/r/memes/pi/).
