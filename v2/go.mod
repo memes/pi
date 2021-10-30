@@ -2,9 +2,6 @@ module github.com/memes/pi/v2
 
 go 1.17
 
-// TODO @memes - change before release
-replace github.com/memes/pi => ../
-
 require (
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/gomodule/redigo v1.8.5
