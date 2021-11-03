@@ -1,4 +1,4 @@
-# spell-checker: ignore hashicorp ghaction DOCKERHUB
+# spell-checker: ignore hashicorp ghaction DOCKERHUB workdir
 ---
 name: release
 
@@ -48,6 +48,7 @@ jobs:
           distribution: goreleaser
           version: latest
           args: release --rm-dist
+          workdir: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GPG_FINGERPRINT: ${{ steps.import-gpg.outputs.fingerprint }}

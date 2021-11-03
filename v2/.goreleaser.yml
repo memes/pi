@@ -5,10 +5,8 @@ project_name: pi
 before:
   hooks:
     - go mod tidy
-    - cd ./v2 && go mod tidy
 builds:
-  - id: v2
-    env:
+  - env:
       - CGO_ENABLED=0
     flags:
       - -trimpath
@@ -27,7 +25,6 @@ builds:
     ignore:
       - goos: darwin
         goarch: '386'
-    dir: v2
     main: ./cmd/pi/
     mod_timestamp: '{{ .CommitTimestamp }}'
 archives:
@@ -61,7 +58,7 @@ dockers:
       - memes/{{ .ProjectName }}:latest
       - memes/{{ .ProjectName }}:{{ .Tag }}
       - memes/{{ .ProjectName }}:{{ .Major }}
-    dockerfile: v2/Dockerfile
+    dockerfile: Dockerfile
     use: docker
     build_flag_templates:
       # yamllint disable rule:line-length
