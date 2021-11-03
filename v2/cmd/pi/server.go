@@ -1,5 +1,7 @@
 package main
 
+// spell-checker: ignore otelgrpc otel sdktrace otelhttp
+
 import (
 	"net"
 	"net/http"
@@ -13,6 +15,13 @@ import (
 	api "github.com/memes/pi/v2/api/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -60,14 +69,13 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	index := in.Index
 	logger := logger.WithValues("index", index)
 	logger.Info("GetDigit: enter")
-
-	redisAddress := viper.GetString("redis-address")
-	if redisAddress != "" {
-		pi.SetCache(pi.NewRedisCache(ctx, redisAddress))
-
-	}
+	ctx, span := otel.Tracer("server").Start(ctx, "GetDigit")
+	defer span.End()
+	span.SetAttributes(attribute.Int("index", int(index)))
 	digit, err := pi.PiDigit(ctx, index)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, err.Error())
 		return nil, err
 	}
 	logger.Info("GetDigit: exit", "digit", digit)
@@ -104,12 +112,20 @@ func service(cmd *cobra.Command, args []string) error {
 	grpcAddress := viper.GetString("grpc-address")
 	restAddress := viper.GetString("rest-address")
 	enableREST := viper.GetBool("enable-rest")
-	logger := logger.V(0).WithValues("grpcAddress", grpcAddress, "restAddress", restAddress, "enableREST", enableREST)
+	redisAddress := viper.GetString("redis-address")
+	logger := logger.V(0).WithValues("grpcAddress", grpcAddress, "redisAddress", redisAddress, "restAddress", restAddress, "enableREST", enableREST)
 	pi.SetLogger(logger)
-	logger.Info("Preparing servers")
+	ctx := context.Background()
+	if redisAddress != "" {
+		pi.SetCache(pi.NewRedisCache(ctx, redisAddress))
+
+	}
 	metadata = getMetadata()
+	logger.Info("Preparing telemetry")
+	telemetryShutdown := initTelemetry(ctx, "server", sdktrace.AlwaysSample())
+
 	logger.Info("Starting to listen")
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	interrupt := make(chan os.Signal, 1)
@@ -125,29 +141,35 @@ func service(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		grpcServer = grpc.NewServer()
+		grpcServer = grpc.NewServer(
+			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+		)
 		grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 		api.RegisterPiServiceServer(grpcServer, &piServer{})
 		reflection.Register(grpcServer)
-		healthServer.SetServingStatus("api.v2.PiService", grpc_health_v1.HealthCheckResponse_SERVING)
 		return grpcServer.Serve(listener)
 	})
 	if enableREST {
 		logger.Info("Enabling REST gateway")
 		g.Go(func() error {
 			mux := runtime.NewServeMux()
-			opts := []grpc.DialOption{grpc.WithInsecure()}
+			opts := []grpc.DialOption{
+				grpc.WithInsecure(),
+				grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+			}
 			if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
 				return err
 			}
 			if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+				span := trace.SpanFromContext(r.Context())
+				span.SetStatus(codes.Error, "v1 API")
 				w.WriteHeader(http.StatusGone)
 			}); err != nil {
 				return err
 			}
 			restServer = &http.Server{
 				Addr:    restAddress,
-				Handler: mux,
+				Handler: otelhttp.NewHandler(mux, "grpc-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)),
 			}
 			if err := restServer.ListenAndServe(); err != http.ErrServerClosed {
 				return err
@@ -167,6 +189,7 @@ func service(cmd *cobra.Command, args []string) error {
 	cancel()
 	ctx, shutdown := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdown()
+	telemetryShutdown(ctx)
 	if restServer != nil {
 		_ = restServer.Shutdown(ctx)
 	}

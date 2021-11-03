@@ -1,5 +1,6 @@
 package main
 
+// spell-checker: ignore otelgrpc sdktrace otel
 import (
 	"context"
 	"fmt"
@@ -11,6 +12,8 @@ import (
 	api "github.com/memes/pi/v2/api/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
 )
 
@@ -25,32 +28,7 @@ var (
 		Short: "Run a gRPC client to request pi digits",
 		Long:  "Launch a client that attempts to connect to servers and return a subset of the mantissa of pi.",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			count := viper.GetInt("count")
-			logger := logger.WithValues("count", count, "args", args)
-			timeout := viper.GetDuration("timeout")
-			logger.V(0).Info("Running client")
-			// Randomize the retrieval of numbers
-			indices := rand.Perm(count)
-			digits := make([]string, count)
-			var wg sync.WaitGroup
-			for _, index := range indices {
-				wg.Add(1)
-				go func(index uint64) {
-					defer wg.Done()
-					log := logger.WithValues("index", index)
-					log.V(1).Info("In goroutine")
-					digit, err := fetchDigit(args, index, timeout)
-					if err != nil {
-						log.Error(err, "Error getting digit")
-						digit = "#"
-					}
-					digits[index] = digit
-				}(uint64(index))
-			}
-			wg.Wait()
-			fmt.Printf("Result is: 3.%s\n", strings.Join(digits, ""))
-		},
+		RunE:  client,
 	}
 )
 
@@ -63,11 +41,11 @@ func init() {
 }
 
 func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string, error) {
-	logger := logger.V(1).WithValues("endpoints", endpoints, "index", index, "timeout", timeout)
+	logger := logger.V(0).WithValues("endpoints", endpoints, "index", index, "timeout", timeout)
 	logger.Info("Starting connection to service")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, endpoints[0], grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.DialContext(ctx, endpoints[0], grpc.WithInsecure(), grpc.WithBlock(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	if err != nil {
 		return "", err
 	}
@@ -82,4 +60,37 @@ func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string
 	logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
 
 	return response.Digit, nil
+}
+
+func client(cmd *cobra.Command, args []string) error {
+	count := viper.GetInt("count")
+	timeout := viper.GetDuration("timeout")
+	logger := logger.V(0).WithValues("count", count, "args", args, "timeout", timeout)
+	logger.Info("Preparing telemetry")
+	ctx := context.Background()
+	shutdown := initTelemetry(ctx, "client", sdktrace.AlwaysSample())
+	defer shutdown(ctx)
+
+	logger.Info("Running client")
+	// Randomize the retrieval of numbers
+	indices := rand.Perm(count)
+	digits := make([]string, count)
+	var wg sync.WaitGroup
+	for _, index := range indices {
+		wg.Add(1)
+		go func(index uint64) {
+			defer wg.Done()
+			log := logger.WithValues("index", index)
+			log.V(1).Info("In goroutine")
+			digit, err := fetchDigit(args, index, timeout)
+			if err != nil {
+				log.Error(err, "Error getting digit")
+				digit = "#"
+			}
+			digits[index] = digit
+		}(uint64(index))
+	}
+	wg.Wait()
+	fmt.Printf("Result is: 3.%s\n", strings.Join(digits, ""))
+	return nil
 }
