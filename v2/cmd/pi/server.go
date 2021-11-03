@@ -1,6 +1,6 @@
 package main
 
-// spell-checker: ignore otelgrpc otel sdktrace otelhttp
+// spell-checker: ignore otelgrpc otel sdktrace otelhttp otelcodes
 
 import (
 	"net"
@@ -19,15 +19,17 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
+	otelcodes "go.opentelemetry.io/otel/codes"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 )
 
 const (
@@ -75,7 +77,7 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	digit, err := pi.PiDigit(ctx, index)
 	if err != nil {
 		span.RecordError(err)
-		span.SetStatus(codes.Error, err.Error())
+		span.SetStatus(otelcodes.Error, err.Error())
 		return nil, err
 	}
 	logger.Info("GetDigit: exit", "digit", digit)
@@ -84,6 +86,14 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		Digit:    digit,
 		Metadata: metadata,
 	}, nil
+}
+
+func (s *piServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
+}
+
+func (s *piServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
+	return status.Error(codes.Unimplemented, "unimplemented")
 }
 
 // Populate a metadata structure for this instance
@@ -135,7 +145,6 @@ func service(cmd *cobra.Command, args []string) error {
 	var grpcServer *grpc.Server
 	var restServer *http.Server
 	g, ctx := errgroup.WithContext(ctx)
-	healthServer := health.NewServer()
 	g.Go(func() error {
 		listener, err := net.Listen("tcp", grpcAddress)
 		if err != nil {
@@ -144,6 +153,7 @@ func service(cmd *cobra.Command, args []string) error {
 		grpcServer = grpc.NewServer(
 			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 		)
+		healthServer := health.NewServer()
 		grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 		api.RegisterPiServiceServer(grpcServer, &piServer{})
 		reflection.Register(grpcServer)
@@ -162,7 +172,7 @@ func service(cmd *cobra.Command, args []string) error {
 			}
 			if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 				span := trace.SpanFromContext(r.Context())
-				span.SetStatus(codes.Error, "v1 API")
+				span.SetStatus(otelcodes.Error, "v1 API")
 				w.WriteHeader(http.StatusGone)
 			}); err != nil {
 				return err
@@ -185,16 +195,15 @@ func service(cmd *cobra.Command, args []string) error {
 		break
 	}
 	logger.Info("Shutting down on signal")
-	healthServer.SetServingStatus("api.v2.PiService", grpc_health_v1.HealthCheckResponse_NOT_SERVING)
 	cancel()
 	ctx, shutdown := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdown()
-	telemetryShutdown(ctx)
 	if restServer != nil {
 		_ = restServer.Shutdown(ctx)
 	}
 	if grpcServer != nil {
 		grpcServer.GracefulStop()
 	}
+	telemetryShutdown(ctx)
 	return g.Wait()
 }
