@@ -4,3 +4,5 @@
 
 # Don't commit built packages
 dist/
+/pi
+/v2/pi
