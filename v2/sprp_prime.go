@@ -131,7 +131,7 @@ func baseSPRP(n uint64, b uint64) bool {
 	// We check the congruence class of b^((2^i)t) % n for each i
 	// from 0 to a - 1. If any one is correct, then n passes.
 	// Otherwise, n fails.
-	test := powMod(b, t, n)
+	test := uint64(powMod(int64(b), int64(t), int64(n)))
 	if test == 1 || test == nMinus1 {
 		l.Info("baseSPRP: probably prime")
 		return true

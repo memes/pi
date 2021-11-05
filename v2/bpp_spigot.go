@@ -31,8 +31,8 @@ func invMod(x int64, y int64) int64 {
 }
 
 // Returns (a^b) mod m
-func powMod(a uint64, b uint64, m uint64) uint64 {
-	var r uint64 = 1
+func powMod(a int64, b int64, m int64) int64 {
+	var r int64 = 1
 	for {
 		if b&1 > 0 {
 			r = (r * a) % m
@@ -106,11 +106,8 @@ func calcDigits(n uint64) string {
 				}
 			}
 		}
-		if av < 0 {
-			panic(fmt.Sprintf("av is %d", av))
-		}
 
-		t = int64(powMod(10, n, uint64(av)))
+		t = int64(powMod(10, int64(n), av))
 		s = (s * t) % av
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}
