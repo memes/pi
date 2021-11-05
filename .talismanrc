@@ -17,7 +17,7 @@ fileignoreconfig:
 - filename: v2/pi.go
   checksum: 9900afb3a0be6abdfcfdd40d86496b6402850ffdb826a4b982d2bb166e384a1d
 - filename: v2/cache_test.go
-  checksum: 78f56a372dc70d4b9cde0318e5e039d1a39a924a40367e014cee7ecf19330cf1
+  checksum: 476d8cfd7d7d3a76b06a0854418d40f03d044bd6703e942fbd7b29edae823e4e
 - filename: v2/cmd/pi/server.go
   checksum: c795f1148d4abf0f513f447d941d7c1e19d2b64db830f7848c6ec71976b898b4
 - filename: v2/README.md
@@ -30,3 +30,5 @@ fileignoreconfig:
   checksum: 3ba8017c6f0434d86a5f016954c94651c6b7f9ee4d464d6cec7ab4b426a4fbec
 - filename: v2/api/v2/pi.pb.go
   checksum: 779dbc66674e79e4a5d16c4e9c585e80513e8987e28836a575033f96fe2c8462
+- filename: v2/cache.go
+  checksum: 1a8759660a4d0d653079453dfcb1125c92ea0d0cee57f6fc38109cc1e23d70ee
