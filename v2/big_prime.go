@@ -16,9 +16,10 @@ var (
 )
 
 // Determine the next prime number greater than n by iterating over the set of
-// integers greater than n until one passes the brute force prime test.
+// integers greater than n until one passes the "math/big" package's ProbablyPrime
+// method.
 func BigFindNextPrime(n uint64) uint64 {
-	l := logger.V(1).WithValues("n", n)
+	l := logger.V(0).WithValues("n", n)
 	l.Info("BigFindNextPrime: entered")
 	var result uint64
 	if n < 2 {

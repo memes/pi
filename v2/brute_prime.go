@@ -15,8 +15,7 @@ func bruteIsPrime(n uint64) bool {
 		return false
 	}
 	r := uint64(math.Sqrt(float64(n)))
-	var i uint64 = 3
-	for ; i <= r; i += 2 {
+	for i := uint64(3); i <= r; i += 2 {
 		if n%i == 0 {
 			l.Info("bruteIsPrime: exit", "result", false)
 			return false

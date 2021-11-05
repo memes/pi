@@ -1,4 +1,4 @@
-# spell-checker: ignore deps googleapis
+# Buf configuration
 ---
 version: v1
 name: buf.build/memes/pi

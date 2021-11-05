@@ -1,4 +1,4 @@
-# spell-checker: ignore logtostderr openapiv
+# Generate gRPC, REST gateway, and OpenAPI v2 files
 ---
 version: v1
 plugins:

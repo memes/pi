@@ -1,15 +1,27 @@
+// Package pi calculates the nth fractional digit of pi using a Bailey-Borwein-Plouffe
+// algorithm (see https://wikipedia.org/wiki/Bailey%E2%80%93Borwein%E2%80%93Plouffe_formula).
+// This allows any arbitrary fractional digit of pi to be calculated independently
+// of the preceding digits albeit with longer calculation times as the value
+// of n increases because of the need to calculate prime numbers of
+// increasing value.
+//
+//
+//
+// NOTE: This package is intended to be used in distributed computing and cloud
+// scaling demos, and does not guarantee accuracy or efficiency of calculated
+// fractional digits.
 package pi
 
 import (
 	"context"
-	"fmt"
+	"strconv"
 
 	"github.com/go-logr/logr"
 )
 
 // Defines the signature of a function that will return the next largest prime
 // number that is greater than the supplied value.
-type FindNextPrimeFunc func(uint64) uint64
+type FindNextPrime func(uint64) uint64
 
 var (
 	// Logger to use in this package; default is a no-op logger.
@@ -18,7 +30,7 @@ var (
 	cache Cache = NewNoopCache()
 	// The next prime function to use in this package; default is a naive
 	// brute-force calculator.
-	findNextPrime FindNextPrimeFunc = BruteFindNextPrime
+	findNextPrime FindNextPrime = BruteFindNextPrime
 )
 
 // Change the logger instance used by this package.
@@ -34,28 +46,34 @@ func SetCache(c Cache) {
 }
 
 // Change the next prime calculation function used by this package.
-func SetFindNextPrimeFunction(f FindNextPrimeFunc) {
-	findNextPrime = f
+func SetFindNextPrimeFunction(f FindNextPrime) {
+	if f != nil {
+		findNextPrime = f
+	}
 }
 
-//
-func PiDigit(ctx context.Context, n uint64) (string, error) {
+// Returns the zero-based nth fractional digit of pi.
+func FractionalDigit(ctx context.Context, n uint64) (uint32, error) {
 	l := logger.V(1).WithValues("n", n)
-	l.Info("PiDigit: enter")
+	l.Info("FractionalDigit: enter")
 	index := uint64(n/9) * 9
-	key := fmt.Sprintf("%d", index)
+	key := strconv.FormatUint(index, 16)
 	digits, err := cache.GetValue(ctx, key)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	if digits == "" {
-		digits = CalcDigits(index)
+		digits = calcDigits(index)
 		err = cache.SetValue(ctx, key, digits)
 		if err != nil {
-			return "", err
+			return 0, err
 		}
 	}
-	digit := string(digits[n%9])
-	logger.Info("PiDigit: exit", "digit", digit)
-	return digit, nil
+	offset := n % 9
+	result, err := strconv.ParseUint(digits[offset:offset+1], 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	logger.Info("FractionalDigit: exit", "result", result)
+	return uint32(result), nil
 }

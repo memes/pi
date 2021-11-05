@@ -122,19 +122,15 @@ func baseSPRP(n uint64, b uint64) bool {
 	nMinus1 := t
 	a := uint64(0)
 
-	/*
-	 * Find t and a satisfying: n-1=2^a * t, t odd
-	 */
+	// Find t and a satisfying: n-1=2^a * t, t odd
 	for t&1 == 0 {
 		t >>= 1
 		a++
 	}
 
-	/*
-	 * We check the congruence class of b^((2^i)t) % n for each i
-	 * from 0 to a - 1. If any one is correct, then n passes.
-	 * Otherwise, n fails.
-	 */
+	// We check the congruence class of b^((2^i)t) % n for each i
+	// from 0 to a - 1. If any one is correct, then n passes.
+	// Otherwise, n fails.
 	test := powMod(b, t, n)
 	if test == 1 || test == nMinus1 {
 		l.Info("baseSPRP: probably prime")
@@ -171,9 +167,9 @@ func findUpperIdx(n uint64, limit int) int {
 	return sort.Search(limit, func(i int) bool { return primeTab[i] > n })
 }
 
-// Returns the next prime number that is greater than the supplied number. If n
-// is a prime, then next largest prime will be returned.
-// E.g. SPRPFindNextPrime(1) returns 2, SPRPFindNextPrime(2) returns 3, etc.
+// Returns the next prime number that is greater than the supplied number using
+// a combination of lookups, trial division, and an a-SPRP test using bases 2, 3,
+// 5, and 7. See https://primes.utm.edu/prove/prove2_3.html for more details.
 func SPRPFindNextPrime(n uint64) uint64 {
 	l := logger.V(1).WithValues("n", n)
 	l.Info("SPRPFindNextPrime: entered")

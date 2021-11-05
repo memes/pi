@@ -5,7 +5,7 @@ import (
 )
 
 // Cache defines an interface for a cache implementation that can be used to
-// store the results of CalcDigits for subsequent lookup requests.
+// store the results of calcDigits for subsequent lookup requests.
 type Cache interface {
 	// Return the string that was set for key (or "" if unset) and an Error
 	// if the implementation failed.

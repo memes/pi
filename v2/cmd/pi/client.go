@@ -1,11 +1,10 @@
 package main
 
-// spell-checker: ignore otelgrpc sdktrace otel
 import (
 	"context"
 	"fmt"
 	"math/rand"
-	"strings"
+	"os"
 	"sync"
 	"time"
 
@@ -18,36 +17,43 @@ import (
 )
 
 const (
-	DEFAULT_COUNT   = 100
-	DEFAULT_TIMEOUT = 10 * time.Second
+	CLIENT_SERVICE_NAME    = "client"
+	DEFAULT_DIGIT_COUNT    = 100
+	DEFAULT_CLIENT_TIMEOUT = 10 * time.Second
 )
 
 var (
+	// Implements the client sub-command which attempts to connect to one or
+	// more pi server instances and build up the digits of pi through multiple
+	// requests.
 	clientCmd = &cobra.Command{
-		Use:   "client gRPCEndpoint...",
-		Short: "Run a gRPC client to request pi digits",
-		Long:  "Launch a client that attempts to connect to servers and return a subset of the mantissa of pi.",
-		Args:  cobra.MinimumNArgs(1),
-		RunE:  client,
+		Use:   CLIENT_SERVICE_NAME + " endpoint [endpoint]",
+		Short: "Run a gRPC client to request fractional digits of pi",
+		Long: `Launches a client that will connect to the server instances in parallel and request the fractional digits of pi.
+At least one endpoint address must be provided. Metrics and traces will be sent to an optionally provided OpenTelemetry collection endpoint.`,
+		Args: cobra.MinimumNArgs(1),
+		RunE: client,
 	}
 )
 
 func init() {
-	clientCmd.PersistentFlags().IntP("count", "c", DEFAULT_COUNT, "number of decimal digits of pi to request")
-	clientCmd.PersistentFlags().DurationP("timeout", "t", DEFAULT_TIMEOUT, "client timeout")
+	clientCmd.PersistentFlags().UintP("count", "c", DEFAULT_DIGIT_COUNT, "number of decimal digits of pi to request")
+	clientCmd.PersistentFlags().DurationP("timeout", "t", DEFAULT_CLIENT_TIMEOUT, "client timeout")
 	_ = viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count"))
 	_ = viper.BindPFlag("timeout", clientCmd.PersistentFlags().Lookup("timeout"))
 	rootCmd.AddCommand(clientCmd)
 }
 
-func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string, error) {
-	logger := logger.V(0).WithValues("endpoints", endpoints, "index", index, "timeout", timeout)
+// Initiate a gRPC connect to endpoint and retrieve a single fractional digit of
+// pi at the zero-based index.
+func fetchDigit(endpoint string, index uint64, timeout time.Duration) (uint32, error) {
+	logger := logger.V(0).WithValues("endpoint", endpoint, "index", index, "timeout", timeout)
 	logger.Info("Starting connection to service")
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, endpoints[0], grpc.WithInsecure(), grpc.WithBlock(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	defer conn.Close()
 	client := api.NewPiServiceClient(conn)
@@ -55,42 +61,48 @@ func fetchDigit(endpoints []string, index uint64, timeout time.Duration) (string
 		Index: index,
 	})
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
 
 	return response.Digit, nil
 }
 
-func client(cmd *cobra.Command, args []string) error {
+// Client sub-command entrypoint. This function will launch gRPC requests for
+// each of the fractional digits requested.
+func client(cmd *cobra.Command, endpoints []string) error {
 	count := viper.GetInt("count")
 	timeout := viper.GetDuration("timeout")
-	logger := logger.V(0).WithValues("count", count, "args", args, "timeout", timeout)
-	logger.Info("Preparing telemetry")
+	logger := logger.V(0).WithValues("count", count, "endpoints", endpoints, "timeout", timeout)
+	logger.V(1).Info("Preparing telemetry")
 	ctx := context.Background()
-	shutdown := initTelemetry(ctx, "client", sdktrace.AlwaysSample())
+	shutdown := initTelemetry(ctx, CLIENT_SERVICE_NAME, sdktrace.AlwaysSample())
 	defer shutdown(ctx)
 
-	logger.Info("Running client")
+	logger.V(1).Info("Running client")
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)
-	digits := make([]string, count)
+	digits := make([]byte, count)
 	var wg sync.WaitGroup
-	for _, index := range indices {
+	for i, index := range indices {
+		endpoint := endpoints[i%len(endpoints)]
 		wg.Add(1)
-		go func(index uint64) {
+		go func(endpoint string, index uint64) {
 			defer wg.Done()
-			log := logger.WithValues("index", index)
-			log.V(1).Info("In goroutine")
-			digit, err := fetchDigit(args, index, timeout)
+			digit, err := fetchDigit(endpoint, index, timeout)
 			if err != nil {
-				log.Error(err, "Error getting digit")
-				digit = "#"
+				logger.Error(err, "Error fetching digit", "index", index)
+				digits[index] = '-'
+			} else {
+				digits[index] = '0' + byte(digit)
 			}
-			digits[index] = digit
-		}(uint64(index))
+		}(endpoint, uint64(index))
 	}
 	wg.Wait()
-	fmt.Printf("Result is: 3.%s\n", strings.Join(digits, ""))
+	fmt.Print("Result is: 3.")
+	if _, err := os.Stdout.Write(digits[:]); err != nil {
+		return err
+	}
+	fmt.Println()
 	return nil
 }

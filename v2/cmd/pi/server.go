@@ -1,7 +1,5 @@
 package main
 
-// spell-checker: ignore otelgrpc otel sdktrace otelhttp otelcodes
-
 import (
 	"net"
 	"net/http"
@@ -33,18 +31,20 @@ import (
 )
 
 const (
+	SERVER_SERVICE_NAME         = "server"
 	DEFAULT_GRPC_LISTEN_ADDRESS = ":9090"
 	DEFAULT_REST_LISTEN_ADDRESS = ":8080"
 )
 
 var (
-	metadata  *api.GetDigitMetadata
+	// Holds the instance specific metadata that will be returned in PiService responses
+	metadata *api.GetDigitMetadata
+	// Implements the server sub-command
 	serverCmd = &cobra.Command{
-		Use:   "server",
-		Short: "Run gRPC/REST service to return pi digits",
-		Long: `Launches a gRPC service and REST gateway listening at the specified addresses for incoming client connections, and returns a digit of pi.
-
-Also see 'client' command for usage.`,
+		Use:   SERVER_SERVICE_NAME,
+		Short: "Run gRPC service to return fractional digits of pi",
+		Long: `Launches a gRPC service and optional REST gateway listening at the specified addresses for incoming client connections.
+A single fractional digit of pi will be returned per request. Metrics and traces will be sent to an optionally provided OpenTelemetry collection endpoint.`,
 		RunE: service,
 	}
 )
@@ -67,14 +67,14 @@ type piServer struct {
 	api.UnimplementedPiServiceServer
 }
 
+// Implement the PiService GetDigit RPC method
 func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
-	index := in.Index
-	logger := logger.WithValues("index", index)
+	logger := logger.WithValues("index", in.Index)
 	logger.Info("GetDigit: enter")
-	ctx, span := otel.Tracer("server").Start(ctx, "GetDigit")
+	ctx, span := otel.Tracer(SERVER_SERVICE_NAME).Start(ctx, "GetDigit")
 	defer span.End()
-	span.SetAttributes(attribute.Int("index", int(index)))
-	digit, err := pi.PiDigit(ctx, index)
+	span.SetAttributes(attribute.Int("index", int(in.Index)))
+	digit, err := pi.FractionalDigit(ctx, in.Index)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
@@ -82,23 +82,25 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	}
 	logger.Info("GetDigit: exit", "digit", digit)
 	return &api.GetDigitResponse{
-		Index:    index,
+		Index:    in.Index,
 		Digit:    digit,
 		Metadata: metadata,
 	}, nil
 }
 
+// Implement the gRPC health service Check method
 func (s *piServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
 }
 
+// Satisfy the gRPC health service Watch method - always returns an Unimplemented error
 func (s *piServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "unimplemented")
 }
 
-// Populate a metadata structure for this instance
+// Populate a metadata structure for this instance.
 func getMetadata() *api.GetDigitMetadata {
-	logger.V(1).Info("Getting Metadata")
+	logger.V(0).Info("Getting Metadata")
 	metadata := api.GetDigitMetadata{
 		Labels: viper.GetStringMapString("label"),
 	}
@@ -108,16 +110,18 @@ func getMetadata() *api.GetDigitMetadata {
 	if addrs, err := net.InterfaceAddrs(); err == nil {
 		addresses := make([]string, 0, len(addrs))
 		for _, addr := range addrs {
-			if net, ok := addr.(*net.IPNet); ok && !net.IP.IsLoopback() && !net.IP.IsMulticast() && !net.IP.IsLinkLocalUnicast() {
+			if net, ok := addr.(*net.IPNet); ok && net.IP.IsGlobalUnicast() {
 				addresses = append(addresses, net.IP.String())
 			}
 		}
 		metadata.Addresses = addresses
 	}
-	logger.V(1).Info("Returning metadata", "metadata.identity", metadata.Identity, "metadata.addresses", metadata.Addresses, "metadata.labels", metadata.Labels)
+	logger.V(0).Info("Returning metadata", "metadata.identity", metadata.Identity, "metadata.addresses", metadata.Addresses, "metadata.labels", metadata.Labels)
 	return &metadata
 }
 
+// Server sub-command entrypoint. This function will launch the gRPC PiService
+// and an optional REST gateway.
 func service(cmd *cobra.Command, args []string) error {
 	grpcAddress := viper.GetString("grpc-address")
 	restAddress := viper.GetString("rest-address")
@@ -131,10 +135,10 @@ func service(cmd *cobra.Command, args []string) error {
 
 	}
 	metadata = getMetadata()
-	logger.Info("Preparing telemetry")
-	telemetryShutdown := initTelemetry(ctx, "server", sdktrace.AlwaysSample())
+	logger.V(1).Info("Preparing telemetry")
+	telemetryShutdown := initTelemetry(ctx, SERVER_SERVICE_NAME, sdktrace.AlwaysSample())
 
-	logger.Info("Starting to listen")
+	logger.V(1).Info("Preparing services")
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -146,6 +150,7 @@ func service(cmd *cobra.Command, args []string) error {
 	var restServer *http.Server
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
+		logger.V(1).Info("Starting gRPC service")
 		listener, err := net.Listen("tcp", grpcAddress)
 		if err != nil {
 			return err
@@ -160,8 +165,8 @@ func service(cmd *cobra.Command, args []string) error {
 		return grpcServer.Serve(listener)
 	})
 	if enableREST {
-		logger.Info("Enabling REST gateway")
 		g.Go(func() error {
+			logger.V(1).Info("Starting REST/gRPC gateway")
 			mux := runtime.NewServeMux()
 			opts := []grpc.DialOption{
 				grpc.WithInsecure(),
@@ -172,6 +177,7 @@ func service(cmd *cobra.Command, args []string) error {
 			}
 			if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 				span := trace.SpanFromContext(r.Context())
+				span.SetAttributes(attribute.String("index", pathParams["index"]))
 				span.SetStatus(otelcodes.Error, "v1 API")
 				w.WriteHeader(http.StatusGone)
 			}); err != nil {
@@ -179,7 +185,7 @@ func service(cmd *cobra.Command, args []string) error {
 			}
 			restServer = &http.Server{
 				Addr:    restAddress,
-				Handler: otelhttp.NewHandler(mux, "grpc-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)),
+				Handler: otelhttp.NewHandler(mux, "rest-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)),
 			}
 			if err := restServer.ListenAndServe(); err != http.ErrServerClosed {
 				return err
@@ -194,9 +200,9 @@ func service(cmd *cobra.Command, args []string) error {
 	case <-ctx.Done():
 		break
 	}
-	logger.Info("Shutting down on signal")
+	logger.V(1).Info("Shutting down on signal")
 	cancel()
-	ctx, shutdown := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, shutdown := context.WithTimeout(context.Background(), 60*time.Second)
 	defer shutdown()
 	if restServer != nil {
 		_ = restServer.Shutdown(ctx)

@@ -48,6 +48,7 @@
         "parameters": [
           {
             "name": "index",
+            "description": "Zero-based index of the fractional digit of pi to return",
             "in": "path",
             "required": true,
             "type": "string",
@@ -95,19 +96,22 @@
       "type": "object",
       "properties": {
         "identity": {
-          "type": "string"
+          "type": "string",
+          "title": "Identity of the pi server; usually the hostname as reported by OS"
         },
         "addresses": {
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "title": "List of IPv4 and/or IPv6 addresses associated with the pi service"
         },
         "labels": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
-          }
+          },
+          "title": "Map of key:value string pairs that were provided by the pi service configuration"
         }
       }
     },
@@ -116,13 +120,17 @@
       "properties": {
         "index": {
           "type": "string",
-          "format": "uint64"
+          "format": "uint64",
+          "title": "Zero-based index of the fractional digit of pi being returned"
         },
         "digit": {
-          "type": "string"
+          "type": "integer",
+          "format": "int64",
+          "title": "Fractional digit of pi at request offset; this is always an unsigned integer\nbetween 0 and 9 inclusive"
         },
         "metadata": {
-          "$ref": "#/definitions/v2GetDigitMetadata"
+          "$ref": "#/definitions/v2GetDigitMetadata",
+          "title": "Metadata from the pi service that handled the request"
         }
       }
     }

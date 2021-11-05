@@ -1,8 +1,7 @@
 package pi
 
-// Calculates and returns the n-th and 8 following digits of Pi
-//
-// Based on source provided by Fabrice Bellard, published at https://bellard.org/pi/pi.c
+// Calculates and returns the nth and 8 following fractional digits of pi, based
+// on source code published by Fabrice Bellard at https://bellard.org/pi/pi.c
 
 import (
 	"fmt"
@@ -47,19 +46,15 @@ func powMod(a uint64, b uint64, m uint64) uint64 {
 	return r
 }
 
-// Returns a 9 chararcter string containing the decimal digits of pi starting
-// at the specified offset. E.g. CalcDigits(0) -> "141592653",
-// CalcDigits(1) -> 415926535, etc.
-//
-// NOTE: this function has been modified to be zero-based, unlike original code
-func CalcDigits(n uint64) string {
+// Returns a 9 chararcter string containing the fractional digits of pi starting
+// at the specified zero-based offset.
+func calcDigits(n uint64) string {
 	l := logger.V(0).WithValues("n", n)
-	l.Info("CalcDigits: enter")
+	l.Info("calcDigits: enter")
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
 	for a := int64(3); a <= (2 * N); a = int64(findNextPrime(uint64(a))) {
-		// spell-checker: ignore vmax
 		vmax := int64(math.Log(float64(2*N)) / math.Log(float64(a)))
 		av := int64(1)
 		for i := int64(0); i < vmax; i++ {
@@ -120,6 +115,6 @@ func CalcDigits(n uint64) string {
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}
 	result := fmt.Sprintf("%09d", int(sum*1e9))
-	l.Info("CalcDigits: exit", "result", result)
+	l.Info("calcDigits: exit", "result", result)
 	return result
 }

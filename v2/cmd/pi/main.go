@@ -1,3 +1,5 @@
+// This package contains a gRPC client and server to demonstrate use of library
+// in a distributed environment.
 package main
 
 import (
@@ -5,6 +7,7 @@ import (
 )
 
 var (
+	// The default logr sink; this will be changed as command options are processed
 	logger = logr.Discard()
 )
 

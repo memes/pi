@@ -1,9 +1,7 @@
 package main
 
-// spell-checker: ignore mitchellh gcpdetectors otel otlp otlpmetric otlptrace sdktrace semconv otlpmetricgrpc otlptracegrpc
 import (
 	"context"
-	"errors"
 	"os"
 	"strings"
 	"time"
@@ -37,26 +35,30 @@ const (
 )
 
 var (
-	errNoTelemetryEndpoint = errors.New("OpenTelemetry endpoint is not set")
-	version                = "unknown"
-	rootCmd                = &cobra.Command{
+	// Version is updated from git tags during build
+	version = "unspecified"
+	rootCmd = &cobra.Command{
 		Use:     APP_NAME,
 		Version: version,
-		Short:   "Utility to get the digit of pi at an arbitrary index",
-		Long:    "Pi is a client/server application that will fetch one of the decimal digits of pi from an arbitrary index.",
+		Short:   "Get a fractional digit of pi at an arbitrary index",
+		Long: `Provides a client/server application that can be used to demonstrate distributed calculation of fractional digits of pi.
+The application supports OpenTelemetry metric and trace generation and will optionally send these to a specified OpenTelemetry collector.`,
 	}
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().CountP("verbose", "v", "Enable more verbose logging")
-	rootCmd.PersistentFlags().BoolP("pretty", "p", false, "Enable pretty console logging")
-	rootCmd.PersistentFlags().StringP("otlp-endpoint", "o", "", "The OpenTelemetry endpoint for export of metrics and traces")
+	rootCmd.PersistentFlags().BoolP("pretty", "p", false, "Enable prettier logging to console")
+	rootCmd.PersistentFlags().StringP("otlp-endpoint", "o", "", "An OpenTelemetry collection endpoint to receive metrics and traces")
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	_ = viper.BindPFlag("pretty", rootCmd.PersistentFlags().Lookup("pretty"))
 	_ = viper.BindPFlag("otlp-endpoint", rootCmd.PersistentFlags().Lookup("otlp-endpoint"))
 }
 
+// Determine the outcome of command line flags, environment variables, and an
+// optional configuration file to perform initialization of the application. An
+// appropriate zerolog will be assigned as the default logr sink.
 func initConfig() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnixMs
 	zl := zerolog.New(os.Stderr).With().Caller().Timestamp().Logger()
@@ -94,7 +96,7 @@ func initConfig() {
 	}
 }
 
-// Create a new OpenTelemetry resource with the named service
+// Create a new OpenTelemetry resource to describe the source of metrics and traces.
 func newTelemetryResource(ctx context.Context, name string) (*resource.Resource, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
@@ -111,14 +113,18 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 		resource.WithHost(),
 		resource.WithOS(),
 		resource.WithProcess(),
+		// These detectors place last to override the base service attributes with specifiers from GCP
 		resource.WithDetectors(&gcpdetectors.GCE{}, &gcpdetectors.GKE{}, gcpdetectors.NewCloudRun()),
 	)
 }
 
-func newMetricController(ctx context.Context) (*controller.Controller, error) {
+// Returns a new metric pusher that will send OpenTelemetry metrics to the endpoint
+// provided as a configuration flag.
+func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 	endpoint := viper.GetString("otlp-endpoint")
 	if endpoint == "" {
-		return nil, errNoTelemetryEndpoint
+		logger.V(1).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
+		return nil, nil
 	}
 	client := otlpmetricgrpc.NewClient(otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(endpoint))
 	exporter, err := otlpmetric.New(ctx, client)
@@ -131,33 +137,22 @@ func newMetricController(ctx context.Context) (*controller.Controller, error) {
 	return pusher, err
 }
 
+// Returns a new trace exporter that will send OpenTelemetry traces to the endpoint
+// provided as a configuration flag.
 func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	endpoint := viper.GetString("otlp-endpoint")
 	if endpoint == "" {
-		return nil, errNoTelemetryEndpoint
+		logger.V(1).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
 	}
 	client := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))
 	return otlptrace.New(ctx, client)
 }
 
-func newTracerProvider(ctx context.Context, name string, sampler sdktrace.Sampler, exporter *otlptrace.Exporter) (*sdktrace.TracerProvider, error) {
-	var provider *sdktrace.TracerProvider
-	resource, err := newTelemetryResource(ctx, name)
-	if err != nil {
-		return nil, err
-	}
-	if exporter != nil {
-		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)), sdktrace.WithResource(resource))
-	} else {
-		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.NeverSample()), sdktrace.WithResource(resource))
-	}
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-	otel.SetTracerProvider(provider)
-	return provider, nil
-}
-
+// Initializes OpenTelemetry metric and trace processing and deliver to a collector
+// endpoint, returning a function that can be called to shutdown the background
+// pipeline processes.
 func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) func(context.Context) {
-	metrics, err := newMetricController(ctx)
+	metrics, err := newMetricPusher(ctx)
 	if err != nil {
 		logger.Error(err, "Failed to create new OpenTelemetry metric controller")
 	}
@@ -165,10 +160,23 @@ func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) f
 	if err != nil {
 		logger.Error(err, "Failed to create OpenTelemetry trace exporter")
 	}
-	provider, err := newTracerProvider(ctx, name, sampler, exporter)
+	resource, err := newTelemetryResource(ctx, name)
 	if err != nil {
-		logger.Error(err, "Failed to create OpenTelemetry tracer provider")
+		logger.Error(err, "Failed to create OpenTelemetry resource")
 	}
+
+	// Without an exporter the traces cannot be processed and sent to a collector,
+	// so create a provider that does not ever sample or attempt to deliver traces.
+	var provider *sdktrace.TracerProvider
+	if exporter != nil {
+		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)), sdktrace.WithResource(resource))
+	} else {
+		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.NeverSample()), sdktrace.WithResource(resource))
+	}
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	otel.SetTracerProvider(provider)
+
+	// Return a function that will cancel OpenTelemetry processes
 	return func(ctx context.Context) {
 		if provider != nil {
 			if err := provider.Shutdown(ctx); err != nil {

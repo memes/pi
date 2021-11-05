@@ -27,6 +27,7 @@ type GetDigitRequest struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
+	// Zero-based index of the fractional digit of pi to return
 	Index uint64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
 }
 
@@ -74,9 +75,12 @@ type GetDigitMetadata struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Identity  string            `protobuf:"bytes,1,opt,name=identity,proto3" json:"identity,omitempty"`
-	Addresses []string          `protobuf:"bytes,2,rep,name=addresses,proto3" json:"addresses,omitempty"`
-	Labels    map[string]string `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	// Identity of the pi server; usually the hostname as reported by OS
+	Identity string `protobuf:"bytes,1,opt,name=identity,proto3" json:"identity,omitempty"`
+	// List of IPv4 and/or IPv6 addresses associated with the pi service
+	Addresses []string `protobuf:"bytes,2,rep,name=addresses,proto3" json:"addresses,omitempty"`
+	// Map of key:value string pairs that were provided by the pi service configuration
+	Labels map[string]string `protobuf:"bytes,3,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 }
 
 func (x *GetDigitMetadata) Reset() {
@@ -137,8 +141,12 @@ type GetDigitResponse struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Index    uint64            `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
-	Digit    string            `protobuf:"bytes,2,opt,name=digit,proto3" json:"digit,omitempty"`
+	// Zero-based index of the fractional digit of pi being returned
+	Index uint64 `protobuf:"varint,1,opt,name=index,proto3" json:"index,omitempty"`
+	// Fractional digit of pi at request offset; this is always an unsigned integer
+	// between 0 and 9 inclusive
+	Digit uint32 `protobuf:"varint,2,opt,name=digit,proto3" json:"digit,omitempty"`
+	// Metadata from the pi service that handled the request
 	Metadata *GetDigitMetadata `protobuf:"bytes,3,opt,name=metadata,proto3" json:"metadata,omitempty"`
 }
 
@@ -181,11 +189,11 @@ func (x *GetDigitResponse) GetIndex() uint64 {
 	return 0
 }
 
-func (x *GetDigitResponse) GetDigit() string {
+func (x *GetDigitResponse) GetDigit() uint32 {
 	if x != nil {
 		return x.Digit
 	}
-	return ""
+	return 0
 }
 
 func (x *GetDigitResponse) GetMetadata() *GetDigitMetadata {
@@ -223,7 +231,7 @@ var file_api_v2_pi_proto_rawDesc = []byte{
 	0x69, 0x67, 0x69, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x14, 0x0a, 0x05,
 	0x69, 0x6e, 0x64, 0x65, 0x78, 0x18, 0x01, 0x20, 0x01, 0x28, 0x04, 0x52, 0x05, 0x69, 0x6e, 0x64,
 	0x65, 0x78, 0x12, 0x14, 0x0a, 0x05, 0x64, 0x69, 0x67, 0x69, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28,
-	0x09, 0x52, 0x05, 0x64, 0x69, 0x67, 0x69, 0x74, 0x12, 0x34, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61,
+	0x0d, 0x52, 0x05, 0x64, 0x69, 0x67, 0x69, 0x74, 0x12, 0x34, 0x0a, 0x08, 0x6d, 0x65, 0x74, 0x61,
 	0x64, 0x61, 0x74, 0x61, 0x18, 0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x18, 0x2e, 0x61, 0x70, 0x69,
 	0x2e, 0x76, 0x32, 0x2e, 0x47, 0x65, 0x74, 0x44, 0x69, 0x67, 0x69, 0x74, 0x4d, 0x65, 0x74, 0x61,
 	0x64, 0x61, 0x74, 0x61, 0x52, 0x08, 0x6d, 0x65, 0x74, 0x61, 0x64, 0x61, 0x74, 0x61, 0x32, 0x69,
