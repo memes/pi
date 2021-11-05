@@ -1,5 +1,4 @@
-# use goreleaser for builds and containers
-# spell-checker: ignore trimpath ldflags incpatch goarch opencontainers
+# use goreleaser for v2 builds and containers
 ---
 project_name: pi
 before:
@@ -11,7 +10,7 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - '-s -w -X main.version={{ .Version }}'
+      - -s -w -X main.version={{ .Version }}-{{ .Commit }}
     goos:
       - freebsd
       - linux
