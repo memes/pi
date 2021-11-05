@@ -23,7 +23,7 @@ const (
 func testCalcDigits(index uint64, t *testing.T) {
 	t.Parallel()
 	expected := PI_DIGITS[index : index+9]
-	if actual := CalcDigits(index); actual != expected {
+	if actual := calcDigits(index); actual != expected {
 		t.Errorf("Checking offset: %d: expected %s got %s", index, expected, actual)
 	}
 }
@@ -61,7 +61,7 @@ func TestSPRPPrimeCalcDigits(t *testing.T) {
 // Helper to benchmark calculation of pi digits index through index+8, inclusive.
 func benchmarkCalcDigits(index uint64, b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = CalcDigits(index)
+		_ = calcDigits(index)
 	}
 }
 
@@ -90,10 +90,4 @@ func BenchmarkBigPrimeCalcDigits(b *testing.B) {
 		index := uint64(math.Pow10(exp))
 		b.Run(fmt.Sprintf("index=%d", index), func(b *testing.B) { benchmarkCalcDigits(index, b) })
 	}
-}
-
-// Example usecase for CalcDigits
-func ExampleCalcDigits() {
-	fmt.Printf("3.%s\n", CalcDigits(0))
-	// Output: 3.141592653
 }

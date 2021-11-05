@@ -1,7 +1,7 @@
 package pi
 
-// Calculates and returns the nth and 8 following fractional digits of pi, based
-// on source code published by Fabrice Bellard at https://bellard.org/pi/pi.c
+// Implements a Bailey-Borwein-Plouffe algorithm based on source code published
+// by Fabrice Bellard at https://bellard.org/pi/pi.c
 
 import (
 	"fmt"
@@ -46,8 +46,8 @@ func powMod(a uint64, b uint64, m uint64) uint64 {
 	return r
 }
 
-// Returns a 9 chararcter string containing the fractional digits of pi starting
-// at the specified zero-based offset.
+// Implements a BPP spigot algorithm to determine the nth and 8 following
+// fractional digits of pi at the specified zero-based offset.
 func calcDigits(n uint64) string {
 	l := logger.V(0).WithValues("n", n)
 	l.Info("calcDigits: enter")
