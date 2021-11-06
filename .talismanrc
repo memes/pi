@@ -32,3 +32,5 @@ fileignoreconfig:
   checksum: 779dbc66674e79e4a5d16c4e9c585e80513e8987e28836a575033f96fe2c8462
 - filename: v2/cache.go
   checksum: 1a8759660a4d0d653079453dfcb1125c92ea0d0cee57f6fc38109cc1e23d70ee
+- filename: v2/bpp_spigot_test.go
+  checksum: f05a3843be141fb4d426cd7875d3102eb7b03d5b499ff706e32eb8a73bf3184a

@@ -19,18 +19,11 @@ import (
 	"github.com/go-logr/logr"
 )
 
-// Defines the signature of a function that will return the next largest prime
-// number that is greater than the supplied value.
-type FindNextPrime func(uint64) uint64
-
 var (
 	// Logger to use in this package; default is a no-op logger.
 	logger = logr.Discard()
 	// Cache implementation to use; default is a no-op cache.
 	cache Cache = NewNoopCache()
-	// The next prime function to use in this package; default is a naive
-	// brute-force calculator.
-	findNextPrime FindNextPrime = BruteFindNextPrime
 )
 
 // Change the logger instance used by this package.
@@ -42,13 +35,6 @@ func SetLogger(l logr.Logger) {
 func SetCache(c Cache) {
 	if c != nil {
 		cache = c
-	}
-}
-
-// Change the next prime calculation function used by this package.
-func SetFindNextPrimeFunction(f FindNextPrime) {
-	if f != nil {
-		findNextPrime = f
 	}
 }
 

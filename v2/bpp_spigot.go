@@ -6,6 +6,18 @@ package pi
 import (
 	"fmt"
 	"math"
+	"math/big"
+)
+
+const (
+	// The number of MR rounds to use when determining if the number is
+	// probably a prime. A value of zero will apply a Baillie-PSW only test
+	// and required Go 1.8+.
+	MILLER_RABIN_ROUNDS = 0
+)
+
+var (
+	two = big.NewInt(2)
 )
 
 // Returns the inverse of x mod y
@@ -54,7 +66,7 @@ func calcDigits(n uint64) string {
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
-	for a := int64(3); a <= (2 * N); a = int64(findNextPrime(uint64(a))) {
+	for a := int64(3); a <= (2 * N); a = findNextPrime(a) {
 		vmax := int64(math.Log(float64(2*N)) / math.Log(float64(a)))
 		av := int64(1)
 		for i := int64(0); i < vmax; i++ {
@@ -113,5 +125,26 @@ func calcDigits(n uint64) string {
 	}
 	result := fmt.Sprintf("%09d", int(sum*1e9))
 	l.Info("calcDigits: exit", "result", result)
+	return result
+}
+
+func findNextPrime(n int64) int64 {
+	l := logger.V(0).WithValues("n", n)
+	l.Info("findNextPrime: entered")
+	var result int64
+	if n < 2 {
+		result = 2
+	} else {
+		var next *big.Int
+		if n%2 == 0 {
+			next = big.NewInt(n + 1)
+		} else {
+			next = big.NewInt(n + 2)
+		}
+		for ; !next.ProbablyPrime(MILLER_RABIN_ROUNDS); next = next.Add(next, two) {
+		}
+		result = next.Int64()
+	}
+	l.Info("findNextPrime: exit", "result", result)
 	return result
 }
