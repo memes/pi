@@ -38,3 +38,5 @@ fileignoreconfig:
   checksum: 3136c200bf50066bd403bdafbbab8d4353b7df3ee025e4efe561c448571e0ca4
 - filename: v2/api/v2/server/server.go
   checksum: ece28c75b55c61e8f607d35f0341ad75f17d414e337939c7db2621708790730d
+- filename: v2/pi_test.go
+  checksum: c5ef929a37781a34d0552a158ab874f77946e98ac39417b760aa1c9eb069203a
