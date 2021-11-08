@@ -1,4 +1,4 @@
-package pi
+package server
 
 import (
 	"context"
@@ -43,15 +43,21 @@ type redisCache struct {
 	*redis.Pool
 }
 
+type redisCacheOption func(*redisCache)
+
 // Return a new Cache implementation using Redis
-func NewRedisCache(ctx context.Context, endpoint string) *redisCache {
-	return &redisCache{
+func NewRedisCache(ctx context.Context, endpoint string, options ...redisCacheOption) *redisCache {
+	cache := &redisCache{
 		&redis.Pool{
 			DialContext: func(ctx context.Context) (redis.Conn, error) {
 				return redis.DialContext(ctx, "tcp", endpoint)
 			},
 		},
 	}
+	for _, option := range options {
+		option(cache)
+	}
+	return cache
 }
 
 // Returns the string value stored in Redis under key, if present, or an empty string.

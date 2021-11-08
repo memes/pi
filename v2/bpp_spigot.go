@@ -58,11 +58,33 @@ func powMod(a int64, b int64, m int64) int64 {
 	return r
 }
 
-// Implements a BPP spigot algorithm to determine the nth and 8 following
-// fractional digits of pi at the specified zero-based offset.
-func calcDigits(n uint64) string {
+// Return the next largest prime number that is greater than n.
+func findNextPrime(n int64) int64 {
 	l := logger.V(0).WithValues("n", n)
-	l.Info("calcDigits: enter")
+	l.Info("findNextPrime: entered")
+	var result int64
+	if n < 2 {
+		result = 2
+	} else {
+		var next *big.Int
+		if n%2 == 0 {
+			next = big.NewInt(n + 1)
+		} else {
+			next = big.NewInt(n + 2)
+		}
+		for ; !next.ProbablyPrime(MILLER_RABIN_ROUNDS); next = next.Add(next, two) {
+		}
+		result = next.Int64()
+	}
+	l.Info("findNextPrime: exit", "result", result)
+	return result
+}
+
+// Implements a BBP spigot algorithm to determine the nth and 8 following
+// fractional digits of pi at the specified zero-based offset.
+func BBPDigits(n uint64) string {
+	l := logger.V(0).WithValues("n", n)
+	l.Info("BBPDigits: enter")
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
 	var t int64
@@ -124,27 +146,6 @@ func calcDigits(n uint64) string {
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}
 	result := fmt.Sprintf("%09d", int(sum*1e9))
-	l.Info("calcDigits: exit", "result", result)
-	return result
-}
-
-func findNextPrime(n int64) int64 {
-	l := logger.V(0).WithValues("n", n)
-	l.Info("findNextPrime: entered")
-	var result int64
-	if n < 2 {
-		result = 2
-	} else {
-		var next *big.Int
-		if n%2 == 0 {
-			next = big.NewInt(n + 1)
-		} else {
-			next = big.NewInt(n + 2)
-		}
-		for ; !next.ProbablyPrime(MILLER_RABIN_ROUNDS); next = next.Add(next, two) {
-		}
-		result = next.Int64()
-	}
-	l.Info("findNextPrime: exit", "result", result)
+	l.Info("BBPDigits: exit", "result", result)
 	return result
 }

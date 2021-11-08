@@ -13,53 +13,15 @@
 package pi
 
 import (
-	"context"
-	"strconv"
-
 	"github.com/go-logr/logr"
 )
 
 var (
 	// Logger to use in this package; default is a no-op logger.
 	logger = logr.Discard()
-	// Cache implementation to use; default is a no-op cache.
-	cache Cache = NewNoopCache()
 )
 
 // Change the logger instance used by this package.
-func SetLogger(l logr.Logger) {
+func WithLogger(l logr.Logger) {
 	logger = l
-}
-
-// Change the Cache implementation used by this package.
-func SetCache(c Cache) {
-	if c != nil {
-		cache = c
-	}
-}
-
-// Returns the zero-based nth fractional digit of pi.
-func FractionalDigit(ctx context.Context, n uint64) (uint32, error) {
-	l := logger.V(1).WithValues("n", n)
-	l.Info("FractionalDigit: enter")
-	index := uint64(n/9) * 9
-	key := strconv.FormatUint(index, 16)
-	digits, err := cache.GetValue(ctx, key)
-	if err != nil {
-		return 0, err
-	}
-	if digits == "" {
-		digits = calcDigits(index)
-		err = cache.SetValue(ctx, key, digits)
-		if err != nil {
-			return 0, err
-		}
-	}
-	offset := n % 9
-	result, err := strconv.ParseUint(digits[offset:offset+1], 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	logger.Info("FractionalDigit: exit", "result", result)
-	return uint32(result), nil
 }

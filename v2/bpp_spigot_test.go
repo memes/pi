@@ -19,41 +19,41 @@ const (
 	BENCHMARK_PRIME_EXPONENT_LIMIT    = 15
 )
 
-// Helper to verify that calcDigits returns digits that meet the expected digits of pi.
-func testCalcDigits(index uint64, t *testing.T) {
+// Helper to verify that BBPDigits returns digits that meet the expected digits of pi.
+func testBBPDigits(index uint64, t *testing.T) {
 	t.Parallel()
 	expected := PI_DIGITS[index : index+9]
-	if actual := calcDigits(index); actual != expected {
+	if actual := BBPDigits(index); actual != expected {
 		t.Errorf("Checking offset: %d: expected %s got %s", index, expected, actual)
 	}
 }
 
 // Verify that the calculated digits match expectation. If the -short flag is
 // provided, only verify the first 2000 digits.
-func TestCalcDigits(t *testing.T) {
+func TestBBPDigits(t *testing.T) {
 	max := VERIFY_PI_DIGITS_LIMIT
 	if testing.Short() {
 		max = VERIFY_PI_DIGITS_LIMIT_SHORT
 	}
 	for index := uint64(0); index < max; index += 9 {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
-			testCalcDigits(index, t)
+			testBBPDigits(index, t)
 		})
 	}
 }
 
 // Helper to benchmark calculation of pi digits index through index+8, inclusive.
-func benchmarkCalcDigits(index uint64, b *testing.B) {
+func benchmarkBBPDigits(index uint64, b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_ = calcDigits(index)
+		_ = BBPDigits(index)
 	}
 }
 
 // Benchmark calculating pi digits.
-func BenchmarkCalcDigits(b *testing.B) {
+func BenchmarkBBPDigits(b *testing.B) {
 	for exp := 0; exp < BENCHMARK_PI_DIGIT_EXPONENT_LIMIT; exp++ {
 		index := uint64(math.Pow10(exp))
-		b.Run(fmt.Sprintf("index=%d", index), func(b *testing.B) { benchmarkCalcDigits(index, b) })
+		b.Run(fmt.Sprintf("index=%d", index), func(b *testing.B) { benchmarkBBPDigits(index, b) })
 	}
 }
 

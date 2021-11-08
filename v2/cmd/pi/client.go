@@ -8,12 +8,12 @@ import (
 	"sync"
 	"time"
 
-	api "github.com/memes/pi/v2/api/v2"
+	piclient "github.com/memes/pi/v2/api/v2/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric/global"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"google.golang.org/grpc"
 )
 
 const (
@@ -44,42 +44,22 @@ func init() {
 	rootCmd.AddCommand(clientCmd)
 }
 
-// Initiate a gRPC connect to endpoint and retrieve a single fractional digit of
-// pi at the zero-based index.
-func fetchDigit(endpoint string, index uint64, timeout time.Duration) (uint32, error) {
-	logger := logger.V(0).WithValues("endpoint", endpoint, "index", index, "timeout", timeout)
-	logger.Info("Starting connection to service")
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
-	if err != nil {
-		return 0, err
-	}
-	defer conn.Close()
-	client := api.NewPiServiceClient(conn)
-	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
-		Index: index,
-	})
-	if err != nil {
-		return 0, err
-	}
-	logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
-
-	return response.Digit, nil
-}
-
 // Client sub-command entrypoint. This function will launch gRPC requests for
 // each of the fractional digits requested.
 func client(cmd *cobra.Command, endpoints []string) error {
 	count := viper.GetInt("count")
-	timeout := viper.GetDuration("timeout")
-	logger := logger.V(0).WithValues("count", count, "endpoints", endpoints, "timeout", timeout)
+	logger := logger.V(0).WithValues("count", count, "endpoints", endpoints)
 	logger.V(1).Info("Preparing telemetry")
 	ctx := context.Background()
 	shutdown := initTelemetry(ctx, CLIENT_SERVICE_NAME, sdktrace.AlwaysSample())
 	defer shutdown(ctx)
-
 	logger.V(1).Info("Running client")
+	client := piclient.NewPiClient(
+		piclient.WithLogger(logger),
+		piclient.WithTimeout(viper.GetDuration("timeout")),
+		piclient.WithTracer(otel.Tracer(CLIENT_SERVICE_NAME)),
+		piclient.WithMeter(CLIENT_SERVICE_NAME, global.Meter(CLIENT_SERVICE_NAME)),
+	)
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)
 	digits := make([]byte, count)
@@ -89,7 +69,7 @@ func client(cmd *cobra.Command, endpoints []string) error {
 		wg.Add(1)
 		go func(endpoint string, index uint64) {
 			defer wg.Done()
-			digit, err := fetchDigit(endpoint, index, timeout)
+			digit, err := client.FetchDigit(endpoint, index)
 			if err != nil {
 				logger.Error(err, "Error fetching digit", "index", index)
 				digits[index] = '-'

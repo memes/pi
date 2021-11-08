@@ -8,26 +8,15 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	pi "github.com/memes/pi/v2"
-	api "github.com/memes/pi/v2/api/v2"
+	piserver "github.com/memes/pi/v2/api/v2/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	otelcodes "go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric/global"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 )
 
 const (
@@ -37,8 +26,6 @@ const (
 )
 
 var (
-	// Holds the instance specific metadata that will be returned in PiService responses
-	metadata *api.GetDigitMetadata
 	// Implements the server sub-command
 	serverCmd = &cobra.Command{
 		Use:   SERVER_SERVICE_NAME,
@@ -63,63 +50,6 @@ func init() {
 	rootCmd.AddCommand(serverCmd)
 }
 
-type piServer struct {
-	api.UnimplementedPiServiceServer
-}
-
-// Implement the PiService GetDigit RPC method
-func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
-	logger := logger.WithValues("index", in.Index)
-	logger.Info("GetDigit: enter")
-	ctx, span := otel.Tracer(SERVER_SERVICE_NAME).Start(ctx, "GetDigit")
-	defer span.End()
-	span.SetAttributes(attribute.Int("index", int(in.Index)))
-	digit, err := pi.FractionalDigit(ctx, in.Index)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(otelcodes.Error, err.Error())
-		return nil, err
-	}
-	logger.Info("GetDigit: exit", "digit", digit)
-	return &api.GetDigitResponse{
-		Index:    in.Index,
-		Digit:    digit,
-		Metadata: metadata,
-	}, nil
-}
-
-// Implement the gRPC health service Check method
-func (s *piServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
-	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
-}
-
-// Satisfy the gRPC health service Watch method - always returns an Unimplemented error
-func (s *piServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
-	return status.Error(codes.Unimplemented, "unimplemented")
-}
-
-// Populate a metadata structure for this instance.
-func getMetadata() *api.GetDigitMetadata {
-	logger.V(0).Info("Getting Metadata")
-	metadata := api.GetDigitMetadata{
-		Labels: viper.GetStringMapString("label"),
-	}
-	if hostname, err := os.Hostname(); err == nil {
-		metadata.Identity = hostname
-	}
-	if addrs, err := net.InterfaceAddrs(); err == nil {
-		addresses := make([]string, 0, len(addrs))
-		for _, addr := range addrs {
-			if net, ok := addr.(*net.IPNet); ok && net.IP.IsGlobalUnicast() {
-				addresses = append(addresses, net.IP.String())
-			}
-		}
-		metadata.Addresses = addresses
-	}
-	logger.V(0).Info("Returning metadata", "metadata.identity", metadata.Identity, "metadata.addresses", metadata.Addresses, "metadata.labels", metadata.Labels)
-	return &metadata
-}
-
 // Server sub-command entrypoint. This function will launch the gRPC PiService
 // and an optional REST gateway.
 func service(cmd *cobra.Command, args []string) error {
@@ -128,15 +58,21 @@ func service(cmd *cobra.Command, args []string) error {
 	enableREST := viper.GetBool("enable-rest")
 	redisAddress := viper.GetString("redis-address")
 	logger := logger.V(0).WithValues("grpcAddress", grpcAddress, "redisAddress", redisAddress, "restAddress", restAddress, "enableREST", enableREST)
-	pi.SetLogger(logger)
 	ctx := context.Background()
-	if redisAddress != "" {
-		pi.SetCache(pi.NewRedisCache(ctx, redisAddress))
-
-	}
-	metadata = getMetadata()
 	logger.V(1).Info("Preparing telemetry")
 	telemetryShutdown := initTelemetry(ctx, SERVER_SERVICE_NAME, sdktrace.AlwaysSample())
+	var cache piserver.Cache
+	if redisAddress != "" {
+		cache = piserver.NewRedisCache(ctx, redisAddress)
+
+	}
+	server := piserver.NewPiServer(
+		piserver.WithLogger(logger),
+		piserver.WithCache(cache),
+		piserver.WithMetadata(viper.GetStringMapString("label")),
+		piserver.WithTracer(otel.Tracer(SERVER_SERVICE_NAME)),
+		piserver.WithMeter(SERVER_SERVICE_NAME, global.Meter(SERVER_SERVICE_NAME)),
+	)
 
 	logger.V(1).Info("Preparing services")
 	ctx, cancel := context.WithCancel(ctx)
@@ -151,41 +87,20 @@ func service(cmd *cobra.Command, args []string) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		logger.V(1).Info("Starting gRPC service")
+		grpcServer = server.NewGrpcServer()
 		listener, err := net.Listen("tcp", grpcAddress)
 		if err != nil {
 			return err
 		}
-		grpcServer = grpc.NewServer(
-			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-		)
-		healthServer := health.NewServer()
-		grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
-		api.RegisterPiServiceServer(grpcServer, &piServer{})
-		reflection.Register(grpcServer)
 		return grpcServer.Serve(listener)
 	})
 	if enableREST {
 		g.Go(func() error {
 			logger.V(1).Info("Starting REST/gRPC gateway")
-			mux := runtime.NewServeMux()
-			opts := []grpc.DialOption{
-				grpc.WithInsecure(),
-				grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-			}
-			if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
+			var err error
+			restServer, err = server.NewRestGatewayServer(ctx, restAddress, grpcAddress)
+			if err != nil {
 				return err
-			}
-			if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-				span := trace.SpanFromContext(r.Context())
-				span.SetAttributes(attribute.String("index", pathParams["index"]))
-				span.SetStatus(otelcodes.Error, "v1 API")
-				w.WriteHeader(http.StatusGone)
-			}); err != nil {
-				return err
-			}
-			restServer = &http.Server{
-				Addr:    restAddress,
-				Handler: otelhttp.NewHandler(mux, "rest-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)),
 			}
 			if err := restServer.ListenAndServe(); err != http.ErrServerClosed {
 				return err
