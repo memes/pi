@@ -96,10 +96,13 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	if enableREST {
 		g.Go(func() error {
 			logger.V(1).Info("Starting REST/gRPC gateway")
-			var err error
-			restServer, err = server.NewRestGatewayServer(ctx, restAddress, grpcAddress)
+			restHandler, err := server.NewRestGatewayHandler(ctx, grpcAddress)
 			if err != nil {
 				return err
+			}
+			restServer = &http.Server{
+				Addr:    restAddress,
+				Handler: restHandler,
 			}
 			if err := restServer.ListenAndServe(); err != http.ErrServerClosed {
 				return err

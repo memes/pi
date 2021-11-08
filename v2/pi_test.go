@@ -73,3 +73,13 @@ func BenchmarkFindNextPrime(b *testing.B) {
 		b.Run(fmt.Sprintf("start=%d", start), func(b *testing.B) { benchmarkFindNextPrime(start, calculator, b) })
 	}
 }
+
+func Example() {
+	calculator := NewCalculator()
+	fmt.Printf("The first 100 digits of pi are: 3.")
+	for n := uint64(0); n < 99; n += 9 {
+		fmt.Print(calculator.BBPDigits(n))
+	}
+	fmt.Println()
+	// Output: The first 100 digits of pi are: 3.141592653589793238462643383279502884197169399375105820974944592307816406286208998628034825342117067
+}

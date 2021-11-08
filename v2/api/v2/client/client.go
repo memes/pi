@@ -1,3 +1,6 @@
+// Package client implements a gRPC client implementation that satisfies the
+// PiServiceClient interface requirements with optional OpenTelemetry metrics and
+// traces.
 package client
 
 import (
@@ -15,11 +18,17 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	// The default timeout that will be applied to connections.
+	DEFAULT_CLIENT_TIMEOUT = 10 * time.Second
+)
+
+// Implements the PiServiceClient interface.
 type PiClient struct {
-	logger  logr.Logger
+	// The logr.Logger instance to use
+	logger logr.Logger
+	// The client timeout/deadline to use when creating connections to a PiService.
 	timeout time.Duration
-	// Holds the instance specific metadata that will be returned in PiService responses
-	metadata *api.GetDigitMetadata
 	// The OpenTelemetry tracer to use for spans
 	tracer trace.Tracer
 	// The OpenTelemetry meter to use for metrics
@@ -32,12 +41,15 @@ type PiClient struct {
 	durationMs metric.Float64Histogram
 }
 
+// Defines a function signature for PiClient options.
 type PiClientOption func(*PiClient)
 
+// Create a new PiClient with optional settings.
 func NewPiClient(options ...PiClientOption) *PiClient {
 	client := &PiClient{
-		logger: logr.Discard(),
-		tracer: otel.Tracer(""),
+		logger:  logr.Discard(),
+		timeout: DEFAULT_CLIENT_TIMEOUT,
+		tracer:  otel.Tracer(""),
 	}
 	// Set a default set of metrics
 	WithMeter("client", global.Meter(""))(client)
@@ -47,25 +59,28 @@ func NewPiClient(options ...PiClientOption) *PiClient {
 	return client
 }
 
-// Use the supplied logger.
+// Use the supplied logr.logger.
 func WithLogger(logger logr.Logger) PiClientOption {
 	return func(c *PiClient) {
 		c.logger = logger
 	}
 }
 
+// Set the client timeout.
 func WithTimeout(timeout time.Duration) PiClientOption {
 	return func(c *PiClient) {
 		c.timeout = timeout
 	}
 }
 
+// Add an OpenTelemetry tracer implementation to the PiService client.
 func WithTracer(tracer trace.Tracer) PiClientOption {
 	return func(c *PiClient) {
 		c.tracer = tracer
 	}
 }
 
+// Add an OpenTelemetry metric meter implementation to the PiService client.
 func WithMeter(prefix string, meter metric.Meter) PiClientOption {
 	return func(c *PiClient) {
 		c.meter = meter
@@ -75,8 +90,8 @@ func WithMeter(prefix string, meter metric.Meter) PiClientOption {
 	}
 }
 
-// Initiate a gRPC connect to endpoint and retrieve a single fractional digit of
-// pi at the zero-based index.
+// Initiate a gRPC connection to the endpoint and retrieve a single fractional
+// decimal digit of pi at the zero-based index.
 func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	logger := c.logger.V(0).WithValues("endpoint", endpoint, "index", index)
 	logger.Info("Starting connection to service")
@@ -86,6 +101,7 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
 	defer cancel()
+	startTs := time.Now()
 	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithInsecure(), grpc.WithBlock(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
 	if err != nil {
 		c.meter.RecordBatch(
@@ -97,11 +113,10 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	}
 	defer conn.Close()
 	client := api.NewPiServiceClient(conn)
-	ts := time.Now()
 	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
 		Index: index,
 	})
-	duration := float64(time.Since(ts) / time.Millisecond)
+	duration := float64(time.Since(startTs) / time.Millisecond)
 	if err != nil {
 		c.meter.RecordBatch(
 			ctx,

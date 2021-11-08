@@ -1,3 +1,6 @@
+// Package server implements a gRPC server (and optional REST gateway) implementation
+// that satisfies the PiServiceClient interface requirements, with optional
+// OpenTelemetry metrics and traces.
 package server
 
 import (
@@ -30,9 +33,12 @@ import (
 
 type PiServer struct {
 	api.UnimplementedPiServiceServer
-	logger     logr.Logger
+	// The logr.Logger implementation to use
+	logger logr.Logger
+	// An instance of pi.Calculator that will be used to calculate fractional digits
 	calculator *pi.Calculator
-	cache      Cache
+	// An optional cache implementation
+	cache Cache
 	// Holds the instance specific metadata that will be returned in PiService responses
 	metadata *api.GetDigitMetadata
 	// The OpenTelemetry tracer to use for spans
@@ -45,6 +51,7 @@ type PiServer struct {
 	calculationMs metric.Float64Histogram
 }
 
+// Defines the function signature for PiServer options.
 type PiServerOption func(*PiServer)
 
 // Create a new piServer and apply any options
@@ -70,6 +77,8 @@ func WithLogger(logger logr.Logger) PiServerOption {
 	}
 }
 
+// Use the cache implementation to store BBPDigits results to avoid recalculation
+// of a digit that has already been calculated.
 func WithCache(cache Cache) PiServerOption {
 	return func(s *PiServer) {
 		if cache != nil {
@@ -100,6 +109,7 @@ func WithMetadata(labels map[string]string) PiServerOption {
 	}
 }
 
+// Add an OpenTelemetry tracer implementation to the PiService server.
 func WithTracer(tracer trace.Tracer) PiServerOption {
 	return func(s *PiServer) {
 		if tracer != nil {
@@ -108,6 +118,7 @@ func WithTracer(tracer trace.Tracer) PiServerOption {
 	}
 }
 
+// Add an OpenTelemetry metric meter implementation to the PiService server.
 func WithMeter(prefix string, meter metric.Meter) PiServerOption {
 	return func(s *PiServer) {
 		if (prefix != "" && meter != metric.Meter{}) {
@@ -201,6 +212,7 @@ func (s *PiServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1
 	return status.Error(codes.Unimplemented, "unimplemented")
 }
 
+// Create a new grpc.Server that is ready to be attached to a net.Listener.
 func (s *PiServer) NewGrpcServer() *grpc.Server {
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
@@ -212,7 +224,9 @@ func (s *PiServer) NewGrpcServer() *grpc.Server {
 	return grpcServer
 }
 
-func (s *PiServer) NewRestGatewayServer(ctx context.Context, restAddress string, grpcAddress string) (*http.Server, error) {
+// Create a new REST gateway handler that translates and forwards incoming REST
+// requests to the specified gRPC endpoint address.
+func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string) (http.Handler, error) {
 	mux := runtime.NewServeMux()
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),
@@ -229,8 +243,5 @@ func (s *PiServer) NewRestGatewayServer(ctx context.Context, restAddress string,
 	}); err != nil {
 		return nil, err
 	}
-	return &http.Server{
-		Addr:    restAddress,
-		Handler: otelhttp.NewHandler(mux, "rest-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)),
-	}, nil
+	return otelhttp.NewHandler(mux, "rest-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)), nil
 }
