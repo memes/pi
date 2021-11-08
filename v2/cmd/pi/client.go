@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	piclient "github.com/memes/pi/v2/api/v2/client"
+	"github.com/memes/pi/v2/api/v2/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
@@ -32,7 +32,7 @@ var (
 		Long: `Launches a client that will connect to the server instances in parallel and request the fractional digits of pi.
 At least one endpoint address must be provided. Metrics and traces will be sent to an optionally provided OpenTelemetry collection endpoint.`,
 		Args: cobra.MinimumNArgs(1),
-		RunE: client,
+		RunE: clientMain,
 	}
 )
 
@@ -46,7 +46,7 @@ func init() {
 
 // Client sub-command entrypoint. This function will launch gRPC requests for
 // each of the fractional digits requested.
-func client(cmd *cobra.Command, endpoints []string) error {
+func clientMain(cmd *cobra.Command, endpoints []string) error {
 	count := viper.GetInt("count")
 	logger := logger.V(0).WithValues("count", count, "endpoints", endpoints)
 	logger.V(1).Info("Preparing telemetry")
@@ -54,11 +54,11 @@ func client(cmd *cobra.Command, endpoints []string) error {
 	shutdown := initTelemetry(ctx, CLIENT_SERVICE_NAME, sdktrace.AlwaysSample())
 	defer shutdown(ctx)
 	logger.V(1).Info("Running client")
-	client := piclient.NewPiClient(
-		piclient.WithLogger(logger),
-		piclient.WithTimeout(viper.GetDuration("timeout")),
-		piclient.WithTracer(otel.Tracer(CLIENT_SERVICE_NAME)),
-		piclient.WithMeter(CLIENT_SERVICE_NAME, global.Meter(CLIENT_SERVICE_NAME)),
+	client := client.NewPiClient(
+		client.WithLogger(logger),
+		client.WithTimeout(viper.GetDuration("timeout")),
+		client.WithTracer(otel.Tracer(CLIENT_SERVICE_NAME)),
+		client.WithMeter(CLIENT_SERVICE_NAME, global.Meter(CLIENT_SERVICE_NAME)),
 	)
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)

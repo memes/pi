@@ -28,13 +28,11 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var (
-	logger logr.Logger = logr.Discard()
-)
-
-type piServer struct {
+type PiServer struct {
 	api.UnimplementedPiServiceServer
-	cache Cache
+	logger     logr.Logger
+	calculator *pi.Calculator
+	cache      Cache
 	// Holds the instance specific metadata that will be returned in PiService responses
 	metadata *api.GetDigitMetadata
 	// The OpenTelemetry tracer to use for spans
@@ -47,13 +45,15 @@ type piServer struct {
 	calculationMs metric.Float64Histogram
 }
 
-type piServerOption func(*piServer)
+type PiServerOption func(*PiServer)
 
 // Create a new piServer and apply any options
-func NewPiServer(options ...piServerOption) *piServer {
-	server := &piServer{
-		cache:  NewNoopCache(),
-		tracer: otel.Tracer(""),
+func NewPiServer(options ...PiServerOption) *PiServer {
+	server := &PiServer{
+		logger:     logr.Discard(),
+		calculator: pi.NewCalculator(),
+		cache:      NewNoopCache(),
+		tracer:     otel.Tracer(""),
 	}
 	WithMeter("server", global.Meter(""))(server)
 	for _, option := range options {
@@ -62,23 +62,25 @@ func NewPiServer(options ...piServerOption) *piServer {
 	return server
 }
 
-// Use the supplied logger for the server and pi packages.
-func WithLogger(l logr.Logger) piServerOption {
-	return func(s *piServer) {
-		logger = l
-		pi.WithLogger(l)
+// Use the supplied logger for the server and calculator packages.
+func WithLogger(logger logr.Logger) PiServerOption {
+	return func(s *PiServer) {
+		s.logger = logger
+		pi.WithLogger(logger)(s.calculator)
 	}
 }
 
-func WithCache(cache Cache) piServerOption {
-	return func(s *piServer) {
-		s.cache = cache
+func WithCache(cache Cache) PiServerOption {
+	return func(s *PiServer) {
+		if cache != nil {
+			s.cache = cache
+		}
 	}
 }
 
 // Populate a metadata structure for this instance.
-func WithMetadata(labels map[string]string) piServerOption {
-	return func(s *piServer) {
+func WithMetadata(labels map[string]string) PiServerOption {
+	return func(s *PiServer) {
 		metadata := api.GetDigitMetadata{
 			Labels: labels,
 		}
@@ -98,23 +100,27 @@ func WithMetadata(labels map[string]string) piServerOption {
 	}
 }
 
-func WithTracer(tracer trace.Tracer) piServerOption {
-	return func(s *piServer) {
-		s.tracer = tracer
+func WithTracer(tracer trace.Tracer) PiServerOption {
+	return func(s *PiServer) {
+		if tracer != nil {
+			s.tracer = tracer
+		}
 	}
 }
 
-func WithMeter(prefix string, meter metric.Meter) piServerOption {
-	return func(s *piServer) {
-		s.meter = meter
-		s.calculationErrors = metric.Must(meter).NewInt64Counter(prefix+"/calc_errors", metric.WithDescription("The count of calculation errors"))
-		s.calculationMs = metric.Must(meter).NewFloat64Histogram(prefix+"/calc_duration_ms", metric.WithDescription("The duration (ms) of calculations"))
+func WithMeter(prefix string, meter metric.Meter) PiServerOption {
+	return func(s *PiServer) {
+		if (prefix != "" && meter != metric.Meter{}) {
+			s.meter = meter
+			s.calculationErrors = metric.Must(meter).NewInt64Counter(prefix+"/calc_errors", metric.WithDescription("The count of calculation errors"))
+			s.calculationMs = metric.Must(meter).NewFloat64Histogram(prefix+"/calc_duration_ms", metric.WithDescription("The duration (ms) of calculations"))
+		}
 	}
 }
 
 // Implement the PiService GetDigit RPC method
-func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
-	logger := logger.WithValues("index", in.Index)
+func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
+	logger := s.logger.WithValues("index", in.Index)
 	logger.Info("GetDigit: enter")
 	attributes := []attribute.KeyValue{
 		attribute.Int("index", int(in.Index)),
@@ -141,7 +147,7 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		attributes := append(attributes, attribute.Bool("cache_hit", false))
 		span.SetAttributes(attributes...)
 		ts := time.Now()
-		digits = pi.BBPDigits(cacheIndex)
+		digits = s.calculator.BBPDigits(cacheIndex)
 		duration = float64(time.Since(ts) / time.Millisecond)
 		err = s.cache.SetValue(ctx, key, digits)
 		if err != nil {
@@ -186,16 +192,16 @@ func (s *piServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 }
 
 // Implement the gRPC health service Check method
-func (s *piServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
+func (s *PiServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
 }
 
 // Satisfy the gRPC health service Watch method - always returns an Unimplemented error
-func (s *piServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
+func (s *PiServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
 	return status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (s *piServer) NewGrpcServer() *grpc.Server {
+func (s *PiServer) NewGrpcServer() *grpc.Server {
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 	)
@@ -206,7 +212,7 @@ func (s *piServer) NewGrpcServer() *grpc.Server {
 	return grpcServer
 }
 
-func (s *piServer) NewRestGatewayServer(ctx context.Context, restAddress string, grpcAddress string) (*http.Server, error) {
+func (s *PiServer) NewRestGatewayServer(ctx context.Context, restAddress string, grpcAddress string) (*http.Server, error) {
 	mux := runtime.NewServeMux()
 	opts := []grpc.DialOption{
 		grpc.WithInsecure(),

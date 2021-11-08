@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"time"
 
-	piserver "github.com/memes/pi/v2/api/v2/server"
+	"github.com/memes/pi/v2/api/v2/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
@@ -32,7 +32,7 @@ var (
 		Short: "Run gRPC service to return fractional digits of pi",
 		Long: `Launches a gRPC service and optional REST gateway listening at the specified addresses for incoming client connections.
 A single fractional digit of pi will be returned per request. Metrics and traces will be sent to an optionally provided OpenTelemetry collection endpoint.`,
-		RunE: service,
+		RunE: serverMain,
 	}
 )
 
@@ -52,7 +52,7 @@ func init() {
 
 // Server sub-command entrypoint. This function will launch the gRPC PiService
 // and an optional REST gateway.
-func service(cmd *cobra.Command, args []string) error {
+func serverMain(cmd *cobra.Command, args []string) error {
 	grpcAddress := viper.GetString("grpc-address")
 	restAddress := viper.GetString("rest-address")
 	enableREST := viper.GetBool("enable-rest")
@@ -61,20 +61,19 @@ func service(cmd *cobra.Command, args []string) error {
 	ctx := context.Background()
 	logger.V(1).Info("Preparing telemetry")
 	telemetryShutdown := initTelemetry(ctx, SERVER_SERVICE_NAME, sdktrace.AlwaysSample())
-	var cache piserver.Cache
-	if redisAddress != "" {
-		cache = piserver.NewRedisCache(ctx, redisAddress)
-
-	}
-	server := piserver.NewPiServer(
-		piserver.WithLogger(logger),
-		piserver.WithCache(cache),
-		piserver.WithMetadata(viper.GetStringMapString("label")),
-		piserver.WithTracer(otel.Tracer(SERVER_SERVICE_NAME)),
-		piserver.WithMeter(SERVER_SERVICE_NAME, global.Meter(SERVER_SERVICE_NAME)),
-	)
 
 	logger.V(1).Info("Preparing services")
+	options := []server.PiServerOption{
+		server.WithLogger(logger),
+		server.WithMetadata(viper.GetStringMapString("label")),
+		server.WithTracer(otel.Tracer(SERVER_SERVICE_NAME)),
+		server.WithMeter(SERVER_SERVICE_NAME, global.Meter(SERVER_SERVICE_NAME)),
+	}
+	if redisAddress != "" {
+		options = append(options, server.WithCache(server.NewRedisCache(ctx, redisAddress)))
+
+	}
+	server := server.NewPiServer(options...)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 

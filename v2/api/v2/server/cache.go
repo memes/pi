@@ -7,7 +7,7 @@ import (
 )
 
 // Cache defines an interface for a cache implementation that can be used to
-// store the results of calcDigits for subsequent lookup requests.
+// store the results of a calculation for subsequent lookup requests.
 type Cache interface {
 	// Return the string that was set for key (or "" if unset) and an Error
 	// if the implementation failed.
@@ -18,36 +18,36 @@ type Cache interface {
 	SetValue(ctx context.Context, key string, value string) error
 }
 
-// noopCache implements Cache interface without any real cacheing.
-type noopCache struct{}
+// NoopCache implements Cache interface without any real cacheing.
+type NoopCache struct{}
 
 // Always returns an empty string and no error for every key.
-func (n *noopCache) GetValue(ctx context.Context, key string) (string, error) {
+func (n *NoopCache) GetValue(ctx context.Context, key string) (string, error) {
 	return "", nil
 }
 
 // Ignores the value and returns nil error.
-func (n *noopCache) SetValue(ctx context.Context, key string, value string) error {
+func (n *NoopCache) SetValue(ctx context.Context, key string, value string) error {
 	return nil
 }
 
 // Creates a no-operation Cache implementation that satisfies the interface
 // requirements without performing any real caching. All values are silently
 // dropped by SetValue and calls to GetValue always return an empty string.
-func NewNoopCache() *noopCache {
-	return &noopCache{}
+func NewNoopCache() *NoopCache {
+	return &NoopCache{}
 }
 
-// redisCache implements Cache interface with a Redis store.
-type redisCache struct {
+// RedisCache implements Cache interface backed by a Redis store.
+type RedisCache struct {
 	*redis.Pool
 }
 
-type redisCacheOption func(*redisCache)
+type RedisCacheOption func(*RedisCache)
 
 // Return a new Cache implementation using Redis
-func NewRedisCache(ctx context.Context, endpoint string, options ...redisCacheOption) *redisCache {
-	cache := &redisCache{
+func NewRedisCache(ctx context.Context, endpoint string, options ...RedisCacheOption) *RedisCache {
+	cache := &RedisCache{
 		&redis.Pool{
 			DialContext: func(ctx context.Context) (redis.Conn, error) {
 				return redis.DialContext(ctx, "tcp", endpoint)
@@ -61,31 +61,25 @@ func NewRedisCache(ctx context.Context, endpoint string, options ...redisCacheOp
 }
 
 // Returns the string value stored in Redis under key, if present, or an empty string.
-func (r *redisCache) GetValue(ctx context.Context, key string) (string, error) {
-	l := logger.V(0).WithValues("key", key)
-	l.Info("GetValue: enter")
+func (r *RedisCache) GetValue(ctx context.Context, key string) (string, error) {
 	conn := r.Get()
 	defer conn.Close()
 
 	value, err := redis.String(conn.Do("GET", key))
 	if err == redis.ErrNil {
-		l.Info("Value is not cached")
+		// A cache miss is *NOT* an error to propagate
 		return "", nil
 	}
 	if err != nil {
 		return "", err
 	}
-	l.Info("GetValue: exit", "value", value)
 	return value, nil
 }
 
 // Store the string key:value pair in Redis.
-func (r *redisCache) SetValue(ctx context.Context, key string, value string) error {
-	l := logger.V(0).WithValues("key", key, "value", value)
-	l.Info("SetValue: enter")
+func (r *RedisCache) SetValue(ctx context.Context, key string, value string) error {
 	conn := r.Get()
 	defer conn.Close()
-
 	_, err := conn.Do("SET", key, value)
 	if err != nil {
 		return err

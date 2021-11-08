@@ -15,7 +15,7 @@ const (
 	PI_DIGITS = "1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"
 )
 
-func testGetDigit(ctx context.Context, request *api.GetDigitRequest, server *piServer, t *testing.T) {
+func testGetDigit(ctx context.Context, request *api.GetDigitRequest, server *PiServer, t *testing.T) {
 	t.Parallel()
 	expected, err := strconv.ParseUint(PI_DIGITS[request.Index:request.Index+1], 10, 32)
 	if err != nil {

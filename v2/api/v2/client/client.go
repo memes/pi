@@ -15,7 +15,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-type piClient struct {
+type PiClient struct {
 	logger  logr.Logger
 	timeout time.Duration
 	// Holds the instance specific metadata that will be returned in PiService responses
@@ -32,10 +32,10 @@ type piClient struct {
 	durationMs metric.Float64Histogram
 }
 
-type piClientOption func(*piClient)
+type PiClientOption func(*PiClient)
 
-func NewPiClient(options ...piClientOption) *piClient {
-	client := &piClient{
+func NewPiClient(options ...PiClientOption) *PiClient {
+	client := &PiClient{
 		logger: logr.Discard(),
 		tracer: otel.Tracer(""),
 	}
@@ -48,26 +48,26 @@ func NewPiClient(options ...piClientOption) *piClient {
 }
 
 // Use the supplied logger.
-func WithLogger(logger logr.Logger) piClientOption {
-	return func(c *piClient) {
+func WithLogger(logger logr.Logger) PiClientOption {
+	return func(c *PiClient) {
 		c.logger = logger
 	}
 }
 
-func WithTimeout(timeout time.Duration) piClientOption {
-	return func(c *piClient) {
+func WithTimeout(timeout time.Duration) PiClientOption {
+	return func(c *PiClient) {
 		c.timeout = timeout
 	}
 }
 
-func WithTracer(tracer trace.Tracer) piClientOption {
-	return func(c *piClient) {
+func WithTracer(tracer trace.Tracer) PiClientOption {
+	return func(c *PiClient) {
 		c.tracer = tracer
 	}
 }
 
-func WithMeter(prefix string, meter metric.Meter) piClientOption {
-	return func(c *piClient) {
+func WithMeter(prefix string, meter metric.Meter) PiClientOption {
+	return func(c *PiClient) {
 		c.meter = meter
 		c.connectionErrors = metric.Must(meter).NewInt64Counter(prefix+"/connection_errors", metric.WithDescription("The count of connection errors"))
 		c.responseErrors = metric.Must(meter).NewInt64Counter(prefix+"/response_errors", metric.WithDescription("The count of error responses"))
@@ -77,7 +77,7 @@ func WithMeter(prefix string, meter metric.Meter) piClientOption {
 
 // Initiate a gRPC connect to endpoint and retrieve a single fractional digit of
 // pi at the zero-based index.
-func (c *piClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
+func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	logger := c.logger.V(0).WithValues("endpoint", endpoint, "index", index)
 	logger.Info("Starting connection to service")
 	attributes := []attribute.KeyValue{
