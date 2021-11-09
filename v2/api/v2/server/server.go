@@ -16,11 +16,9 @@ import (
 	api "github.com/memes/pi/v2/api/v2"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -29,6 +27,11 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+)
+
+const (
+	// The default name to use when registering OpenTelemetry components
+	DEFAULT_OPENTELEMETRY_SERVER_NAME = "server"
 )
 
 type PiServer struct {
@@ -45,10 +48,14 @@ type PiServer struct {
 	tracer trace.Tracer
 	// The OpenTelemetry meter to use for metrics
 	meter metric.Meter
-	// A counter for the number of errors returned by calculations
-	calculationErrors metric.Int64Counter
 	// A gauge for calculation durations
 	calculationMs metric.Float64Histogram
+	// A counter for the number of errors returned by cache
+	cacheErrors metric.Int64Counter
+	// A counter for cache hits
+	cacheHits metric.Int64Counter
+	// A counter for cache misses
+	cacheMisses metric.Int64Counter
 }
 
 // Defines the function signature for PiServer options.
@@ -60,9 +67,10 @@ func NewPiServer(options ...PiServerOption) *PiServer {
 		logger:     logr.Discard(),
 		calculator: pi.NewCalculator(),
 		cache:      NewNoopCache(),
-		tracer:     otel.Tracer(""),
+		tracer:     trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_SERVER_NAME),
 	}
-	WithMeter("server", global.Meter(""))(server)
+	// Set a default set of metrics agains a noop meter provider
+	WithMeter(DEFAULT_OPENTELEMETRY_SERVER_NAME, metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_SERVER_NAME))(server)
 	for _, option := range options {
 		option(server)
 	}
@@ -121,11 +129,14 @@ func WithTracer(tracer trace.Tracer) PiServerOption {
 // Add an OpenTelemetry metric meter implementation to the PiService server.
 func WithMeter(prefix string, meter metric.Meter) PiServerOption {
 	return func(s *PiServer) {
-		if (prefix != "" && meter != metric.Meter{}) {
-			s.meter = meter
-			s.calculationErrors = metric.Must(meter).NewInt64Counter(prefix+"/calc_errors", metric.WithDescription("The count of calculation errors"))
-			s.calculationMs = metric.Must(meter).NewFloat64Histogram(prefix+"/calc_duration_ms", metric.WithDescription("The duration (ms) of calculations"))
+		if prefix == "" {
+			prefix = DEFAULT_OPENTELEMETRY_SERVER_NAME
 		}
+		s.meter = meter
+		s.calculationMs = metric.Must(meter).NewFloat64Histogram(prefix+"/calc_duration_ms", metric.WithDescription("The duration (ms) of calculations"))
+		s.cacheErrors = metric.Must(meter).NewInt64Counter(prefix+"/cache_errors", metric.WithDescription("The count of cache errors"))
+		s.cacheHits = metric.Must(meter).NewInt64Counter(prefix+"/cache_hits", metric.WithDescription("The count of cache hits"))
+		s.cacheMisses = metric.Must(meter).NewInt64Counter(prefix+"/cache_misses", metric.WithDescription("The count of cache misses"))
 	}
 }
 
@@ -150,29 +161,34 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		s.meter.RecordBatch(
 			ctx,
 			attributes,
-			s.calculationErrors.Measurement(1),
+			s.cacheErrors.Measurement(1),
 		)
 		return nil, err
 	}
+	measurements := []metric.Measurement{}
 	if digits == "" {
+		measurements = append(measurements, s.cacheMisses.Measurement(1))
 		attributes := append(attributes, attribute.Bool("cache_hit", false))
 		span.SetAttributes(attributes...)
+		span.AddEvent("Calculating fractional digits")
 		ts := time.Now()
 		digits = s.calculator.BBPDigits(cacheIndex)
 		duration = float64(time.Since(ts) / time.Millisecond)
+		measurements = append(measurements, s.calculationMs.Measurement(duration))
 		err = s.cache.SetValue(ctx, key, digits)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(otelcodes.Error, err.Error())
+			measurements = append(measurements, s.cacheErrors.Measurement(1))
 			s.meter.RecordBatch(
 				ctx,
 				attributes,
-				s.calculationErrors.Measurement(1),
-				s.calculationMs.Measurement(duration),
+				measurements...,
 			)
 			return nil, err
 		}
 	} else {
+		measurements = append(measurements, s.cacheHits.Measurement(1))
 		attributes := append(attributes, attribute.Bool("cache_hit", true))
 		span.SetAttributes(attributes...)
 	}
@@ -184,8 +200,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		s.meter.RecordBatch(
 			ctx,
 			attributes,
-			s.calculationErrors.Measurement(1),
-			s.calculationMs.Measurement(duration),
+			measurements...,
 		)
 		return nil, err
 	}
@@ -193,7 +208,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	s.meter.RecordBatch(
 		ctx,
 		attributes,
-		s.calculationMs.Measurement(duration),
+		measurements...,
 	)
 	return &api.GetDigitResponse{
 		Index:    in.Index,

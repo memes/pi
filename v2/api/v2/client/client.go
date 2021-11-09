@@ -10,10 +10,8 @@ import (
 	"github.com/go-logr/logr"
 	api "github.com/memes/pi/v2/api/v2"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 )
@@ -21,6 +19,8 @@ import (
 const (
 	// The default timeout that will be applied to connections.
 	DEFAULT_CLIENT_TIMEOUT = 10 * time.Second
+	// The default name to use when registering OpenTelemetry components
+	DEFAULT_OPENTELEMETRY_CLIENT_NAME = "client"
 )
 
 // Implements the PiServiceClient interface.
@@ -49,10 +49,10 @@ func NewPiClient(options ...PiClientOption) *PiClient {
 	client := &PiClient{
 		logger:  logr.Discard(),
 		timeout: DEFAULT_CLIENT_TIMEOUT,
-		tracer:  otel.Tracer(""),
+		tracer:  trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
 	}
-	// Set a default set of metrics
-	WithMeter("client", global.Meter(""))(client)
+	// Set a default set of metrics agains a noop meter provider
+	WithMeter(DEFAULT_OPENTELEMETRY_CLIENT_NAME, metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_CLIENT_NAME))(client)
 	for _, option := range options {
 		option(client)
 	}
@@ -83,6 +83,9 @@ func WithTracer(tracer trace.Tracer) PiClientOption {
 // Add an OpenTelemetry metric meter implementation to the PiService client.
 func WithMeter(prefix string, meter metric.Meter) PiClientOption {
 	return func(c *PiClient) {
+		if prefix == "" {
+			prefix = DEFAULT_OPENTELEMETRY_CLIENT_NAME
+		}
 		c.meter = meter
 		c.connectionErrors = metric.Must(meter).NewInt64Counter(prefix+"/connection_errors", metric.WithDescription("The count of connection errors"))
 		c.responseErrors = metric.Must(meter).NewInt64Counter(prefix+"/response_errors", metric.WithDescription("The count of error responses"))

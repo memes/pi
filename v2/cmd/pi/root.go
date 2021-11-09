@@ -142,7 +142,8 @@ func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	endpoint := viper.GetString("otlp-endpoint")
 	if endpoint == "" {
-		logger.V(1).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
+		logger.V(1).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
+		return nil, nil
 	}
 	client := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))
 	return otlptrace.New(ctx, client)
@@ -170,11 +171,9 @@ func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) f
 	var provider *sdktrace.TracerProvider
 	if exporter != nil {
 		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)), sdktrace.WithResource(resource))
-	} else {
-		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sdktrace.NeverSample()), sdktrace.WithResource(resource))
+		otel.SetTracerProvider(provider)
 	}
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-	otel.SetTracerProvider(provider)
 
 	// Return a function that will cancel OpenTelemetry processes
 	return func(ctx context.Context) {
