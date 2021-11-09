@@ -133,10 +133,10 @@ func WithMeter(prefix string, meter metric.Meter) PiServerOption {
 			prefix = DEFAULT_OPENTELEMETRY_SERVER_NAME
 		}
 		s.meter = meter
-		s.calculationMs = metric.Must(meter).NewFloat64Histogram(prefix+"/calc_duration_ms", metric.WithDescription("The duration (ms) of calculations"))
-		s.cacheErrors = metric.Must(meter).NewInt64Counter(prefix+"/cache_errors", metric.WithDescription("The count of cache errors"))
-		s.cacheHits = metric.Must(meter).NewInt64Counter(prefix+"/cache_hits", metric.WithDescription("The count of cache hits"))
-		s.cacheMisses = metric.Must(meter).NewInt64Counter(prefix+"/cache_misses", metric.WithDescription("The count of cache misses"))
+		s.calculationMs = metric.Must(meter).NewFloat64Histogram(prefix+"_calc_duration_ms", metric.WithDescription("The duration (ms) of calculations"))
+		s.cacheErrors = metric.Must(meter).NewInt64Counter(prefix+"_cache_errors", metric.WithDescription("The count of cache errors"))
+		s.cacheHits = metric.Must(meter).NewInt64Counter(prefix+"_cache_hits", metric.WithDescription("The count of cache hits"))
+		s.cacheMisses = metric.Must(meter).NewInt64Counter(prefix+"_cache_misses", metric.WithDescription("The count of cache misses"))
 	}
 }
 

@@ -87,9 +87,9 @@ func WithMeter(prefix string, meter metric.Meter) PiClientOption {
 			prefix = DEFAULT_OPENTELEMETRY_CLIENT_NAME
 		}
 		c.meter = meter
-		c.connectionErrors = metric.Must(meter).NewInt64Counter(prefix+"/connection_errors", metric.WithDescription("The count of connection errors"))
-		c.responseErrors = metric.Must(meter).NewInt64Counter(prefix+"/response_errors", metric.WithDescription("The count of error responses"))
-		c.durationMs = metric.Must(meter).NewFloat64Histogram(prefix+"/request_duration_ms", metric.WithDescription("The duration (ms) of requests"))
+		c.connectionErrors = metric.Must(meter).NewInt64Counter(prefix+"_connection_errors", metric.WithDescription("The count of connection errors"))
+		c.responseErrors = metric.Must(meter).NewInt64Counter(prefix+"_response_errors", metric.WithDescription("The count of error responses"))
+		c.durationMs = metric.Must(meter).NewFloat64Histogram(prefix+"_request_duration_ms", metric.WithDescription("The duration (ms) of requests"))
 	}
 }
 
