@@ -100,11 +100,13 @@ func initConfig() {
 
 // Create a new OpenTelemetry resource to describe the source of metrics and traces.
 func newTelemetryResource(ctx context.Context, name string) (*resource.Resource, error) {
+	logger := logger.V(1).WithValues("name", name)
+	logger.Info("Creating new OpenTelemetry resource descriptor")
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return nil, err
 	}
-	return resource.New(ctx,
+	resource, err := resource.New(ctx,
 		resource.WithAttributes(
 			semconv.ServiceNamespaceKey.String(PACKAGE_NAME),
 			semconv.ServiceNameKey.String(name),
@@ -114,15 +116,33 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 		resource.WithTelemetrySDK(),
 		resource.WithHost(),
 		resource.WithOS(),
-		resource.WithProcess(),
+		// Some process information is unknown when running in a scratch
+		// container. See https://github.com/memes/pi/issues/3
+		resource.WithProcessPID(),
+		resource.WithProcessExecutableName(),
+		resource.WithProcessExecutablePath(),
+		resource.WithProcessCommandArgs(),
+		resource.WithProcessRuntimeName(),
+		resource.WithProcessRuntimeVersion(),
+		resource.WithProcessRuntimeDescription(),
 		// These detectors place last to override the base service attributes with specifiers from GCP
-		resource.WithDetectors(&gcpdetectors.GCE{}, &gcpdetectors.GKE{}, gcpdetectors.NewCloudRun()),
+		resource.WithDetectors(
+			&gcpdetectors.GCE{},
+			&gcpdetectors.GKE{},
+			gcpdetectors.NewCloudRun(),
+		),
 	)
+	if err != nil {
+		return nil, err
+	}
+	logger.V(2).Info("Resource created", "resource", resource)
+	return resource, err
 }
 
 // Returns a new metric pusher that will send OpenTelemetry metrics to the endpoint
 // provided as a configuration flag.
 func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
+	logger.V(1).Info("Creating new OpenTelemetry metric pusher")
 	endpoint := viper.GetString("otlp-endpoint")
 	if endpoint == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
@@ -142,6 +162,7 @@ func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 // Returns a new trace exporter that will send OpenTelemetry traces to the endpoint
 // provided as a configuration flag.
 func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
+	logger.V(1).Info("Creating new OpenTelemetry trace exporter")
 	endpoint := viper.GetString("otlp-endpoint")
 	if endpoint == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
@@ -155,6 +176,8 @@ func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 // endpoint, returning a function that can be called to shutdown the background
 // pipeline processes.
 func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) func(context.Context) {
+	logger := logger.V(1).WithValues("name", name, "sampler", sampler.Description())
+	logger.Info("Initializing OpenTelemetry")
 	metrics, err := newMetricPusher(ctx)
 	if err != nil {
 		logger.Error(err, "Failed to create new OpenTelemetry metric controller")
@@ -177,6 +200,7 @@ func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) f
 	}
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
+	logger.Info("OpenTelemetry initialization complete, returning shutdown function")
 	// Return a function that will cancel OpenTelemetry processes
 	return func(ctx context.Context) {
 		if provider != nil {
