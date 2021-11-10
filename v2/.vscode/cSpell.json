@@ -36,7 +36,8 @@
         "otelcodes",
         "otelhttp",
         "gomodule",
-        "redigo"
+        "redigo",
+        "kubernetes"
     ],
     "flagWords": [
         "hte"

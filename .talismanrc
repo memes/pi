@@ -21,7 +21,7 @@ fileignoreconfig:
 - filename: v2/cmd/pi/server.go
   checksum: c795f1148d4abf0f513f447d941d7c1e19d2b64db830f7848c6ec71976b898b4
 - filename: v2/README.md
-  checksum: 2d4a3ead8c464d7f24a4b68a119b6ba0efe6c5f001376a18d4ea6c61bec24ce6
+  checksum: a1797d7e26b9e954da8e35198451942ba7739ad6b392c05e326613721b9c64ff
 - filename: v2/redis_cache.go
   checksum: 954673a5a40c03815dd690f32fc42c1cccbf75e2b741a72dd6ac118e8948cc20
 - filename: v2/api/v2/pi.swagger.json

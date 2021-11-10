@@ -1,6 +1,7 @@
 # Pi
 
-> DEPRECATED: Development of v1 package has been superseded by [v2](/v2/).
+> DEPRECATED: Development of github.com/memes/pi package has been superseded by
+> [v2](v2/). Please see the [v2 README](v2/README.md) for more details.
 
 A simple distributed computing example that calculates the mantissa of
 pi at the requested index. Using a spigot algorithm, digits of the
@@ -40,7 +41,7 @@ Result is: 3.1415926535897932384626433832795028841971693993751058209749445923078
 
 ## Devolution and gRPC
 
-> NOTE: [v2](/v2/) of `pi` has gRPC support.
+> NOTE: [v2](/v2/) of `pi` has full gRPC support.
 
 The original application used gRPC for client-server communication but
 this was replaced by HTTP and JSON since gRPC support on major cloud

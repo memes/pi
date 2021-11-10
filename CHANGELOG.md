@@ -7,10 +7,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0] - TBD
+## [2.0.0-rc1] - 2021-11-0
 
-Refactored Pi code as v2 to support use as a library and application. When used as a server the primary transport is through gRPC, with an optional REST
-gateway for compatibility. The client app is always gRPC.
+Refactored Pi code as v2 to support use as a library and application. When used
+as a server the primary transport is through gRPC, with an optional REST gateway
+for compatibility. The client app is always gRPC.
 
 ### Added
 
