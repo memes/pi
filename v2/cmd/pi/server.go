@@ -57,12 +57,12 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	restAddress := viper.GetString("rest-address")
 	enableREST := viper.GetBool("enable-rest")
 	redisAddress := viper.GetString("redis-address")
-	logger := logger.V(0).WithValues("grpcAddress", grpcAddress, "redisAddress", redisAddress, "restAddress", restAddress, "enableREST", enableREST)
+	logger := logger.V(1).WithValues("grpcAddress", grpcAddress, "redisAddress", redisAddress, "restAddress", restAddress, "enableREST", enableREST)
 	ctx := context.Background()
-	logger.V(1).Info("Preparing telemetry")
+	logger.V(0).Info("Preparing telemetry")
 	telemetryShutdown := initTelemetry(ctx, SERVER_SERVICE_NAME, sdktrace.AlwaysSample())
 
-	logger.V(1).Info("Preparing services")
+	logger.V(0).Info("Preparing services")
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
 		server.WithMetadata(viper.GetStringMapString("label")),
@@ -85,7 +85,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	var restServer *http.Server
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		logger.V(1).Info("Starting gRPC service")
+		logger.V(0).Info("Starting gRPC service")
 		grpcServer = server.NewGrpcServer()
 		listener, err := net.Listen("tcp", grpcAddress)
 		if err != nil {
@@ -95,7 +95,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	})
 	if enableREST {
 		g.Go(func() error {
-			logger.V(1).Info("Starting REST/gRPC gateway")
+			logger.V(0).Info("Starting REST/gRPC gateway")
 			restHandler, err := server.NewRestGatewayHandler(ctx, grpcAddress)
 			if err != nil {
 				return err
@@ -117,7 +117,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	case <-ctx.Done():
 		break
 	}
-	logger.V(1).Info("Shutting down on signal")
+	logger.V(0).Info("Shutting down on signal")
 	cancel()
 	ctx, shutdown := context.WithTimeout(context.Background(), 60*time.Second)
 	defer shutdown()

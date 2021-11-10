@@ -73,7 +73,9 @@ func initConfig() {
 	err := viper.ReadInConfig()
 	verbosity := viper.GetInt("verbose")
 	switch {
-	case verbosity >= 2:
+	case verbosity > 2:
+		zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	case verbosity == 2:
 		zerolog.SetGlobalLevel(zerolog.DebugLevel)
 	case verbosity == 1:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
@@ -89,7 +91,7 @@ func initConfig() {
 	}
 	switch t := err.(type) {
 	case viper.ConfigFileNotFoundError:
-		logger.V(1).Info("Configuration file not found", "err", t)
+		logger.V(0).Info("Configuration file not found", "err", t)
 
 	default:
 		logger.Error(t, "Error reading configuration file")
@@ -123,7 +125,7 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 	endpoint := viper.GetString("otlp-endpoint")
 	if endpoint == "" {
-		logger.V(1).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
+		logger.V(0).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
 		return nil, nil
 	}
 	client := otlpmetricgrpc.NewClient(otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(endpoint))
@@ -142,7 +144,7 @@ func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	endpoint := viper.GetString("otlp-endpoint")
 	if endpoint == "" {
-		logger.V(1).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
+		logger.V(0).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
 		return nil, nil
 	}
 	client := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))

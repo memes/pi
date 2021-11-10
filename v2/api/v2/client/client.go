@@ -96,7 +96,7 @@ func WithMeter(prefix string, meter metric.Meter) PiClientOption {
 // Initiate a gRPC connection to the endpoint and retrieve a single fractional
 // decimal digit of pi at the zero-based index.
 func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
-	logger := c.logger.V(0).WithValues("endpoint", endpoint, "index", index)
+	logger := c.logger.V(1).WithValues("endpoint", endpoint, "index", index)
 	logger.Info("Starting connection to service")
 	attributes := []attribute.KeyValue{
 		attribute.String("endpoint", endpoint),

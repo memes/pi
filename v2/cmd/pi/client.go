@@ -48,12 +48,12 @@ func init() {
 // each of the fractional digits requested.
 func clientMain(cmd *cobra.Command, endpoints []string) error {
 	count := viper.GetInt("count")
-	logger := logger.V(0).WithValues("count", count, "endpoints", endpoints)
-	logger.V(1).Info("Preparing telemetry")
+	logger := logger.V(1).WithValues("count", count, "endpoints", endpoints)
+	logger.V(0).Info("Preparing telemetry")
 	ctx := context.Background()
 	shutdown := initTelemetry(ctx, CLIENT_SERVICE_NAME, sdktrace.AlwaysSample())
 	defer shutdown(ctx)
-	logger.V(1).Info("Running client")
+	logger.V(0).Info("Running client")
 	client := client.NewPiClient(
 		client.WithLogger(logger),
 		client.WithTimeout(viper.GetDuration("timeout")),
