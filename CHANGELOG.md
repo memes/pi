@@ -7,7 +7,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-rc1] - 2021-11-0
+## [2.0.0-rc2] - 2021-11-09
+
+### Added
+
+### Changed
+
+- lower prime testing to first 100 when `-short` flag is set
+- remove `nobody` from scratch docker image
+
+### Removed
+
+## [2.0.0-rc1] - 2021-11-09
 
 Refactored Pi code as v2 to support use as a library and application. When used
 as a server the primary transport is through gRPC, with an optional REST gateway
@@ -72,7 +83,8 @@ for compatibility. The client app is always gRPC.
 
 ### Removed
 
-[2.0.0]: https://github.com/memes/pi/compare/1.0.4...2.0.0
+[2.0.0-rc2]: https://github.com/memes/pi/compare/2.0.0-rc1...2.0.0-rc2
+[2.0.0-rc1]: https://github.com/memes/pi/compare/1.0.4...2.0.0-rc1
 [1.0.4]: https://github.com/memes/pi/compare/1.0.3...1.0.4
 [1.0.3]: https://github.com/memes/pi/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/memes/pi/compare/1.0.1...1.0.2

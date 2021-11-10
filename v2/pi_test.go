@@ -22,6 +22,7 @@ const (
 	VERIFY_PI_DIGITS_LIMIT_SHORT      = uint64(2000)
 	BENCHMARK_PI_DIGIT_EXPONENT_LIMIT = 5
 	BENCHMARK_PRIME_EXPONENT_LIMIT    = 15
+	VERIFY_PRIME_LIMIT_SHORT          = 100
 )
 
 var (
@@ -1083,8 +1084,12 @@ func testFindNextPrime(start int64, expected int64, calculator *Calculator, t *t
 // Verify that the calculator prime solver gives the correct next greater prime
 // number for the set of integers [0, largest prime in table).
 func TestFindNextPrime(t *testing.T) {
+	max := primeVerifyLimit
+	if testing.Short() {
+		max = VERIFY_PRIME_LIMIT_SHORT
+	}
 	calculator := NewCalculator()
-	for i := int64(0); i < primeVerifyLimit; i++ {
+	for i := int64(0); i < max; i++ {
 		expected := verificationPrimes[sort.Search(primeTableSize, func(idx int) bool { return verificationPrimes[idx] > i })]
 		t.Run(fmt.Sprintf("start=%d", i), func(t *testing.T) {
 			testFindNextPrime(i, expected, calculator, t)

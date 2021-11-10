@@ -6,6 +6,5 @@ COPY --from=ca /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY pi /pi
 EXPOSE 8080
 EXPOSE 9090
-USER nobody
 ENTRYPOINT ["/pi"]
 CMD ["server"]
