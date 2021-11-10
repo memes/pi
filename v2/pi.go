@@ -29,19 +29,22 @@ const (
 )
 
 var (
-	// Logger to use in this package; default is a no-op logger.
-	logger = logr.Discard()
-	// Helper to
-	two = big.NewInt(2)
+	TWO = big.NewInt(2)
 )
 
+// Calculator object holds the options to use when calculating fractional digits
+// of pi.
 type Calculator struct {
-	logger            logr.Logger
+	// The logr.Logger instance to use.
+	logger logr.Logger
+	// The number of Miller-Rabin rounds to use in Probably Prime calls.
 	millerRabinRounds int
 }
 
+// Defines the function signature for Calculator options.
 type CalculatorOption func(*Calculator)
 
+// Creates a new Calculator instance, applying the options provided.
 func NewCalculator(options ...CalculatorOption) *Calculator {
 	calculator := &Calculator{
 		logger:            logr.Discard(),
@@ -69,7 +72,9 @@ func WithMillerRabinRounds(millerRabinRounds int) CalculatorOption {
 }
 
 // Returns the inverse of x mod y
-func invMod(x int64, y int64) int64 {
+func (calc *Calculator) invMod(x int64, y int64) int64 {
+	l := calc.logger.V(2).WithValues("x", x, "y", y)
+	l.Info("invMod: entered")
 	var u, v, c, a int64 = x, y, 1, 0
 	for {
 		q := v / u
@@ -87,11 +92,14 @@ func invMod(x int64, y int64) int64 {
 	if a < 0 {
 		a = y + a
 	}
+	l.Info("invMod: exit", "a", a)
 	return a
 }
 
 // Returns (a^b) mod m
-func powMod(a int64, b int64, m int64) int64 {
+func (c *Calculator) powMod(a int64, b int64, m int64) int64 {
+	l := c.logger.V(2).WithValues("a", a, "b", b, "m", m)
+	l.Info("powMod: entered")
 	var r int64 = 1
 	for {
 		if b&1 > 0 {
@@ -103,12 +111,13 @@ func powMod(a int64, b int64, m int64) int64 {
 		}
 		a = (a * a) % m
 	}
+	l.Info("powMod: exit", "r", r)
 	return r
 }
 
 // Return the next largest prime number that is greater than n.
 func (c *Calculator) findNextPrime(n int64) int64 {
-	l := c.logger.V(0).WithValues("n", n)
+	l := c.logger.V(2).WithValues("n", n)
 	l.Info("findNextPrime: entered")
 	var result int64
 	if n < 2 {
@@ -120,7 +129,7 @@ func (c *Calculator) findNextPrime(n int64) int64 {
 		} else {
 			next = big.NewInt(n + 2)
 		}
-		for ; !next.ProbablyPrime(c.millerRabinRounds); next = next.Add(next, two) {
+		for ; !next.ProbablyPrime(c.millerRabinRounds); next = next.Add(next, TWO) {
 		}
 		result = next.Int64()
 	}
@@ -129,9 +138,10 @@ func (c *Calculator) findNextPrime(n int64) int64 {
 }
 
 // Implements a BBP spigot algorithm to determine the nth and 8 following
-// fractional decimal digits of pi at the specified zero-based offset.
+// fractional decimal digits of pi at the specified zero-based offset, with
+// the configured Calculator.
 func (c *Calculator) BBPDigits(n uint64) string {
-	l := c.logger.V(0).WithValues("n", n)
+	l := c.logger.V(1).WithValues("n", n)
 	l.Info("BBPDigits: enter")
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
 	var sum float64 = 0
@@ -176,7 +186,7 @@ func (c *Calculator) BBPDigits(n uint64) string {
 			kq2 += 2
 
 			if v > 0 {
-				t = invMod(den, av)
+				t = c.invMod(den, av)
 				t = (t * num) % av
 				t = (t * k) % av
 				for i := v; i < vmax; i++ {
@@ -189,11 +199,18 @@ func (c *Calculator) BBPDigits(n uint64) string {
 			}
 		}
 
-		t = int64(powMod(10, int64(n), av))
+		t = int64(c.powMod(10, int64(n), av))
 		s = (s * t) % av
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}
 	result := fmt.Sprintf("%09d", int(sum*1e9))
 	l.Info("BBPDigits: exit", "result", result)
 	return result
+}
+
+// Implements a BBP spigot algorithm to determine the nth and 8 following
+// fractional decimal digits of pi at the specified zero-based offset, with
+// a default Calculator instance.
+func BBPDigits(n uint64) string {
+	return NewCalculator().BBPDigits(n)
 }
