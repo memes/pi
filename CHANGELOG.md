@@ -7,6 +7,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0-rc3] - 2021-11-10
+
+### Added
+
+### Changed
+
+- OpenTelemetry process detectors to support running in a container built on scratch
+- Additonal logging during OpenTelemetry initialization
+
+### Removed
+
 ## [2.0.0-rc2] - 2021-11-09
 
 ### Added
@@ -83,6 +94,7 @@ for compatibility. The client app is always gRPC.
 
 ### Removed
 
+[2.0.0-rc3]: https://github.com/memes/pi/compare/2.0.0-rc2...2.0.0-rc3
 [2.0.0-rc2]: https://github.com/memes/pi/compare/2.0.0-rc1...2.0.0-rc2
 [2.0.0-rc1]: https://github.com/memes/pi/compare/1.0.4...2.0.0-rc1
 [1.0.4]: https://github.com/memes/pi/compare/1.0.3...1.0.4
