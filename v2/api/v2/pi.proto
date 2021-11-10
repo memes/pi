@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package api.v2;
+import "google/api/annotations.proto";
+import "protoc-gen-openapiv2/options/annotations.proto";
+
+option go_package = "github.com/memes/pi/v2/api/v2";
+
+option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
+    info: {
+      title: "pi";
+      version: "2.0.0";
+      contact: {
+        name: "Matthew Emes";
+        url: "https://github.com/memes/pi/issues/new/choose";
+      };
+      license: {
+        name: "MIT";
+        url: "github.com/memes/pi/blob/main/LICENSE";
+      };
+    };
+    external_docs: {
+      description: "GitHub repo";
+      url: "https://github.com/memes/pi/blob/main/v2/";
+    };
+    schemes: HTTP;
+    schemes: HTTPS;
+    consumes: "application/json";
+    produces: "application/json";
+};
+
+message GetDigitRequest {
+  // Zero-based index of the fractional digit of pi to return
+  uint64 index = 1;
+};
+
+message GetDigitMetadata {
+  // Identity of the pi server; usually the hostname as reported by OS
+  string identity = 1;
+  // List of IPv4 and/or IPv6 addresses associated with the pi service
+  repeated string addresses = 2;
+  // Map of key:value string pairs that were provided by the pi service configuration
+  map<string, string> labels = 3;
+};
+
+message GetDigitResponse {
+  // Zero-based index of the fractional digit of pi being returned
+  uint64 index = 1;
+  // Fractional digit of pi at request offset; this is always an unsigned integer
+  // between 0 and 9 inclusive
+  uint32 digit = 2;
+  // Metadata from the pi service that handled the request
+  GetDigitMetadata metadata = 3;
+};
+
+service PiService {
+  rpc GetDigit(GetDigitRequest) returns (GetDigitResponse) {
+    option(google.api.http) = {
+      get: "/api/v2/digit/{index}"
+    };
+  }
+}

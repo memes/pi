@@ -1,6 +1,6 @@
 # New Pull Request
 
-Hello and thank you for using our Terraform modules. We are happy to accept pull
+Hello and thank you for using this application. We are happy to accept pull
 requests for bug fixes and enhancements, but ask that you complete this form so
 we can review the PR in context.
 

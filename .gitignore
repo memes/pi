@@ -1,7 +1,9 @@
 # Ignore my environment setup files
 .envrc
 .direnv
+.tool-versions
 
 # Don't commit built packages
-pi
-pi.exe
+dist/
+/pi
+/v2/pi
