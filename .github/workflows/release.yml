@@ -28,7 +28,7 @@ jobs:
       - id: import-gpg
         name: Import GPG key
         if: ${{ success() }}
-        uses: hashicorp/ghaction-import-gpg@2
+        uses: hashicorp/ghaction-import-gpg@v2
         env:
           GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
           PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
