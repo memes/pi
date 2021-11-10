@@ -1,6 +1,7 @@
 # Ignore my environment setup files
 .envrc
 .direnv
+.tool-versions
 
 # Don't commit built packages
 dist/
