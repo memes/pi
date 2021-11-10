@@ -39,4 +39,3 @@ jobs:
         with:
           version: latest
           working-directory: v2
-          only-new-issues: true
