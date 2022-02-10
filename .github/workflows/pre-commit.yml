@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: hadolint/hadolint-action@v1.5.0
+      - uses: hadolint/hadolint-action@v1.6.0
         with:
           dockerfile: "v2/Dockerfile"
   golangci-lint:
