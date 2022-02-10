@@ -10,23 +10,14 @@ repos:
         types: [file, yaml]
         entry: yamllint --strict
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.0.1
+    rev: v4.1.0
     hooks:
       - id: check-executables-have-shebangs
       - id: check-merge-conflict
       - id: detect-private-key
       - id: end-of-file-fixer
       - id: trailing-whitespace
-  # Talisman can't be built from source in current pre-commit; invoke a locally
-  # installed binary instead.
-  - repo: local
+  - repo: https://github.com/thoughtworks/talisman
+    rev: v1.23.0
     hooks:
-      - id: local-talisman
-        name: talisman
-        entry: talisman --githook pre-commit
-        stages:
-          - commit
-        pass_filenames: false
-        types:
-          - text
-        language: system
+      - id: talisman-commit
