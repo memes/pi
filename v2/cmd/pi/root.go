@@ -153,7 +153,7 @@ func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 	if err != nil {
 		return nil, err
 	}
-	pusher := controller.New(processor.NewFactory(simple.NewWithExactDistribution(), exporter), controller.WithExporter(exporter), controller.WithCollectPeriod(2*time.Second))
+	pusher := controller.New(processor.NewFactory(simple.NewWithInexpensiveDistribution(), exporter), controller.WithExporter(exporter), controller.WithCollectPeriod(2*time.Second))
 	global.SetMeterProvider(pusher)
 	err = pusher.Start(ctx)
 	return pusher, err
