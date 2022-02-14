@@ -4,6 +4,7 @@
 package server
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -49,6 +50,8 @@ type PiServer struct {
 	tracer trace.Tracer
 	// The OpenTelemetry meter to use for metrics
 	meter metric.Meter
+	// The prefix to use for metrics
+	prefix string
 	// A gauge for calculation durations
 	calculationMs metric.Float64Histogram
 	// A counter for the number of errors returned by cache
@@ -69,12 +72,15 @@ func NewPiServer(options ...PiServerOption) *PiServer {
 		calculator: pi.NewCalculator(),
 		cache:      NewNoopCache(),
 		tracer:     trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_SERVER_NAME),
+		meter:      metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_SERVER_NAME),
 	}
-	// Set a default set of metrics agains a noop meter provider
-	WithMeter(DEFAULT_OPENTELEMETRY_SERVER_NAME, metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_SERVER_NAME))(server)
 	for _, option := range options {
 		option(server)
 	}
+	server.calculationMs = server.newFloat64Histogram("calc_duration_ms", "The duration (ms) of calculations")
+	server.cacheErrors = server.newInt64Counter("cache_errors", "The count of cache errors")
+	server.cacheHits = server.newInt64Counter("cache_hits", "The count of cache hits")
+	server.cacheMisses = server.newInt64Counter("cache_misses", "The count of cache misses")
 	return server
 }
 
@@ -128,17 +134,35 @@ func WithTracer(tracer trace.Tracer) PiServerOption {
 }
 
 // Add an OpenTelemetry metric meter implementation to the PiService server.
-func WithMeter(prefix string, meter metric.Meter) PiServerOption {
+func WithMeter(meter metric.Meter) PiServerOption {
 	return func(s *PiServer) {
-		if prefix == "" {
-			prefix = DEFAULT_OPENTELEMETRY_SERVER_NAME
-		}
 		s.meter = meter
-		s.calculationMs = metric.Must(meter).NewFloat64Histogram(prefix+"_calc_duration_ms", metric.WithDescription("The duration (ms) of calculations"))
-		s.cacheErrors = metric.Must(meter).NewInt64Counter(prefix+"_cache_errors", metric.WithDescription("The count of cache errors"))
-		s.cacheHits = metric.Must(meter).NewInt64Counter(prefix+"_cache_hits", metric.WithDescription("The count of cache hits"))
-		s.cacheMisses = metric.Must(meter).NewInt64Counter(prefix+"_cache_misses", metric.WithDescription("The count of cache misses"))
 	}
+}
+
+// Set the prefix to use for OpenTelemetry metrics.
+func WithPrefix(prefix string) PiServerOption {
+	return func(c *PiServer) {
+		c.prefix = prefix
+	}
+}
+
+// Generates a name for the metric
+func (c *PiServer) metricName(name string) string {
+	if c.prefix == "" {
+		return name
+	}
+	return fmt.Sprintf("%s_%s", c.prefix, name)
+}
+
+// Create a new Int64 OpenTelemetry metric counter
+func (s *PiServer) newInt64Counter(name string, description string) metric.Int64Counter {
+	return metric.Must(s.meter).NewInt64Counter(s.metricName(name), metric.WithDescription(description))
+}
+
+// Create a new floating point OpenTelemetry metric gauge
+func (s *PiServer) newFloat64Histogram(name string, description string) metric.Float64Histogram {
+	return metric.Must(s.meter).NewFloat64Histogram(s.metricName(name), metric.WithDescription(description))
 }
 
 // Implement the PiService GetDigit RPC method

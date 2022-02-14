@@ -58,7 +58,8 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		client.WithLogger(logger),
 		client.WithTimeout(viper.GetDuration("timeout")),
 		client.WithTracer(otel.Tracer(CLIENT_SERVICE_NAME)),
-		client.WithMeter(CLIENT_SERVICE_NAME, global.Meter(CLIENT_SERVICE_NAME)),
+		client.WithMeter(global.Meter(CLIENT_SERVICE_NAME)),
+		client.WithPrefix(CLIENT_SERVICE_NAME),
 	)
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)

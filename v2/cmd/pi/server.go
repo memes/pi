@@ -67,7 +67,8 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		server.WithLogger(logger),
 		server.WithMetadata(viper.GetStringMapString("label")),
 		server.WithTracer(otel.Tracer(SERVER_SERVICE_NAME)),
-		server.WithMeter(SERVER_SERVICE_NAME, global.Meter(SERVER_SERVICE_NAME)),
+		server.WithMeter(global.Meter(SERVER_SERVICE_NAME)),
+		server.WithPrefix(SERVER_SERVICE_NAME),
 	}
 	if redisAddress != "" {
 		options = append(options, server.WithCache(server.NewRedisCache(ctx, redisAddress)))

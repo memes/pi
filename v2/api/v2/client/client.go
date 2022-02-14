@@ -5,6 +5,7 @@ package client
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -34,6 +35,8 @@ type PiClient struct {
 	tracer trace.Tracer
 	// The OpenTelemetry meter to use for metrics
 	meter metric.Meter
+	// The prefix to use for metrics
+	prefix string
 	// A counter for the number of connection errors
 	connectionErrors metric.Int64Counter
 	// A counter for the number of response errors
@@ -51,12 +54,15 @@ func NewPiClient(options ...PiClientOption) *PiClient {
 		logger:  logr.Discard(),
 		timeout: DEFAULT_CLIENT_TIMEOUT,
 		tracer:  trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
+		meter:   metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
+		prefix:  DEFAULT_OPENTELEMETRY_CLIENT_NAME,
 	}
-	// Set a default set of metrics agains a noop meter provider
-	WithMeter(DEFAULT_OPENTELEMETRY_CLIENT_NAME, metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_CLIENT_NAME))(client)
 	for _, option := range options {
 		option(client)
 	}
+	client.connectionErrors = client.newInt64Counter("connection_errors", "The count of connection errors")
+	client.responseErrors = client.newInt64Counter("response_errors", "The count of error responses")
+	client.durationMs = client.newFloat64Histogram("request_duration_ms", "The duration (ms) of requests")
 	return client
 }
 
@@ -82,16 +88,35 @@ func WithTracer(tracer trace.Tracer) PiClientOption {
 }
 
 // Add an OpenTelemetry metric meter implementation to the PiService client.
-func WithMeter(prefix string, meter metric.Meter) PiClientOption {
+func WithMeter(meter metric.Meter) PiClientOption {
 	return func(c *PiClient) {
-		if prefix == "" {
-			prefix = DEFAULT_OPENTELEMETRY_CLIENT_NAME
-		}
 		c.meter = meter
-		c.connectionErrors = metric.Must(meter).NewInt64Counter(prefix+"_connection_errors", metric.WithDescription("The count of connection errors"))
-		c.responseErrors = metric.Must(meter).NewInt64Counter(prefix+"_response_errors", metric.WithDescription("The count of error responses"))
-		c.durationMs = metric.Must(meter).NewFloat64Histogram(prefix+"_request_duration_ms", metric.WithDescription("The duration (ms) of requests"))
 	}
+}
+
+// Set the prefix to use for OpenTelemetry metrics.
+func WithPrefix(prefix string) PiClientOption {
+	return func(c *PiClient) {
+		c.prefix = prefix
+	}
+}
+
+// Generates a name for the metric
+func (c *PiClient) metricName(name string) string {
+	if c.prefix == "" {
+		return name
+	}
+	return fmt.Sprintf("%s_%s", c.prefix, name)
+}
+
+// Create a new Int64 OpenTelemetry metric counter
+func (c *PiClient) newInt64Counter(name string, description string) metric.Int64Counter {
+	return metric.Must(c.meter).NewInt64Counter(c.metricName(name), metric.WithDescription(description))
+}
+
+// Create a new floating point OpenTelemetry metric gauge
+func (c *PiClient) newFloat64Histogram(name string, description string) metric.Float64Histogram {
+	return metric.Must(c.meter).NewFloat64Histogram(c.metricName(name), metric.WithDescription(description))
 }
 
 // Initiate a gRPC connection to the endpoint and retrieve a single fractional
