@@ -14,7 +14,7 @@ require (
 	github.com/rs/zerolog v1.25.0
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.8.1
-	go.opentelemetry.io/contrib/detectors/gcp v1.1.0
+	go.opentelemetry.io/contrib/detectors/gcp v1.3.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.26.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.28.0
 	go.opentelemetry.io/otel v1.3.0
@@ -35,7 +35,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.97.0 // indirect
+	cloud.google.com/go v0.98.0 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/felixge/httpsnoop v1.0.2 // indirect
@@ -58,7 +58,7 @@ require (
 	go.opentelemetry.io/otel/internal/metric v0.26.0 // indirect
 	go.opentelemetry.io/otel/sdk/export/metric v0.26.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.11.0 // indirect
-	golang.org/x/sys v0.0.0-20210908233432-aa78b53d3365 // indirect
+	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
 	golang.org/x/text v0.3.6 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
