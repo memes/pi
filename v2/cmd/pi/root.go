@@ -27,6 +27,7 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -41,19 +42,22 @@ var (
 		Use:     APP_NAME,
 		Version: version,
 		Short:   "Get a fractional digit of pi at an arbitrary index",
-		Long: `Provides a client/server application that can be used to demonstrate distributed calculation of fractional digits of pi.
-The application supports OpenTelemetry metric and trace generation and will optionally send these to a specified OpenTelemetry collector.`,
+		Long:    `Provides a gRPC client/server demo for distributed calculation of fractional digits of pi.`,
 	}
 )
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().CountP("verbose", "v", "Enable more verbose logging")
-	rootCmd.PersistentFlags().BoolP("pretty", "p", false, "Enable prettier logging to console")
-	rootCmd.PersistentFlags().StringP("otlp-endpoint", "o", "", "An OpenTelemetry collection endpoint to receive metrics and traces")
+	rootCmd.PersistentFlags().CountP("verbose", "v", "Enable verbose logging; can be repeated to increase verbosity")
+	rootCmd.PersistentFlags().BoolP("pretty", "p", false, "Disables structured JSON logging to stdout, making it easier to read")
+	rootCmd.PersistentFlags().String("otlp-target", "", "An optional OpenTelemetry collection target that will receive metrics and traces")
+	rootCmd.PersistentFlags().String("otlp-cacert", "", "An optional path to a CA certificate file to use to validate OpenTelemetry target endpoint.")
+	rootCmd.PersistentFlags().Bool("otlp-insecure", false, "Disable TLS verification of OpenTelemetry target endpoint")
 	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
 	_ = viper.BindPFlag("pretty", rootCmd.PersistentFlags().Lookup("pretty"))
-	_ = viper.BindPFlag("otlp-endpoint", rootCmd.PersistentFlags().Lookup("otlp-endpoint"))
+	_ = viper.BindPFlag("otlp-target", rootCmd.PersistentFlags().Lookup("otlp-target"))
+	_ = viper.BindPFlag("otlp-cacert", rootCmd.PersistentFlags().Lookup("otlp-cacert"))
+	_ = viper.BindPFlag("otlp-insecure", rootCmd.PersistentFlags().Lookup("otlp-insecure"))
 }
 
 // Determine the outcome of command line flags, environment variables, and an
@@ -143,12 +147,27 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 // provided as a configuration flag.
 func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 	logger.V(1).Info("Creating new OpenTelemetry metric pusher")
-	endpoint := viper.GetString("otlp-endpoint")
-	if endpoint == "" {
+	target := viper.GetString("otlp-target")
+	if target == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
 		return nil, nil
 	}
-	client := otlpmetricgrpc.NewClient(otlpmetricgrpc.WithInsecure(), otlpmetricgrpc.WithEndpoint(endpoint))
+	options := []otlpmetricgrpc.Option{
+		otlpmetricgrpc.WithEndpoint(target),
+	}
+	if viper.GetBool("otlp-insecure") {
+		options = append(options, otlpmetricgrpc.WithInsecure())
+	} else {
+		cacert := viper.GetString("otlp-cacert")
+		if cacert != "" {
+			tlsCreds, err := credentials.NewClientTLSFromFile(cacert, "")
+			if err != nil {
+				return nil, err
+			}
+			options = append(options, otlpmetricgrpc.WithTLSCredentials(tlsCreds))
+		}
+	}
+	client := otlpmetricgrpc.NewClient(options...)
 	exporter, err := otlpmetric.New(ctx, client)
 	if err != nil {
 		return nil, err
@@ -163,12 +182,28 @@ func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 // provided as a configuration flag.
 func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 	logger.V(1).Info("Creating new OpenTelemetry trace exporter")
-	endpoint := viper.GetString("otlp-endpoint")
-	if endpoint == "" {
+	target := viper.GetString("otlp-target")
+	if target == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
 		return nil, nil
 	}
-	client := otlptracegrpc.NewClient(otlptracegrpc.WithInsecure(), otlptracegrpc.WithEndpoint(endpoint), otlptracegrpc.WithDialOption(grpc.WithBlock()))
+	options := []otlptracegrpc.Option{
+		otlptracegrpc.WithEndpoint(target),
+		otlptracegrpc.WithDialOption(grpc.WithBlock()),
+	}
+	if viper.GetBool("otlp-insecure") {
+		options = append(options, otlptracegrpc.WithInsecure())
+	} else {
+		cacert := viper.GetString("otlp-cacert")
+		if cacert != "" {
+			tlsCreds, err := credentials.NewClientTLSFromFile(cacert, "")
+			if err != nil {
+				return nil, err
+			}
+			options = append(options, otlptracegrpc.WithTLSCredentials(tlsCreds))
+		}
+	}
+	client := otlptracegrpc.NewClient(options...)
 	return otlptrace.New(ctx, client)
 }
 

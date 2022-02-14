@@ -1,0 +1,47 @@
+# Launch an OpenTelemetry collector, Jaeger, and Prometheus on podman
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: otel-all-in-one
+spec:
+  containers:
+    - name: jaeger
+      image: jaegertracing/all-in-one:1.31.0
+      ports:
+        - containerPort: 16686
+          hostPort: 16686
+          protocol: TCP
+    - name: otlp
+      image: otel/opentelemetry-collector:0.44.0
+      args:
+        - --config
+        - /run/otel/otel-collector-config.yaml
+      volumeMounts:
+        - mountPath: /run/otel
+          name: otel-config-pvc
+      ports:
+        - containerPort: 4317
+          hostPort: 4317
+          protocol: TCP
+    - name: prometheus
+      image: prom/prometheus:v2.33.3
+      args:
+        - --config.file=/run/prometheus/prometheus.yml
+        - --storage.tsdb.path=/prometheus
+        - --web.console.libraries=/usr/share/prometheus/console_libraries
+        - --web.console.templates=/usr/share/prometheus/consoles
+      volumeMounts:
+        - mountPath: /run/prometheus
+          name: prom-config-pvc
+      ports:
+        - containerPort: 9090
+          hostPort: 9090
+          protocol: TCP
+  volumes:
+    - name: prom-config-pvc
+      persistentVolumeClaim:
+        claimName: otel-all-in-one-prom-config
+    - name: otel-config-pvc
+      persistentVolumeClaim:
+        claimName: otel-all-in-one-otel-config
