@@ -15,16 +15,16 @@ require (
 	github.com/spf13/cobra v1.2.1
 	github.com/spf13/viper v1.10.1
 	go.opentelemetry.io/contrib/detectors/gcp v1.4.0
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.26.0
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.27.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.28.0
 	go.opentelemetry.io/otel v1.4.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.26.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.26.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.27.0
+	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.27.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.3.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.3.0
-	go.opentelemetry.io/otel/metric v0.26.0
+	go.opentelemetry.io/otel/metric v0.27.0
 	go.opentelemetry.io/otel/sdk v1.4.0
-	go.opentelemetry.io/otel/sdk/metric v0.26.0
+	go.opentelemetry.io/otel/sdk/metric v0.27.0
 	go.opentelemetry.io/otel/trace v1.4.0
 	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -54,10 +54,9 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20210529063254-f4c35e4016d9 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.3.0 // indirect
-	go.opentelemetry.io/otel/internal/metric v0.26.0 // indirect
-	go.opentelemetry.io/otel/sdk/export/metric v0.26.0 // indirect
-	go.opentelemetry.io/proto/otlp v0.11.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.4.0 // indirect
+	go.opentelemetry.io/otel/internal/metric v0.27.0 // indirect
+	go.opentelemetry.io/proto/otlp v0.12.0 // indirect
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	gopkg.in/ini.v1 v1.66.2 // indirect
