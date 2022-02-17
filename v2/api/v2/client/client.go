@@ -15,12 +15,12 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
-	// The default timeout that will be applied to connections.
-	DEFAULT_CLIENT_TIMEOUT = 10 * time.Second
+	// The default maximum timeout that will be applied to requests.
+	DEFAULT_MAX_TIMEOUT = 10 * time.Second
 	// The default name to use when registering OpenTelemetry components
 	DEFAULT_OPENTELEMETRY_CLIENT_NAME = "client"
 )
@@ -29,8 +29,8 @@ const (
 type PiClient struct {
 	// The logr.Logger instance to use
 	logger logr.Logger
-	// The client timeout/deadline to use when creating connections to a PiService.
-	timeout time.Duration
+	// The client maximum timeout/deadline to use when making requests to a PiService.
+	maxTimeout time.Duration
 	// The OpenTelemetry tracer to use for spans
 	tracer trace.Tracer
 	// The OpenTelemetry meter to use for metrics
@@ -43,6 +43,10 @@ type PiClient struct {
 	responseErrors metric.Int64Counter
 	// A gauge for request durations
 	durationMs metric.Float64Histogram
+	// gRPC transport credentials
+	creds credentials.TransportCredentials
+	// gRPC server authority to specify for TLS verification
+	authority string
 }
 
 // Defines a function signature for PiClient options.
@@ -51,11 +55,11 @@ type PiClientOption func(*PiClient)
 // Create a new PiClient with optional settings.
 func NewPiClient(options ...PiClientOption) *PiClient {
 	client := &PiClient{
-		logger:  logr.Discard(),
-		timeout: DEFAULT_CLIENT_TIMEOUT,
-		tracer:  trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
-		meter:   metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
-		prefix:  DEFAULT_OPENTELEMETRY_CLIENT_NAME,
+		logger:     logr.Discard(),
+		maxTimeout: DEFAULT_MAX_TIMEOUT,
+		tracer:     trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
+		meter:      metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
+		prefix:     DEFAULT_OPENTELEMETRY_CLIENT_NAME,
 	}
 	for _, option := range options {
 		option(client)
@@ -73,10 +77,10 @@ func WithLogger(logger logr.Logger) PiClientOption {
 	}
 }
 
-// Set the client timeout.
-func WithTimeout(timeout time.Duration) PiClientOption {
+// Set the maximum timeout for client requests to a PiService.
+func WithMaxTimeout(maxTimeout time.Duration) PiClientOption {
 	return func(c *PiClient) {
-		c.timeout = timeout
+		c.maxTimeout = maxTimeout
 	}
 }
 
@@ -98,6 +102,20 @@ func WithMeter(meter metric.Meter) PiClientOption {
 func WithPrefix(prefix string) PiClientOption {
 	return func(c *PiClient) {
 		c.prefix = prefix
+	}
+}
+
+// Set the TransportCredentials to use for Pi Service connection
+func WithTransportCredentials(creds credentials.TransportCredentials) PiClientOption {
+	return func(c *PiClient) {
+		c.creds = creds
+	}
+}
+
+// Set the authority to use for Pi Service client calls
+func WithAuthority(authority string) PiClientOption {
+	return func(c *PiClient) {
+		c.authority = authority
 	}
 }
 
@@ -128,10 +146,20 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 		attribute.String("endpoint", endpoint),
 		attribute.Int("index", int(index)),
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), c.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), c.maxTimeout)
 	defer cancel()
 	startTs := time.Now()
-	conn, err := grpc.DialContext(ctx, endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()))
+	options := []grpc.DialOption{
+		grpc.WithBlock(),
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+	}
+	if c.creds != nil {
+		options = append(options, grpc.WithTransportCredentials(c.creds))
+	}
+	if c.authority != "" {
+		options = append(options, grpc.WithAuthority(c.authority))
+	}
+	conn, err := grpc.DialContext(ctx, endpoint, options...)
 	if err != nil {
 		c.meter.RecordBatch(
 			ctx,

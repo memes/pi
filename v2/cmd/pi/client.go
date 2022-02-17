@@ -2,7 +2,10 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"sync"
@@ -14,12 +17,13 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
-	CLIENT_SERVICE_NAME    = "client"
-	DEFAULT_DIGIT_COUNT    = 100
-	DEFAULT_CLIENT_TIMEOUT = 10 * time.Second
+	CLIENT_SERVICE_NAME = "client"
+	DEFAULT_DIGIT_COUNT = 100
+	DEFAULT_MAX_TIMEOUT = 10 * time.Second
 )
 
 var (
@@ -27,20 +31,31 @@ var (
 	// more pi server instances and build up the digits of pi through multiple
 	// requests.
 	clientCmd = &cobra.Command{
-		Use:   CLIENT_SERVICE_NAME + " endpoint [endpoint]",
-		Short: "Run a gRPC client to request fractional digits of pi",
-		Long: `Launches a client that will connect to the server instances in parallel and request the fractional digits of pi.
-At least one endpoint address must be provided. Metrics and traces will be sent to an optionally provided OpenTelemetry collection endpoint.`,
+		Use:   CLIENT_SERVICE_NAME + " target [target]",
+		Short: "Run a gRPC Pi Service client to request fractional digits of pi",
+		Long: `Launches a gRPC client that will connect to Pi Service target(s) and request the fractional digits of pi.
+
+At least one target endpoint must be provided. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: clientMain,
 	}
 )
 
 func init() {
-	clientCmd.PersistentFlags().UintP("count", "c", DEFAULT_DIGIT_COUNT, "number of decimal digits of pi to request")
-	clientCmd.PersistentFlags().DurationP("timeout", "t", DEFAULT_CLIENT_TIMEOUT, "client timeout")
+	clientCmd.PersistentFlags().UintP("count", "c", DEFAULT_DIGIT_COUNT, "The number of decimal digits of pi to request")
+	clientCmd.PersistentFlags().DurationP("max-timeout", "m", DEFAULT_MAX_TIMEOUT, "The maximum timeout for a Pi Service request")
+	clientCmd.PersistentFlags().String("cacert", "", "An optional CA certificate to use for Pi Service TLS verification")
+	clientCmd.PersistentFlags().String("cert", "", "An optional client TLS certificate to use with Pi Service")
+	clientCmd.PersistentFlags().String("key", "", "An optional client TLS private key to use with Pi Service")
+	clientCmd.PersistentFlags().Bool("insecure", false, "Disable TLS verification of Pi Service")
+	clientCmd.PersistentFlags().String("authority", "", "Set the authoritative name of the Pi Service target for TLS verification, overriding hostname")
 	_ = viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count"))
-	_ = viper.BindPFlag("timeout", clientCmd.PersistentFlags().Lookup("timeout"))
+	_ = viper.BindPFlag("max-timeout", clientCmd.PersistentFlags().Lookup("max-timeout"))
+	_ = viper.BindPFlag("cacert", clientCmd.PersistentFlags().Lookup("cacert"))
+	_ = viper.BindPFlag("cert", clientCmd.PersistentFlags().Lookup("cert"))
+	_ = viper.BindPFlag("key", clientCmd.PersistentFlags().Lookup("key"))
+	_ = viper.BindPFlag("insecure", clientCmd.PersistentFlags().Lookup("insecure"))
+	_ = viper.BindPFlag("authority", clientCmd.PersistentFlags().Lookup("authority"))
 	rootCmd.AddCommand(clientCmd)
 }
 
@@ -53,14 +68,22 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	ctx := context.Background()
 	shutdown := initTelemetry(ctx, CLIENT_SERVICE_NAME, sdktrace.AlwaysSample())
 	defer shutdown(ctx)
-	logger.V(0).Info("Running client")
-	client := client.NewPiClient(
+	logger.V(0).Info("Preparing client TLS config")
+	tlsCreds, err := newClientTLSCredentials()
+	if err != nil {
+		return err
+	}
+	logger.V(0).Info("Building client")
+	options := []client.PiClientOption{
 		client.WithLogger(logger),
-		client.WithTimeout(viper.GetDuration("timeout")),
+		client.WithMaxTimeout(viper.GetDuration("max-timeout")),
 		client.WithTracer(otel.Tracer(CLIENT_SERVICE_NAME)),
 		client.WithMeter(global.Meter(CLIENT_SERVICE_NAME)),
 		client.WithPrefix(CLIENT_SERVICE_NAME),
-	)
+		client.WithTransportCredentials(tlsCreds),
+		client.WithAuthority(viper.GetString("authority")),
+	}
+	client := client.NewPiClient(options...)
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)
 	digits := make([]byte, count)
@@ -86,4 +109,41 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	}
 	fmt.Println()
 	return nil
+}
+
+// Creates the gRPC transport credentials to use with PiService client from the
+// various configuration options provided.
+func newClientTLSCredentials() (credentials.TransportCredentials, error) {
+	var tlsConf tls.Config
+	certFile := viper.GetString("cert")
+	keyFile := viper.GetString("key")
+	cacertFile := viper.GetString("cacert")
+	insecure := viper.GetBool("insecure")
+	logger := logger.V(1).WithValues("certFile", certFile, "keyFile", keyFile, "cacertFile", cacertFile, "insecure", insecure)
+	logger.V(0).Info("Preparing client TLS credentials")
+	if certFile != "" {
+		logger.V(1).Info("Loading x509 certificate and key")
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, err
+		}
+		tlsConf.Certificates = []tls.Certificate{cert}
+	}
+
+	if insecure {
+		logger.V(1).Info("Skipping TLS verification")
+		tlsConf.InsecureSkipVerify = true
+	} else if cacertFile != "" {
+		logger.V(1).Info("Loading CA from file")
+		ca, err := ioutil.ReadFile(cacertFile)
+		if err != nil {
+			return nil, err
+		}
+		certPool := x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM(ca); !ok {
+			return nil, fmt.Errorf("failed to append CA cert %s to CA pool", cacertFile)
+		}
+		tlsConf.RootCAs = certPool
+	}
+	return credentials.NewTLS(&tlsConf), nil
 }

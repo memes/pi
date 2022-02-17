@@ -24,6 +24,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -60,6 +61,8 @@ type PiServer struct {
 	cacheHits metric.Int64Counter
 	// A counter for cache misses
 	cacheMisses metric.Int64Counter
+	// gRPC transport credentials
+	creds credentials.TransportCredentials
 }
 
 // Defines the function signature for PiServer options.
@@ -142,8 +145,15 @@ func WithMeter(meter metric.Meter) PiServerOption {
 
 // Set the prefix to use for OpenTelemetry metrics.
 func WithPrefix(prefix string) PiServerOption {
-	return func(c *PiServer) {
-		c.prefix = prefix
+	return func(s *PiServer) {
+		s.prefix = prefix
+	}
+}
+
+// Set the TransportCredentials to use for Pi Service connection
+func WithTransportCredentials(creds credentials.TransportCredentials) PiServerOption {
+	return func(s *PiServer) {
+		s.creds = creds
 	}
 }
 
@@ -254,9 +264,13 @@ func (s *PiServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1
 
 // Create a new grpc.Server that is ready to be attached to a net.Listener.
 func (s *PiServer) NewGrpcServer() *grpc.Server {
-	grpcServer := grpc.NewServer(
+	options := []grpc.ServerOption{
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-	)
+	}
+	if s.creds != nil {
+		options = append(options, grpc.Creds(s.creds))
+	}
+	grpcServer := grpc.NewServer(options...)
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	api.RegisterPiServiceServer(grpcServer, s)

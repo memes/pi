@@ -1,6 +1,10 @@
 package main
 
 import (
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -17,12 +21,12 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 const (
 	SERVER_SERVICE_NAME         = "server"
-	DEFAULT_GRPC_LISTEN_ADDRESS = ":9090"
-	DEFAULT_REST_LISTEN_ADDRESS = ":8080"
+	DEFAULT_GRPC_LISTEN_ADDRESS = ":443"
 )
 
 var (
@@ -30,34 +34,40 @@ var (
 	serverCmd = &cobra.Command{
 		Use:   SERVER_SERVICE_NAME,
 		Short: "Run gRPC service to return fractional digits of pi",
-		Long: `Launches a gRPC service and optional REST gateway listening at the specified addresses for incoming client connections.
-A single fractional digit of pi will be returned per request. Metrics and traces will be sent to an optionally provided OpenTelemetry collection endpoint.`,
+		Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
+
+A single decimal digit of pi will be returned per request. An optional Redis DB can be used to cache the calculated digits. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
 		RunE: serverMain,
 	}
 )
 
 func init() {
-	serverCmd.PersistentFlags().StringP("grpc-address", "g", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to listen for gRPC connections")
-	serverCmd.PersistentFlags().StringP("rest-address", "a", DEFAULT_REST_LISTEN_ADDRESS, "Address to listen for REST connections")
-	serverCmd.PersistentFlags().StringP("redis-address", "r", "", "Address for Redis instance")
-	serverCmd.PersistentFlags().StringToStringP("label", "l", nil, "Optional label key=value to apply to server. Can be repeated.")
-	serverCmd.PersistentFlags().BoolP("enable-rest", "e", false, "Enable REST gateway for gRPC service")
-	_ = viper.BindPFlag("grpc-address", serverCmd.PersistentFlags().Lookup("grpc-address"))
+	serverCmd.PersistentFlags().StringP("address", "a", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to listen for gRPC PiService requests")
+	serverCmd.PersistentFlags().String("rest-address", "", "An optional listen address to launch a REST/gRPC gateway process")
+	serverCmd.PersistentFlags().String("redis-target", "", "An optional Redis endpoint to use as a PiService cache")
+	serverCmd.PersistentFlags().StringToStringP("label", "l", nil, "An optional label key=value to add to PiService response metadata; can be repeated")
+	serverCmd.PersistentFlags().String("cacert", "", "An optional CA certificate to use for PiService client TLS verification")
+	serverCmd.PersistentFlags().String("cert", "", "An optional client TLS certificate to use with PiService")
+	serverCmd.PersistentFlags().String("key", "", "An optional client TLS private key to use with PiService")
+	serverCmd.PersistentFlags().Bool("tls-client-auth", false, "Require PiService clients to provide a valid TLS client certificate")
+	_ = viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address"))
 	_ = viper.BindPFlag("rest-address", serverCmd.PersistentFlags().Lookup("rest-address"))
-	_ = viper.BindPFlag("redis-address", serverCmd.PersistentFlags().Lookup("redis-address"))
+	_ = viper.BindPFlag("redis-target", serverCmd.PersistentFlags().Lookup("redis-target"))
 	_ = viper.BindPFlag("label", serverCmd.PersistentFlags().Lookup("label"))
-	_ = viper.BindPFlag("enable-rest", serverCmd.PersistentFlags().Lookup("enable-rest"))
+	_ = viper.BindPFlag("cacert", serverCmd.PersistentFlags().Lookup("cacert"))
+	_ = viper.BindPFlag("cert", serverCmd.PersistentFlags().Lookup("cert"))
+	_ = viper.BindPFlag("key", serverCmd.PersistentFlags().Lookup("key"))
+	_ = viper.BindPFlag("tls-client-auth", serverCmd.PersistentFlags().Lookup("tls-client-auth"))
 	rootCmd.AddCommand(serverCmd)
 }
 
 // Server sub-command entrypoint. This function will launch the gRPC PiService
 // and an optional REST gateway.
 func serverMain(cmd *cobra.Command, args []string) error {
-	grpcAddress := viper.GetString("grpc-address")
+	address := viper.GetString("address")
 	restAddress := viper.GetString("rest-address")
-	enableREST := viper.GetBool("enable-rest")
-	redisAddress := viper.GetString("redis-address")
-	logger := logger.V(1).WithValues("grpcAddress", grpcAddress, "redisAddress", redisAddress, "restAddress", restAddress, "enableREST", enableREST)
+	redisTarget := viper.GetString("redis-target")
+	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress)
 	ctx := context.Background()
 	logger.V(0).Info("Preparing telemetry")
 	telemetryShutdown := initTelemetry(ctx, SERVER_SERVICE_NAME, sdktrace.AlwaysSample())
@@ -70,10 +80,15 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		server.WithMeter(global.Meter(SERVER_SERVICE_NAME)),
 		server.WithPrefix(SERVER_SERVICE_NAME),
 	}
-	if redisAddress != "" {
-		options = append(options, server.WithCache(server.NewRedisCache(ctx, redisAddress)))
+	if redisTarget != "" {
+		options = append(options, server.WithCache(server.NewRedisCache(ctx, redisTarget)))
 
 	}
+	tlsCreds, err := newServerTLSCredentials()
+	if err != nil {
+		return err
+	}
+	options = append(options, server.WithTransportCredentials(tlsCreds))
 	server := server.NewPiServer(options...)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -88,16 +103,16 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	g.Go(func() error {
 		logger.V(0).Info("Starting gRPC service")
 		grpcServer = server.NewGrpcServer()
-		listener, err := net.Listen("tcp", grpcAddress)
+		listener, err := net.Listen("tcp", address)
 		if err != nil {
 			return err
 		}
 		return grpcServer.Serve(listener)
 	})
-	if enableREST {
+	if restAddress != "" {
 		g.Go(func() error {
 			logger.V(0).Info("Starting REST/gRPC gateway")
-			restHandler, err := server.NewRestGatewayHandler(ctx, grpcAddress)
+			restHandler, err := server.NewRestGatewayHandler(ctx, address)
 			if err != nil {
 				return err
 			}
@@ -130,4 +145,46 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	}
 	telemetryShutdown(ctx)
 	return g.Wait()
+}
+
+// Creates the gRPC transport credentials to use with PiService server from the
+// various configuration options provided.
+func newServerTLSCredentials() (credentials.TransportCredentials, error) {
+	var tlsConf tls.Config
+	certFile := viper.GetString("cert")
+	keyFile := viper.GetString("key")
+	cacertFile := viper.GetString("cacert")
+	tlsClientAuth := viper.GetBool("tls-client-auth")
+	logger := logger.V(1).WithValues("certFile", certFile, "keyFile", keyFile, "cacertFile", cacertFile)
+	logger.V(0).Info("Preparing server TLS credentials")
+	if certFile != "" {
+		logger.V(1).Info("Loading x509 certificate and key")
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, err
+		}
+		tlsConf.Certificates = []tls.Certificate{cert}
+	}
+
+	if cacertFile != "" {
+		logger.V(1).Info("Loading CA from file")
+		ca, err := ioutil.ReadFile(cacertFile)
+		if err != nil {
+			return nil, err
+		}
+		certPool := x509.NewCertPool()
+		if ok := certPool.AppendCertsFromPEM(ca); !ok {
+			return nil, fmt.Errorf("failed to append CA cert %s to CA pool", cacertFile)
+		}
+		tlsConf.ClientCAs = certPool
+	}
+
+	if tlsClientAuth {
+		tlsConf.ClientAuth = tls.RequireAndVerifyClientCert
+	} else if cacertFile != "" {
+		tlsConf.ClientAuth = tls.VerifyClientCertIfGiven
+	} else {
+		tlsConf.ClientAuth = tls.NoClientCert
+	}
+	return credentials.NewTLS(&tlsConf), nil
 }

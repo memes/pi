@@ -52,7 +52,7 @@ E.g. to request the first 250 fractional digits of pi from a gRPC server
 running at localhost:9090:
 
 ```shell
-pi client --count 250 --timeout 25s localhost:9090
+pi client --count 250 --max-timeout 25s localhost:9090
 ```
 
 ```text
@@ -79,10 +79,10 @@ Use `pi help server` to see the full set of options available to the client.
 
 The `pi server` can optionally enable an embedded REST-to-gRPC gateway to expose a REST API for the server.
 
-E.g. launch server with REST gateway (default listener `:8080`)
+E.g. launch server with REST gateway on port 8080
 
 ```shell
-pi server --otlp-endpoint otlp-collector:4317 --enable-rest --label foo=bar
+pi server --otlp-target otlp-collector:4317 --redis-address :8080 --label foo=bar
 ```
 
 Using `httpie` to test the endpoint
@@ -119,7 +119,7 @@ Traceparent: 00-fb4d915bde98587a1ccb8e813fedaaec-7e3739106904a4a0-01
 
 ### OpenTelemetry metrics and traces
 
-Both `pi server` and `pi client` support an optional flag to set an OpenTelemetry collector where span and metric data will be sent. Use the `--otlp-endpoint` flag with an address:port specifier, and configure the collector to relay traces and metrics to any supported analyser.
+Both `pi server` and `pi client` support an optional flag to set an OpenTelemetry collector where span and metric data will be sent. Use the `--otlp-target` flag with an address:port specifier, and configure the collector to relay traces and metrics to any supported analyser.
 
 ## Installing binaries
 
@@ -134,16 +134,16 @@ The `pi` binary will be added to your `GOBIN` directory.
 
 Tagged binaries are also published and can be downloaded from [GitHub Releases](https://github.com/memes/pi/releases).
 
-## Docker containers
+## OCI containers
 
-In addition, tagged releases are published to the public
-[Docker hub repo](https://hub.docker.com/r/memes/pi/). The container defaults to
+In addition, tagged releases are published to the public [GitHub](https://github.com/memes/pi/pkgs/container/pi%2F) and
+[Docker hub](https://hub.docker.com/r/memes/pi/) repos. The container defaults to
 running `pi server` without any options. To change the action and add options just
 add the arguments to `docker run` or `podman run`.
 
 E.g. to run the latest v2 `pi server` with metrics and traces published to an
-OpenTelemetry collector at `otlp-collector:4317`:-
+OpenTelemetry collector at `:4317`:-
 
 ```shell
-docker run --rm memes/pi:2 server --otlp-endpoint otlp-collector:4317
+podman run --rm ghcr.io/memes/pi/pi:2 server --otlp-target :4317 --otlp-insecure
 ```
