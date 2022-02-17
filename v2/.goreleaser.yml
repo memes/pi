@@ -1,9 +1,6 @@
 # use goreleaser for v2 builds and containers
 ---
 project_name: pi
-before:
-  hooks:
-    - go mod tidy
 builds:
   - env:
       - CGO_ENABLED=0
