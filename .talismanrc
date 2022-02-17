@@ -3,7 +3,7 @@
 version: "1.0"
 fileignoreconfig:
 - filename: .github/workflows/release.yml
-  checksum: aeeabea5e393deb884e73617a3a1c8e46c1fc50ad26e64d5284b2492fcc47080
+  checksum: a4e6bf06dae2dee91f45d39affbadf2c56c73def595ae4f1c94efff6a40a467a
 - filename: go.sum
   checksum: 4cf2a7a763e09f773620eca4025349e02ea4eeeba0565122f8191d14baf79de1
 - filename: v2/buf.lock

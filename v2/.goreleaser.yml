@@ -57,6 +57,9 @@ dockers:
       - memes/{{ .ProjectName }}:latest
       - memes/{{ .ProjectName }}:{{ .Tag }}
       - memes/{{ .ProjectName }}:{{ .Major }}
+      - ghcr.io/memes/pi/{{ .ProjectName }}:latest
+      - ghcr.io/memes/pi/{{ .ProjectName }}:{{ .Tag }}
+      - ghcr.io/memes/pi/{{ .ProjectName }}:{{ .Major }}
     dockerfile: Dockerfile
     use: docker
     build_flag_templates:
