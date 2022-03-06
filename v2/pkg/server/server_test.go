@@ -8,6 +8,7 @@ import (
 
 	"github.com/alicebob/miniredis"
 	api "github.com/memes/pi/v2/api/v2"
+	"github.com/memes/pi/v2/pkg/cache"
 )
 
 const (
@@ -32,7 +33,7 @@ func testGetDigit(ctx context.Context, request *api.GetDigitRequest, server *PiS
 
 func TestGetDigit_WithNoopCache(t *testing.T) {
 	ctx := context.Background()
-	cache := NewNoopCache()
+	cache := cache.NewNoopCache()
 	if cache == nil {
 		t.Error("Noop cache is nil")
 	}
@@ -52,7 +53,7 @@ func TestFractionalDigit_WithRedisCache(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error running miniredis: %v", err)
 	}
-	cache := NewRedisCache(ctx, mock.Addr())
+	cache := cache.NewRedisCache(ctx, mock.Addr())
 	if cache == nil {
 		t.Error("Redis cache is nil")
 	}

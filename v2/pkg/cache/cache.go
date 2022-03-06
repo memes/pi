@@ -1,4 +1,6 @@
-package server
+// Package cache defines a common interface for cache implementations that can
+// be used by PiService implementations.
+package cache
 
 import (
 	"context"

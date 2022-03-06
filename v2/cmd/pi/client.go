@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/memes/pi/v2/api/v2/client"
+	"github.com/memes/pi/v2/pkg/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
@@ -26,20 +26,18 @@ const (
 	DEFAULT_MAX_TIMEOUT = 10 * time.Second
 )
 
-var (
-	// Implements the client sub-command which attempts to connect to one or
-	// more pi server instances and build up the digits of pi through multiple
-	// requests.
-	clientCmd = &cobra.Command{
-		Use:   CLIENT_SERVICE_NAME + " target [target]",
-		Short: "Run a gRPC Pi Service client to request fractional digits of pi",
-		Long: `Launches a gRPC client that will connect to Pi Service target(s) and request the fractional digits of pi.
+// Implements the client sub-command which attempts to connect to one or
+// more pi server instances and build up the digits of pi through multiple
+// requests.
+var clientCmd = &cobra.Command{
+	Use:   CLIENT_SERVICE_NAME + " target [target]",
+	Short: "Run a gRPC Pi Service client to request fractional digits of pi",
+	Long: `Launches a gRPC client that will connect to Pi Service target(s) and request the fractional digits of pi.
 
 At least one target endpoint must be provided. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
-		Args: cobra.MinimumNArgs(1),
-		RunE: clientMain,
-	}
-)
+	Args: cobra.MinimumNArgs(1),
+	RunE: clientMain,
+}
 
 func init() {
 	clientCmd.PersistentFlags().UintP("count", "c", DEFAULT_DIGIT_COUNT, "The number of decimal digits of pi to request")

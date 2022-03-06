@@ -12,7 +12,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/memes/pi/v2/api/v2/server"
+	"github.com/memes/pi/v2/pkg/cache"
+	"github.com/memes/pi/v2/pkg/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.opentelemetry.io/otel"
@@ -29,17 +30,15 @@ const (
 	DEFAULT_GRPC_LISTEN_ADDRESS = ":443"
 )
 
-var (
-	// Implements the server sub-command
-	serverCmd = &cobra.Command{
-		Use:   SERVER_SERVICE_NAME,
-		Short: "Run gRPC service to return fractional digits of pi",
-		Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
+// Implements the server sub-command
+var serverCmd = &cobra.Command{
+	Use:   SERVER_SERVICE_NAME,
+	Short: "Run gRPC service to return fractional digits of pi",
+	Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
 
 A single decimal digit of pi will be returned per request. An optional Redis DB can be used to cache the calculated digits. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
-		RunE: serverMain,
-	}
-)
+	RunE: serverMain,
+}
 
 func init() {
 	serverCmd.PersistentFlags().StringP("address", "a", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to listen for gRPC PiService requests")
@@ -81,8 +80,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		server.WithPrefix(SERVER_SERVICE_NAME),
 	}
 	if redisTarget != "" {
-		options = append(options, server.WithCache(server.NewRedisCache(ctx, redisTarget)))
-
+		options = append(options, server.WithCache(cache.NewRedisCache(ctx, redisTarget)))
 	}
 	tlsCreds, err := newServerTLSCredentials()
 	if err != nil {

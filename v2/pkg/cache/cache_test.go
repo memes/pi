@@ -1,4 +1,4 @@
-package server
+package cache_test
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis"
+	"github.com/memes/pi/v2/pkg/cache"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 // result in an empty string.
 func TestNoopCache(t *testing.T) {
 	ctx := context.Background()
-	cache := NewNoopCache()
+	cache := cache.NewNoopCache()
 	if cache == nil {
 		t.Error("Noop cache is nil")
 	}
@@ -34,7 +35,6 @@ func TestNoopCache(t *testing.T) {
 		}
 		if err = cache.SetValue(ctx, key, "1234"); err != nil {
 			t.Errorf("Index: %d: SetValue returned an error: %v", i, err)
-
 		}
 		actual, err = cache.GetValue(ctx, key)
 		if err != nil {
@@ -43,7 +43,6 @@ func TestNoopCache(t *testing.T) {
 		if actual != expected {
 			t.Errorf("Index %d: Expected %s received %s", i, expected, actual)
 		}
-
 	}
 }
 
@@ -56,7 +55,7 @@ func TestRedisCache(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error running miniredis: %v", err)
 	}
-	cache := NewRedisCache(ctx, mock.Addr())
+	cache := cache.NewRedisCache(ctx, mock.Addr())
 	if cache == nil {
 		t.Error("Redis cache is nil")
 	}
@@ -73,7 +72,6 @@ func TestRedisCache(t *testing.T) {
 		expected = fmt.Sprintf("%09d", i)
 		if err = cache.SetValue(ctx, key, expected); err != nil {
 			t.Errorf("Index: %d: SetValue returned an error: %v", i, err)
-
 		}
 		actual, err = cache.GetValue(ctx, key)
 		if err != nil {
@@ -82,6 +80,5 @@ func TestRedisCache(t *testing.T) {
 		if actual != expected {
 			t.Errorf("Index %d: Expected %s received %s", i, expected, actual)
 		}
-
 	}
 }
