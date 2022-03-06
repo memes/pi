@@ -4,6 +4,8 @@ package cache
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
 	"github.com/gomodule/redigo/redis"
 )
@@ -29,7 +31,7 @@ func (n *NoopCache) GetValue(ctx context.Context, key string) (string, error) {
 }
 
 // Ignores the value and returns nil error.
-func (n *NoopCache) SetValue(ctx context.Context, key string, value string) error {
+func (n *NoopCache) SetValue(ctx context.Context, key, value string) error {
 	return nil
 }
 
@@ -47,12 +49,16 @@ type RedisCache struct {
 
 type RedisCacheOption func(*RedisCache)
 
-// Return a new Cache implementation using Redis
+// Return a new Cache implementation using Redis as a backend.
 func NewRedisCache(ctx context.Context, endpoint string, options ...RedisCacheOption) *RedisCache {
 	cache := &RedisCache{
 		&redis.Pool{
 			DialContext: func(ctx context.Context) (redis.Conn, error) {
-				return redis.DialContext(ctx, "tcp", endpoint)
+				conn, err := redis.DialContext(ctx, "tcp", endpoint)
+				if err != nil {
+					return nil, fmt.Errorf("failed to establish Redis dial context: %w", err)
+				}
+				return conn, nil
 			},
 		},
 	}
@@ -68,23 +74,23 @@ func (r *RedisCache) GetValue(ctx context.Context, key string) (string, error) {
 	defer conn.Close()
 
 	value, err := redis.String(conn.Do("GET", key))
-	if err == redis.ErrNil {
+	if errors.Is(err, redis.ErrNil) {
 		// A cache miss is *NOT* an error to propagate
 		return "", nil
 	}
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failure in Redis cache GetValue: %w", err)
 	}
 	return value, nil
 }
 
 // Store the string key:value pair in Redis.
-func (r *RedisCache) SetValue(ctx context.Context, key string, value string) error {
+func (r *RedisCache) SetValue(ctx context.Context, key, value string) error {
 	conn := r.Get()
 	defer conn.Close()
 	_, err := conn.Do("SET", key, value)
 	if err != nil {
-		return err
+		return fmt.Errorf("failure in Redis cache SetValue: %w", err)
 	}
 	return nil
 }

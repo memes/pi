@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	TEST_CACHE_LOOP_LIMIT = 10
+	TestCacheLoopLimit = 10
 )
 
 // The noopCache should do nothing useful. This test confirms that values can
@@ -19,24 +19,25 @@ const (
 // result in an empty string.
 func TestNoopCache(t *testing.T) {
 	ctx := context.Background()
-	cache := cache.NewNoopCache()
-	if cache == nil {
+	testCache := cache.NewNoopCache()
+	if testCache == nil {
 		t.Error("Noop cache is nil")
 	}
-	for i := uint64(0); i < TEST_CACHE_LOOP_LIMIT; i++ {
+	t.Parallel()
+	for i := uint64(0); i < TestCacheLoopLimit; i++ {
 		expected := ""
 		key := strconv.FormatUint(i, 16)
-		actual, err := cache.GetValue(ctx, key)
+		actual, err := testCache.GetValue(ctx, key)
 		if err != nil {
 			t.Errorf("GetValue returned an error: %v", err)
 		}
 		if actual != expected {
 			t.Errorf("Index %d: Expected %s received %s", i, expected, actual)
 		}
-		if err = cache.SetValue(ctx, key, "1234"); err != nil {
+		if err = testCache.SetValue(ctx, key, "1234"); err != nil {
 			t.Errorf("Index: %d: SetValue returned an error: %v", i, err)
 		}
-		actual, err = cache.GetValue(ctx, key)
+		actual, err = testCache.GetValue(ctx, key)
 		if err != nil {
 			t.Errorf("GetDigits returned an error: %v", err)
 		}
@@ -55,14 +56,15 @@ func TestRedisCache(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error running miniredis: %v", err)
 	}
-	cache := cache.NewRedisCache(ctx, mock.Addr())
-	if cache == nil {
+	testCache := cache.NewRedisCache(ctx, mock.Addr())
+	if testCache == nil {
 		t.Error("Redis cache is nil")
 	}
-	for i := uint64(0); i < TEST_CACHE_LOOP_LIMIT; i++ {
+	t.Parallel()
+	for i := uint64(0); i < TestCacheLoopLimit; i++ {
 		expected := ""
 		key := strconv.FormatUint(i, 16)
-		actual, err := cache.GetValue(ctx, key)
+		actual, err := testCache.GetValue(ctx, key)
 		if err != nil {
 			t.Errorf("GetValue returned an error: %v", err)
 		}
@@ -70,10 +72,10 @@ func TestRedisCache(t *testing.T) {
 			t.Errorf("Index %d: Expected %s received %s", i, expected, actual)
 		}
 		expected = fmt.Sprintf("%09d", i)
-		if err = cache.SetValue(ctx, key, expected); err != nil {
+		if err = testCache.SetValue(ctx, key, expected); err != nil {
 			t.Errorf("Index: %d: SetValue returned an error: %v", i, err)
 		}
-		actual, err = cache.GetValue(ctx, key)
+		actual, err = testCache.GetValue(ctx, key)
 		if err != nil {
 			t.Errorf("GetDigits returned an error: %v", err)
 		}

@@ -34,8 +34,8 @@ import (
 )
 
 const (
-	// The default name to use when registering OpenTelemetry components
-	DEFAULT_OPENTELEMETRY_SERVER_NAME = "server"
+	// The default name to use when registering OpenTelemetry components.
+	DefaultOpenTelemetryServerName = "server"
 )
 
 type PiServer struct {
@@ -67,13 +67,13 @@ type PiServer struct {
 // Defines the function signature for PiServer options.
 type PiServerOption func(*PiServer)
 
-// Create a new piServer and apply any options
+// Create a new piServer and apply any options.
 func NewPiServer(options ...PiServerOption) *PiServer {
 	server := &PiServer{
 		logger: logr.Discard(),
 		cache:  cache.NewNoopCache(),
-		tracer: trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_SERVER_NAME),
-		meter:  metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_SERVER_NAME),
+		tracer: trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryServerName),
+		meter:  metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
 	}
 	for _, option := range options {
 		option(server)
@@ -93,12 +93,12 @@ func WithLogger(logger logr.Logger) PiServerOption {
 	}
 }
 
-// Use the cache implementation to store BBPDigits results to avoid recalculation
+// Use the Cache implementation to store BBPDigits results to avoid recalculation
 // of a digit that has already been calculated.
-func WithCache(cache cache.Cache) PiServerOption {
+func WithCache(lookupCache cache.Cache) PiServerOption {
 	return func(s *PiServer) {
-		if cache != nil {
-			s.cache = cache
+		if lookupCache != nil {
+			s.cache = lookupCache
 		}
 	}
 }
@@ -115,8 +115,8 @@ func WithMetadata(labels map[string]string) PiServerOption {
 		if addrs, err := net.InterfaceAddrs(); err == nil {
 			addresses := make([]string, 0, len(addrs))
 			for _, addr := range addrs {
-				if net, ok := addr.(*net.IPNet); ok && net.IP.IsGlobalUnicast() {
-					addresses = append(addresses, net.IP.String())
+				if ip, ok := addr.(*net.IPNet); ok && ip.IP.IsGlobalUnicast() {
+					addresses = append(addresses, ip.IP.String())
 				}
 			}
 			metadata.Addresses = addresses
@@ -148,32 +148,32 @@ func WithPrefix(prefix string) PiServerOption {
 	}
 }
 
-// Set the TransportCredentials to use for Pi Service connection
+// Set the TransportCredentials to use for Pi Service connection.
 func WithTransportCredentials(creds credentials.TransportCredentials) PiServerOption {
 	return func(s *PiServer) {
 		s.creds = creds
 	}
 }
 
-// Generates a name for the metric
-func (c *PiServer) metricName(name string) string {
-	if c.prefix == "" {
+// Generates a name for the metric.
+func (s *PiServer) metricName(name string) string {
+	if s.prefix == "" {
 		return name
 	}
-	return fmt.Sprintf("%s_%s", c.prefix, name)
+	return fmt.Sprintf("%s_%s", s.prefix, name)
 }
 
-// Create a new Int64 OpenTelemetry metric counter
-func (s *PiServer) newInt64Counter(name string, description string) metric.Int64Counter {
+// Create a new Int64 OpenTelemetry metric counter.
+func (s *PiServer) newInt64Counter(name, description string) metric.Int64Counter {
 	return metric.Must(s.meter).NewInt64Counter(s.metricName(name), metric.WithDescription(description))
 }
 
-// Create a new floating point OpenTelemetry metric gauge
-func (s *PiServer) newFloat64Histogram(name string, description string) metric.Float64Histogram {
+// Create a new floating point OpenTelemetry metric gauge.
+func (s *PiServer) newFloat64Histogram(name, description string) metric.Float64Histogram {
 	return metric.Must(s.meter).NewFloat64Histogram(s.metricName(name), metric.WithDescription(description))
 }
 
-// Implement the PiService GetDigit RPC method
+// Implement the PiService GetDigit RPC method.
 func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
 	logger := s.logger.WithValues("index", in.Index)
 	logger.Info("GetDigit: enter")
@@ -184,7 +184,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	defer span.End()
 	span.SetAttributes(attributes...)
 	var duration float64
-	cacheIndex := uint64(in.Index/9) * 9
+	cacheIndex := (in.Index / 9) * 9
 	key := strconv.FormatUint(cacheIndex, 16)
 	span.AddEvent("Checking cache")
 	digits, err := s.cache.GetValue(ctx, key)
@@ -196,7 +196,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 			attributes,
 			s.cacheErrors.Measurement(1),
 		)
-		return nil, err
+		return nil, fmt.Errorf("cache %T GetValue method returned an error: %w", s.cache, err)
 	}
 	measurements := []metric.Measurement{}
 	if digits == "" {
@@ -218,7 +218,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 				attributes,
 				measurements...,
 			)
-			return nil, err
+			return nil, fmt.Errorf("cache %T SetValue method returned an error: %w", s.cache, err)
 		}
 	} else {
 		measurements = append(measurements, s.cacheHits.Measurement(1))
@@ -235,7 +235,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 			attributes,
 			measurements...,
 		)
-		return nil, err
+		return nil, fmt.Errorf("method GetDigit failed to parse as uint: %w", err)
 	}
 	logger.Info("GetDigit: exit", "digit", digit)
 	s.meter.RecordBatch(
@@ -250,14 +250,14 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	}, nil
 }
 
-// Implement the gRPC health service Check method
+// Implement the gRPC health service Check method.
 func (s *PiServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
 	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
 }
 
-// Satisfy the gRPC health service Watch method - always returns an Unimplemented error
+// Satisfy the gRPC health service Watch method - always returns an Unimplemented error.
 func (s *PiServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
-	return status.Error(codes.Unimplemented, "unimplemented")
+	return status.Error(codes.Unimplemented, "unimplemented") // nolint:wrapcheck
 }
 
 // Create a new grpc.Server that is ready to be attached to a net.Listener.
@@ -285,7 +285,7 @@ func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
 	}
 	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to register PiService handler for REST gateway: %w", err)
 	}
 	if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 		span := trace.SpanFromContext(r.Context())
@@ -293,7 +293,7 @@ func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string
 		span.SetStatus(otelcodes.Error, "v1 API")
 		w.WriteHeader(http.StatusGone)
 	}); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to register /v1 handler for REST gateway: %w", err)
 	}
 	return otelhttp.NewHandler(mux, "rest-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)), nil
 }

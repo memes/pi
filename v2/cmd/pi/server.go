@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -26,22 +27,21 @@ import (
 )
 
 const (
-	SERVER_SERVICE_NAME         = "server"
-	DEFAULT_GRPC_LISTEN_ADDRESS = ":443"
+	ServerServiceName        = "server"
+	DefaultGRPCListenAddress = ":443"
 )
 
-// Implements the server sub-command
-var serverCmd = &cobra.Command{
-	Use:   SERVER_SERVICE_NAME,
-	Short: "Run gRPC service to return fractional digits of pi",
-	Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
+// Implements the server sub-command.
+func NewServerCmd() (*cobra.Command, error) {
+	serverCmd := &cobra.Command{
+		Use:   ServerServiceName,
+		Short: "Run gRPC service to return fractional digits of pi",
+		Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
 
 A single decimal digit of pi will be returned per request. An optional Redis DB can be used to cache the calculated digits. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
-	RunE: serverMain,
-}
-
-func init() {
-	serverCmd.PersistentFlags().StringP("address", "a", DEFAULT_GRPC_LISTEN_ADDRESS, "Address to listen for gRPC PiService requests")
+		RunE: serverMain,
+	}
+	serverCmd.PersistentFlags().StringP("address", "a", DefaultGRPCListenAddress, "Address to listen for gRPC PiService requests")
 	serverCmd.PersistentFlags().String("rest-address", "", "An optional listen address to launch a REST/gRPC gateway process")
 	serverCmd.PersistentFlags().String("redis-target", "", "An optional Redis endpoint to use as a PiService cache")
 	serverCmd.PersistentFlags().StringToStringP("label", "l", nil, "An optional label key=value to add to PiService response metadata; can be repeated")
@@ -49,15 +49,31 @@ func init() {
 	serverCmd.PersistentFlags().String("cert", "", "An optional client TLS certificate to use with PiService")
 	serverCmd.PersistentFlags().String("key", "", "An optional client TLS private key to use with PiService")
 	serverCmd.PersistentFlags().Bool("tls-client-auth", false, "Require PiService clients to provide a valid TLS client certificate")
-	_ = viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address"))
-	_ = viper.BindPFlag("rest-address", serverCmd.PersistentFlags().Lookup("rest-address"))
-	_ = viper.BindPFlag("redis-target", serverCmd.PersistentFlags().Lookup("redis-target"))
-	_ = viper.BindPFlag("label", serverCmd.PersistentFlags().Lookup("label"))
-	_ = viper.BindPFlag("cacert", serverCmd.PersistentFlags().Lookup("cacert"))
-	_ = viper.BindPFlag("cert", serverCmd.PersistentFlags().Lookup("cert"))
-	_ = viper.BindPFlag("key", serverCmd.PersistentFlags().Lookup("key"))
-	_ = viper.BindPFlag("tls-client-auth", serverCmd.PersistentFlags().Lookup("tls-client-auth"))
-	rootCmd.AddCommand(serverCmd)
+	if err := viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address")); err != nil {
+		return nil, fmt.Errorf("failed to bind address pflag: %w", err)
+	}
+	if err := viper.BindPFlag("rest-address", serverCmd.PersistentFlags().Lookup("rest-address")); err != nil {
+		return nil, fmt.Errorf("failed to bind rest-address pflag: %w", err)
+	}
+	if err := viper.BindPFlag("redis-target", serverCmd.PersistentFlags().Lookup("redis-target")); err != nil {
+		return nil, fmt.Errorf("failed to bind redis-target pflag: %w", err)
+	}
+	if err := viper.BindPFlag("label", serverCmd.PersistentFlags().Lookup("label")); err != nil {
+		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
+	}
+	if err := viper.BindPFlag("cacert", serverCmd.PersistentFlags().Lookup("cacert")); err != nil {
+		return nil, fmt.Errorf("failed to bind cacert pflag: %w", err)
+	}
+	if err := viper.BindPFlag("cert", serverCmd.PersistentFlags().Lookup("cert")); err != nil {
+		return nil, fmt.Errorf("failed to bind cert pflag: %w", err)
+	}
+	if err := viper.BindPFlag("key", serverCmd.PersistentFlags().Lookup("key")); err != nil {
+		return nil, fmt.Errorf("failed to bind key pflag: %w", err)
+	}
+	if err := viper.BindPFlag("tls-client-auth", serverCmd.PersistentFlags().Lookup("tls-client-auth")); err != nil {
+		return nil, fmt.Errorf("failed to bind tls-client-auth pflag: %w", err)
+	}
+	return serverCmd, nil
 }
 
 // Server sub-command entrypoint. This function will launch the gRPC PiService
@@ -69,15 +85,15 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress)
 	ctx := context.Background()
 	logger.V(0).Info("Preparing telemetry")
-	telemetryShutdown := initTelemetry(ctx, SERVER_SERVICE_NAME, sdktrace.AlwaysSample())
+	telemetryShutdown := initTelemetry(ctx, ServerServiceName, sdktrace.AlwaysSample())
 
 	logger.V(0).Info("Preparing services")
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
 		server.WithMetadata(viper.GetStringMapString("label")),
-		server.WithTracer(otel.Tracer(SERVER_SERVICE_NAME)),
-		server.WithMeter(global.Meter(SERVER_SERVICE_NAME)),
-		server.WithPrefix(SERVER_SERVICE_NAME),
+		server.WithTracer(otel.Tracer(ServerServiceName)),
+		server.WithMeter(global.Meter(ServerServiceName)),
+		server.WithPrefix(ServerServiceName),
 	}
 	if redisTarget != "" {
 		options = append(options, server.WithCache(cache.NewRedisCache(ctx, redisTarget)))
@@ -87,7 +103,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	options = append(options, server.WithTransportCredentials(tlsCreds))
-	server := server.NewPiServer(options...)
+	piServer := server.NewPiServer(options...)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -100,26 +116,29 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
 		logger.V(0).Info("Starting gRPC service")
-		grpcServer = server.NewGrpcServer()
+		grpcServer = piServer.NewGrpcServer()
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to start gRPC listener: %w", err)
 		}
-		return grpcServer.Serve(listener)
+		if err := grpcServer.Serve(listener); err != nil {
+			return fmt.Errorf("failed to start gRPC server: %w", err)
+		}
+		return nil
 	})
 	if restAddress != "" {
 		g.Go(func() error {
 			logger.V(0).Info("Starting REST/gRPC gateway")
-			restHandler, err := server.NewRestGatewayHandler(ctx, address)
+			restHandler, err := piServer.NewRestGatewayHandler(ctx, address)
 			if err != nil {
-				return err
+				return fmt.Errorf("failed to create new REST gateway handler: %w", err)
 			}
 			restServer = &http.Server{
 				Addr:    restAddress,
 				Handler: restHandler,
 			}
-			if err := restServer.ListenAndServe(); err != http.ErrServerClosed {
-				return err
+			if err := restServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+				return fmt.Errorf("restServer listener returned an error: %w", err)
 			}
 			return nil
 		})
@@ -136,13 +155,15 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	ctx, shutdown := context.WithTimeout(context.Background(), 60*time.Second)
 	defer shutdown()
 	if restServer != nil {
-		_ = restServer.Shutdown(ctx)
+		if err := restServer.Shutdown(ctx); err != nil {
+			logger.Error(err, "Failed to shutdown REST gateway cleanly")
+		}
 	}
 	if grpcServer != nil {
 		grpcServer.GracefulStop()
 	}
 	telemetryShutdown(ctx)
-	return g.Wait()
+	return g.Wait() // nolint:wrapcheck
 }
 
 // Creates the gRPC transport credentials to use with PiService server from the
@@ -159,7 +180,7 @@ func newServerTLSCredentials() (credentials.TransportCredentials, error) {
 		logger.V(1).Info("Loading x509 certificate and key")
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read certificate and key from files %s %s: %w", certFile, keyFile, err)
 		}
 		tlsConf.Certificates = []tls.Certificate{cert}
 	}
@@ -168,20 +189,24 @@ func newServerTLSCredentials() (credentials.TransportCredentials, error) {
 		logger.V(1).Info("Loading CA from file")
 		ca, err := ioutil.ReadFile(cacertFile)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to read CA certificate from file %s: %w", cacertFile, err)
 		}
 		certPool := x509.NewCertPool()
 		if ok := certPool.AppendCertsFromPEM(ca); !ok {
-			return nil, fmt.Errorf("failed to append CA cert %s to CA pool", cacertFile)
+			logger.V(0).Info("Failed to append CA cert %s to CA pool", cacertFile)
+			return nil, errFailedToAppendCACert
 		}
 		tlsConf.ClientCAs = certPool
 	}
 
-	if tlsClientAuth {
+	switch {
+	case tlsClientAuth:
 		tlsConf.ClientAuth = tls.RequireAndVerifyClientCert
-	} else if cacertFile != "" {
+
+	case cacertFile != "":
 		tlsConf.ClientAuth = tls.VerifyClientCertIfGiven
-	} else {
+
+	default:
 		tlsConf.ClientAuth = tls.NoClientCert
 	}
 	return credentials.NewTLS(&tlsConf), nil

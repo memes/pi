@@ -29,7 +29,7 @@ var (
 	// determining if the number is probably a prime. A value of zero will
 	// apply a Baillie-PSW only test and requires Go 1.8+.
 	MillerRabinRounds = 0
-	// The constant 2; declared to avoid repeated allocation in FindNextPrime
+	// The constant 2; declared to avoid repeated allocation in FindNextPrime.
 	two = big.NewInt(2)
 )
 

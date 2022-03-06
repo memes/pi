@@ -20,9 +20,9 @@ import (
 
 const (
 	// The default maximum timeout that will be applied to requests.
-	DEFAULT_MAX_TIMEOUT = 10 * time.Second
-	// The default name to use when registering OpenTelemetry components
-	DEFAULT_OPENTELEMETRY_CLIENT_NAME = "client"
+	DefaultMaxTimeout = 10 * time.Second
+	// The default name to use when registering OpenTelemetry components.
+	DefaultOpenTelemetryClientName = "client"
 )
 
 // Implements the PiServiceClient interface.
@@ -56,10 +56,10 @@ type PiClientOption func(*PiClient)
 func NewPiClient(options ...PiClientOption) *PiClient {
 	client := &PiClient{
 		logger:     logr.Discard(),
-		maxTimeout: DEFAULT_MAX_TIMEOUT,
-		tracer:     trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
-		meter:      metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_CLIENT_NAME),
-		prefix:     DEFAULT_OPENTELEMETRY_CLIENT_NAME,
+		maxTimeout: DefaultMaxTimeout,
+		tracer:     trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryClientName),
+		meter:      metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
+		prefix:     DefaultOpenTelemetryClientName,
 	}
 	for _, option := range options {
 		option(client)
@@ -105,21 +105,21 @@ func WithPrefix(prefix string) PiClientOption {
 	}
 }
 
-// Set the TransportCredentials to use for Pi Service connection
+// Set the TransportCredentials to use for Pi Service connection.
 func WithTransportCredentials(creds credentials.TransportCredentials) PiClientOption {
 	return func(c *PiClient) {
 		c.creds = creds
 	}
 }
 
-// Set the authority to use for Pi Service client calls
+// Set the authority to use for Pi Service client calls.
 func WithAuthority(authority string) PiClientOption {
 	return func(c *PiClient) {
 		c.authority = authority
 	}
 }
 
-// Generates a name for the metric
+// Generates a name for the metric.
 func (c *PiClient) metricName(name string) string {
 	if c.prefix == "" {
 		return name
@@ -127,13 +127,13 @@ func (c *PiClient) metricName(name string) string {
 	return fmt.Sprintf("%s_%s", c.prefix, name)
 }
 
-// Create a new Int64 OpenTelemetry metric counter
-func (c *PiClient) newInt64Counter(name string, description string) metric.Int64Counter {
+// Create a new Int64 OpenTelemetry metric counter.
+func (c *PiClient) newInt64Counter(name, description string) metric.Int64Counter {
 	return metric.Must(c.meter).NewInt64Counter(c.metricName(name), metric.WithDescription(description))
 }
 
-// Create a new floating point OpenTelemetry metric gauge
-func (c *PiClient) newFloat64Histogram(name string, description string) metric.Float64Histogram {
+// Create a new floating point OpenTelemetry metric gauge.
+func (c *PiClient) newFloat64Histogram(name, description string) metric.Float64Histogram {
 	return metric.Must(c.meter).NewFloat64Histogram(c.metricName(name), metric.WithDescription(description))
 }
 
@@ -148,7 +148,7 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), c.maxTimeout)
 	defer cancel()
-	startTs := time.Now()
+	startTimestamp := time.Now()
 	options := []grpc.DialOption{
 		grpc.WithBlock(),
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
@@ -166,14 +166,14 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 			attributes,
 			c.connectionErrors.Measurement(1),
 		)
-		return 0, err
+		return 0, fmt.Errorf("failure establishing client dial context: %w", err)
 	}
 	defer conn.Close()
 	client := api.NewPiServiceClient(conn)
 	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
 		Index: index,
 	})
-	duration := float64(time.Since(startTs) / time.Millisecond)
+	duration := float64(time.Since(startTimestamp) / time.Millisecond)
 	if err != nil {
 		c.meter.RecordBatch(
 			ctx,
@@ -181,7 +181,7 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 			c.responseErrors.Measurement(1),
 			c.durationMs.Measurement(duration),
 		)
-		return 0, err
+		return 0, fmt.Errorf("failure calling GetDigit: %w", err)
 	}
 	c.meter.RecordBatch(
 		ctx,

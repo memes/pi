@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -31,33 +33,55 @@ import (
 )
 
 const (
-	APP_NAME     = "pi"
-	PACKAGE_NAME = "github.com/memes/pi/v2/cmd/pi"
+	AppName     = "pi"
+	PackageName = "github.com/memes/pi/v2/cmd/pi"
 )
 
 var (
-	// Version is updated from git tags during build
+	// Version is updated from git tags during build.
 	version = "unspecified"
-	rootCmd = &cobra.Command{
-		Use:     APP_NAME,
+	// Failed to load CA cert.
+	errFailedToAppendCACert = errors.New("failed to append CA cert to CA pool")
+)
+
+func NewRootCmd() (*cobra.Command, error) {
+	cobra.OnInitialize(initConfig)
+	rootCmd := &cobra.Command{
+		Use:     AppName,
 		Version: version,
 		Short:   "Get a fractional digit of pi at an arbitrary index",
 		Long:    `Provides a gRPC client/server demo for distributed calculation of fractional digits of pi.`,
 	}
-)
-
-func init() {
-	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentFlags().CountP("verbose", "v", "Enable verbose logging; can be repeated to increase verbosity")
 	rootCmd.PersistentFlags().BoolP("pretty", "p", false, "Disables structured JSON logging to stdout, making it easier to read")
 	rootCmd.PersistentFlags().String("otlp-target", "", "An optional OpenTelemetry collection target that will receive metrics and traces")
 	rootCmd.PersistentFlags().String("otlp-cacert", "", "An optional path to a CA certificate file to use to validate OpenTelemetry target endpoint.")
 	rootCmd.PersistentFlags().Bool("otlp-insecure", false, "Disable TLS verification of OpenTelemetry target endpoint")
-	_ = viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose"))
-	_ = viper.BindPFlag("pretty", rootCmd.PersistentFlags().Lookup("pretty"))
-	_ = viper.BindPFlag("otlp-target", rootCmd.PersistentFlags().Lookup("otlp-target"))
-	_ = viper.BindPFlag("otlp-cacert", rootCmd.PersistentFlags().Lookup("otlp-cacert"))
-	_ = viper.BindPFlag("otlp-insecure", rootCmd.PersistentFlags().Lookup("otlp-insecure"))
+	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
+		return nil, fmt.Errorf("failed to bind verbose pflag: %w", err)
+	}
+	if err := viper.BindPFlag("pretty", rootCmd.PersistentFlags().Lookup("pretty")); err != nil {
+		return nil, fmt.Errorf("failed to bind pretty pflag: %w", err)
+	}
+	if err := viper.BindPFlag("otlp-target", rootCmd.PersistentFlags().Lookup("otlp-target")); err != nil {
+		return nil, fmt.Errorf("failed to bind otlp-target pflag: %w", err)
+	}
+	if err := viper.BindPFlag("otlp-cacert", rootCmd.PersistentFlags().Lookup("otlp-cacert")); err != nil {
+		return nil, fmt.Errorf("failed to bind otlp-cacert pflag: %w", err)
+	}
+	if err := viper.BindPFlag("otlp-insecure", rootCmd.PersistentFlags().Lookup("otlp-insecure")); err != nil {
+		return nil, fmt.Errorf("failed to bind otlp-insecure pflag: %w", err)
+	}
+	serverCmd, err := NewServerCmd()
+	if err != nil {
+		return nil, err
+	}
+	clientCmd, err := NewClientCmd()
+	if err != nil {
+		return nil, err
+	}
+	rootCmd.AddCommand(serverCmd, clientCmd)
+	return rootCmd, nil
 }
 
 // Determine the outcome of command line flags, environment variables, and an
@@ -70,8 +94,8 @@ func initConfig() {
 	if home, err := homedir.Dir(); err == nil {
 		viper.AddConfigPath(home)
 	}
-	viper.SetConfigName("." + APP_NAME)
-	viper.SetEnvPrefix(APP_NAME)
+	viper.SetConfigName("." + AppName)
+	viper.SetEnvPrefix(AppName)
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
@@ -93,12 +117,9 @@ func initConfig() {
 	if err == nil {
 		return
 	}
-	switch t := err.(type) {
-	case viper.ConfigFileNotFoundError:
-		logger.V(0).Info("Configuration file not found", "err", t)
-
-	default:
-		logger.Error(t, "Error reading configuration file")
+	var cfgNotFound viper.ConfigFileNotFoundError
+	if !errors.As(err, &cfgNotFound) {
+		logger.Error(err, "Error reading configuration file")
 	}
 }
 
@@ -108,11 +129,11 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 	logger.Info("Creating new OpenTelemetry resource descriptor")
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate UUID for telemetry resource: %w", err)
 	}
-	resource, err := resource.New(ctx,
+	res, err := resource.New(ctx,
 		resource.WithAttributes(
-			semconv.ServiceNamespaceKey.String(PACKAGE_NAME),
+			semconv.ServiceNamespaceKey.String(PackageName),
 			semconv.ServiceNameKey.String(name),
 			semconv.ServiceVersionKey.String(version),
 			semconv.ServiceInstanceIDKey.String(id.String()),
@@ -137,10 +158,10 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 		),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new telemetry resource: %w", err)
 	}
-	logger.V(2).Info("Resource created", "resource", resource)
-	return resource, err
+	logger.V(2).Info("Resource created", "resource", res)
+	return res, nil
 }
 
 // Returns a new metric pusher that will send OpenTelemetry metrics to the endpoint
@@ -162,7 +183,7 @@ func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 		if cacert != "" {
 			tlsCreds, err := credentials.NewClientTLSFromFile(cacert, "")
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create new transport credentials for metric pusher: %w", err)
 			}
 			options = append(options, otlpmetricgrpc.WithTLSCredentials(tlsCreds))
 		}
@@ -170,12 +191,12 @@ func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
 	client := otlpmetricgrpc.NewClient(options...)
 	exporter, err := otlpmetric.New(ctx, client)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create new metric exporter: %w", err)
 	}
 	pusher := controller.New(processor.NewFactory(simple.NewWithInexpensiveDistribution(), exporter), controller.WithExporter(exporter), controller.WithCollectPeriod(2*time.Second))
 	global.SetMeterProvider(pusher)
 	err = pusher.Start(ctx)
-	return pusher, err
+	return pusher, fmt.Errorf("failed to start metric pusher: %w", err)
 }
 
 // Returns a new trace exporter that will send OpenTelemetry traces to the endpoint
@@ -198,13 +219,17 @@ func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
 		if cacert != "" {
 			tlsCreds, err := credentials.NewClientTLSFromFile(cacert, "")
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to create new transport credentials for trace exporter: %w", err)
 			}
 			options = append(options, otlptracegrpc.WithTLSCredentials(tlsCreds))
 		}
 	}
 	client := otlptracegrpc.NewClient(options...)
-	return otlptrace.New(ctx, client)
+	exporter, err := otlptrace.New(ctx, client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new trace exporter: %w", err)
+	}
+	return exporter, nil
 }
 
 // Initializes OpenTelemetry metric and trace processing and deliver to a collector
@@ -221,7 +246,7 @@ func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) f
 	if err != nil {
 		logger.Error(err, "Failed to create OpenTelemetry trace exporter")
 	}
-	resource, err := newTelemetryResource(ctx, name)
+	res, err := newTelemetryResource(ctx, name)
 	if err != nil {
 		logger.Error(err, "Failed to create OpenTelemetry resource")
 	}
@@ -230,13 +255,13 @@ func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) f
 	// so create a provider that does not ever sample or attempt to deliver traces.
 	var provider *sdktrace.TracerProvider
 	if exporter != nil {
-		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)), sdktrace.WithResource(resource))
+		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)), sdktrace.WithResource(res))
 		otel.SetTracerProvider(provider)
 	}
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 
 	logger.Info("OpenTelemetry initialization complete, returning shutdown function")
-	// Return a function that will cancel OpenTelemetry processes
+	// Return a function that will cancel OpenTelemetry processes when called.
 	return func(ctx context.Context) {
 		if provider != nil {
 			if err := provider.Shutdown(ctx); err != nil {

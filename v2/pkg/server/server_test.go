@@ -1,4 +1,4 @@
-package server
+package server_test
 
 import (
 	"context"
@@ -9,20 +9,21 @@ import (
 	"github.com/alicebob/miniredis"
 	api "github.com/memes/pi/v2/api/v2"
 	"github.com/memes/pi/v2/pkg/cache"
+	"github.com/memes/pi/v2/pkg/server"
 )
 
 const (
-	// First 99 fractional digits of pi
-	PI_DIGITS = "1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"
+	// First 99 fractional digits of pi.
+	PiDigits = "1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"
 )
 
-func testGetDigit(ctx context.Context, request *api.GetDigitRequest, server *PiServer, t *testing.T) {
-	t.Parallel()
-	expected, err := strconv.ParseUint(PI_DIGITS[request.Index:request.Index+1], 10, 32)
+func testGetDigit(ctx context.Context, t *testing.T, request *api.GetDigitRequest, piServer *server.PiServer) {
+	t.Helper()
+	expected, err := strconv.ParseUint(PiDigits[request.Index:request.Index+1], 10, 32)
 	if err != nil {
 		t.Errorf("Error parsing Uint: %v", err)
 	}
-	actual, err := server.GetDigit(ctx, request)
+	actual, err := piServer.GetDigit(ctx, request)
 	if err != nil {
 		t.Errorf("Error calling FractionalDigit: %v", err)
 	}
@@ -33,16 +34,17 @@ func testGetDigit(ctx context.Context, request *api.GetDigitRequest, server *PiS
 
 func TestGetDigit_WithNoopCache(t *testing.T) {
 	ctx := context.Background()
-	cache := cache.NewNoopCache()
-	if cache == nil {
+	testCache := cache.NewNoopCache()
+	if testCache == nil {
 		t.Error("Noop cache is nil")
 	}
-	server := NewPiServer(WithCache(cache))
-	for index := 0; index < len(PI_DIGITS); index++ {
+	t.Parallel()
+	piServer := server.NewPiServer(server.WithCache(testCache))
+	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
-			testGetDigit(ctx, &api.GetDigitRequest{
+			testGetDigit(ctx, t, &api.GetDigitRequest{
 				Index: uint64(index),
-			}, server, t)
+			}, piServer)
 		})
 	}
 }
@@ -53,16 +55,17 @@ func TestFractionalDigit_WithRedisCache(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error running miniredis: %v", err)
 	}
-	cache := cache.NewRedisCache(ctx, mock.Addr())
-	if cache == nil {
+	testCache := cache.NewRedisCache(ctx, mock.Addr())
+	if testCache == nil {
 		t.Error("Redis cache is nil")
 	}
-	server := NewPiServer(WithCache(cache))
-	for index := 0; index < len(PI_DIGITS); index++ {
+	t.Parallel()
+	piServer := server.NewPiServer(server.WithCache(testCache))
+	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
-			testGetDigit(ctx, &api.GetDigitRequest{
+			testGetDigit(ctx, t, &api.GetDigitRequest{
 				Index: uint64(index),
-			}, server, t)
+			}, piServer)
 		})
 	}
 }
