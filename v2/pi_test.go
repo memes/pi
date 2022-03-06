@@ -1332,9 +1332,11 @@ func Example() {
 	// Enable verbose library logging to standard library logger via go-logr/stdr
 	_ = stdr.SetVerbosity(1)
 	pi.Logger = stdr.New(log.New(os.Stdout, "", log.Lshortfile))
-	fmt.Printf("The first 10 digits of pi are: 3.%s\n", pi.BBPDigits(0))
-	// Output: pi.go:106: "level"=1 "msg"="BBPDigits: enter" "n"=0
-	// pi.go:168: "level"=1 "msg"="BBPDigits: exit" "n"=0 "result"="141592653"
+	// Calculate the first 9 decimal digits of pi
+	digits := pi.BBPDigits(0)
+	fmt.Printf("The first 10 digits of pi are: 3.%s\n", digits)
+	// Output: pi.go:107: "level"=1 "msg"="BBPDigits: enter" "n"=0
+	// pi.go:169: "level"=1 "msg"="BBPDigits: exit" "n"=0 "result"="141592653"
 	// The first 10 digits of pi are: 3.141592653
 }
 
