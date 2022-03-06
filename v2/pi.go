@@ -10,8 +10,8 @@
 // scaling demos, and does not guarantee accuracy or efficiency of calculated
 // fractional digits.
 //
-// NOTE 2: The algorithm in BBPDigits is based on the work of Fabrice Bellard,
-// original source code published at https://bellard.org/pi/pi.c
+// NOTE 2: The algorithms used invMod, powMod, and BPPDigits are based on the
+// work of Fabrice Bellard (original source code published at https://bellard.org/pi/pi.c).
 package pi
 
 import (
@@ -26,8 +26,8 @@ var (
 	// The package logr.Logger instance to use.
 	Logger = logr.Discard()
 	// The number of Miller-Rabin rounds to use in FindNextPrime when
-	// determining if the number is probably a prime. A value of zero will
-	// apply a Baillie-PSW only test and requires Go 1.8+.
+	// determining if an integer is probabilistically a prime. A value of
+	// zero will apply a Baillie-PSW only test and requires Go 1.8+.
 	MillerRabinRounds = 0
 	// The constant 2; declared to avoid repeated allocation in FindNextPrime.
 	two = big.NewInt(2)
