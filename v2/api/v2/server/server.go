@@ -41,8 +41,6 @@ type PiServer struct {
 	api.UnimplementedPiServiceServer
 	// The logr.Logger implementation to use
 	logger logr.Logger
-	// An instance of pi.Calculator that will be used to calculate fractional digits
-	calculator *pi.Calculator
 	// An optional cache implementation
 	cache Cache
 	// Holds the instance specific metadata that will be returned in PiService responses
@@ -71,11 +69,10 @@ type PiServerOption func(*PiServer)
 // Create a new piServer and apply any options
 func NewPiServer(options ...PiServerOption) *PiServer {
 	server := &PiServer{
-		logger:     logr.Discard(),
-		calculator: pi.NewCalculator(),
-		cache:      NewNoopCache(),
-		tracer:     trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_SERVER_NAME),
-		meter:      metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_SERVER_NAME),
+		logger: logr.Discard(),
+		cache:  NewNoopCache(),
+		tracer: trace.NewNoopTracerProvider().Tracer(DEFAULT_OPENTELEMETRY_SERVER_NAME),
+		meter:  metric.NewNoopMeterProvider().Meter(DEFAULT_OPENTELEMETRY_SERVER_NAME),
 	}
 	for _, option := range options {
 		option(server)
@@ -87,11 +84,11 @@ func NewPiServer(options ...PiServerOption) *PiServer {
 	return server
 }
 
-// Use the supplied logger for the server and calculator packages.
+// Use the supplied logger for the server and pi packages.
 func WithLogger(logger logr.Logger) PiServerOption {
 	return func(s *PiServer) {
 		s.logger = logger
-		pi.WithLogger(logger)(s.calculator)
+		pi.Logger = logger
 	}
 }
 
@@ -207,7 +204,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		span.SetAttributes(attributes...)
 		span.AddEvent("Calculating fractional digits")
 		ts := time.Now()
-		digits = s.calculator.BBPDigits(cacheIndex)
+		digits = pi.BBPDigits(cacheIndex)
 		duration = float64(time.Since(ts) / time.Millisecond)
 		measurements = append(measurements, s.calculationMs.Measurement(duration))
 		err = s.cache.SetValue(ctx, key, digits)
