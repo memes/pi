@@ -16,7 +16,7 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: install talisman
         run: |
           sudo curl -sLo /usr/local/bin/talisman https://github.com/thoughtworks/talisman/releases/download/v1.23.0/talisman_linux_amd64
@@ -26,14 +26,14 @@ jobs:
   hadolint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: hadolint/hadolint-action@v1.6.0
         with:
           dockerfile: "v2/Dockerfile"
   golangci-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: golangci/golangci-lint-action@v3.1.0
         with:
           version: latest
