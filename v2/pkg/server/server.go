@@ -15,7 +15,7 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pi "github.com/memes/pi/v2"
 	api "github.com/memes/pi/v2/api/v2"
-	cache "github.com/memes/pi/v2/pkg/cache"
+	cachepkg "github.com/memes/pi/v2/pkg/cache"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
@@ -43,7 +43,7 @@ type PiServer struct {
 	// The logr.Logger implementation to use
 	logger logr.Logger
 	// An optional cache implementation
-	cache cache.Cache
+	cache cachepkg.Cache
 	// Holds the instance specific metadata that will be returned in PiService responses
 	metadata *api.GetDigitMetadata
 	// The OpenTelemetry tracer to use for spans
@@ -71,7 +71,7 @@ type PiServerOption func(*PiServer)
 func NewPiServer(options ...PiServerOption) *PiServer {
 	server := &PiServer{
 		logger: logr.Discard(),
-		cache:  cache.NewNoopCache(),
+		cache:  cachepkg.NewNoopCache(),
 		tracer: trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryServerName),
 		meter:  metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
 	}
@@ -95,10 +95,10 @@ func WithLogger(logger logr.Logger) PiServerOption {
 
 // Use the Cache implementation to store BBPDigits results to avoid recalculation
 // of a digit that has already been calculated.
-func WithCache(lookupCache cache.Cache) PiServerOption {
+func WithCache(cache cachepkg.Cache) PiServerOption {
 	return func(s *PiServer) {
-		if lookupCache != nil {
-			s.cache = lookupCache
+		if cache != nil {
+			s.cache = cache
 		}
 	}
 }
