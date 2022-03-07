@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.2.2
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-logr/zerologr v1.2.1
-	github.com/gomodule/redigo v1.8.5
+	github.com/gomodule/redigo v1.8.8
 	github.com/google/uuid v1.1.2
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.3
 	github.com/mitchellh/go-homedir v1.1.0
