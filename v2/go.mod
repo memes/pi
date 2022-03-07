@@ -9,7 +9,7 @@ require (
 	github.com/go-logr/zerologr v1.2.1
 	github.com/gomodule/redigo v1.8.8
 	github.com/google/uuid v1.3.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.3
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.8.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/zerolog v1.26.1
 	github.com/spf13/cobra v1.2.1
@@ -26,9 +26,9 @@ require (
 	go.opentelemetry.io/otel/sdk v1.4.1
 	go.opentelemetry.io/otel/sdk/metric v0.27.0
 	go.opentelemetry.io/otel/trace v1.4.1
-	golang.org/x/net v0.0.0-20210813160813-60bc85c4be6d
+	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	google.golang.org/genproto v0.0.0-20220201184016-50beb8ab5c44
+	google.golang.org/genproto v0.0.0-20220304144024-325a89244dc8
 	google.golang.org/grpc v1.44.0
 	google.golang.org/grpc/cmd/protoc-gen-go-grpc v1.2.0
 	google.golang.org/protobuf v1.27.1
