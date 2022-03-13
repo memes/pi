@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "server",
+            "name": "server-no-tls",
             "type": "go",
             "request": "launch",
             "mode": "auto",
@@ -13,12 +13,14 @@
             "args": [
                 "server",
                 "--verbose",
+                "--address",
+                ":8443",
                 "--rest-address",
                 ":8080"
             ]
         },
         {
-            "name": "otlp",
+            "name": "server-tls",
             "type": "go",
             "request": "launch",
             "mode": "auto",
@@ -26,11 +28,45 @@
             "args": [
                 "server",
                 "--verbose",
-                "--otlp-target",
-                ":4317",
-                "--otlp-insecure",
+                "--cacert",
+                "${workspaceFolder}/supporting/ca.pem",
+                "--cert",
+                "${workspaceFolder}/supporting/service.pi.example.com.pem",
+                "--key",
+                "${workspaceFolder}/supporting/service.pi.example.com-key.pem",
+                "--address",
+                ":8443",
                 "--rest-address",
                 ":8080"
+            ]
+        },
+        {
+            "name": "client-no-tls",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/pi",
+            "args": [
+                "server",
+                "--verbose",
+                "--insecure",
+                "--count",
+                "10",
+                ":8443"
+            ]
+        },
+        {
+            "name": "client-tls",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}/cmd/pi",
+            "args": [
+                "client",
+                "--verbose",
+                "--cacert",
+                "${workspaceFolder}/supporting/ca.pem",
+                ":8443"
             ]
         }
     ]
