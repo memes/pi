@@ -5,9 +5,7 @@ package server
 
 import (
 	"fmt"
-	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -60,8 +58,12 @@ type PiServer struct {
 	cacheHits metric.Int64Counter
 	// A counter for cache misses
 	cacheMisses metric.Int64Counter
-	// gRPC transport credentials
-	creds credentials.TransportCredentials
+	// Transport credentials to use with gRPC PiService listener.
+	serverGRPCCredentials credentials.TransportCredentials
+	// Transport credentials to use with REST gateway gRPC client.
+	restClientGRPCCredentials credentials.TransportCredentials
+	// Allow overriding of gRPC authority header through REST gateway.
+	restClientAuthority string
 }
 
 // Defines the function signature for PiServer options.
@@ -70,10 +72,11 @@ type PiServerOption func(*PiServer)
 // Create a new piServer and apply any options.
 func NewPiServer(options ...PiServerOption) *PiServer {
 	server := &PiServer{
-		logger: logr.Discard(),
-		cache:  cachepkg.NewNoopCache(),
-		tracer: trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryServerName),
-		meter:  metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
+		logger:                    logr.Discard(),
+		cache:                     cachepkg.NewNoopCache(),
+		tracer:                    trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryServerName),
+		meter:                     metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
+		restClientGRPCCredentials: insecure.NewCredentials(),
 	}
 	for _, option := range options {
 		option(server)
@@ -104,24 +107,9 @@ func WithCache(cache cachepkg.Cache) PiServerOption {
 }
 
 // Populate a metadata structure for this instance.
-func WithMetadata(labels map[string]string) PiServerOption {
+func WithMetadata(metadata *api.GetDigitMetadata) PiServerOption {
 	return func(s *PiServer) {
-		metadata := api.GetDigitMetadata{
-			Labels: labels,
-		}
-		if hostname, err := os.Hostname(); err == nil {
-			metadata.Identity = hostname
-		}
-		if addrs, err := net.InterfaceAddrs(); err == nil {
-			addresses := make([]string, 0, len(addrs))
-			for _, addr := range addrs {
-				if ip, ok := addr.(*net.IPNet); ok && ip.IP.IsGlobalUnicast() {
-					addresses = append(addresses, ip.IP.String())
-				}
-			}
-			metadata.Addresses = addresses
-		}
-		s.metadata = &metadata
+		s.metadata = metadata
 	}
 }
 
@@ -148,10 +136,24 @@ func WithPrefix(prefix string) PiServerOption {
 	}
 }
 
-// Set the TransportCredentials to use for Pi Service connection.
-func WithTransportCredentials(creds credentials.TransportCredentials) PiServerOption {
+// Set the TransportCredentials to use for Pi Service gRPC listener.
+func WithGRPCServerTransportCredentials(serverCredentials credentials.TransportCredentials) PiServerOption {
 	return func(s *PiServer) {
-		s.creds = creds
+		s.serverGRPCCredentials = serverCredentials
+	}
+}
+
+// Set the TransportCredentials to use for Pi Service REST-to-gRPC client.
+func WithRestClientGRPCTransportCredentials(restClientGRPCCredentials credentials.TransportCredentials) PiServerOption {
+	return func(s *PiServer) {
+		s.restClientGRPCCredentials = restClientGRPCCredentials
+	}
+}
+
+// Set the authority string to use for REST-gRPC gateway calls.
+func WithRestClientAuthority(restClientAuthority string) PiServerOption {
+	return func(s *PiServer) {
+		s.restClientAuthority = restClientAuthority
 	}
 }
 
@@ -265,8 +267,8 @@ func (s *PiServer) NewGrpcServer() *grpc.Server {
 	options := []grpc.ServerOption{
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 	}
-	if s.creds != nil {
-		options = append(options, grpc.Creds(s.creds))
+	if s.serverGRPCCredentials != nil {
+		options = append(options, grpc.Creds(s.serverGRPCCredentials))
 	}
 	grpcServer := grpc.NewServer(options...)
 	healthServer := health.NewServer()
@@ -280,11 +282,14 @@ func (s *PiServer) NewGrpcServer() *grpc.Server {
 // requests to the specified gRPC endpoint address.
 func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string) (http.Handler, error) {
 	mux := runtime.NewServeMux()
-	opts := []grpc.DialOption{
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+	options := []grpc.DialOption{
+		grpc.WithTransportCredentials(s.restClientGRPCCredentials),
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
 	}
-	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, opts); err != nil {
+	if s.restClientAuthority != "" {
+		options = append(options, grpc.WithAuthority(s.restClientAuthority))
+	}
+	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, options); err != nil {
 		return nil, fmt.Errorf("failed to register PiService handler for REST gateway: %w", err)
 	}
 	if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {

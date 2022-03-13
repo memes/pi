@@ -2,10 +2,8 @@ package main
 
 import (
 	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -13,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	api "github.com/memes/pi/v2/api/v2"
 	"github.com/memes/pi/v2/pkg/cache"
 	"github.com/memes/pi/v2/pkg/server"
 	"github.com/spf13/cobra"
@@ -24,11 +23,12 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
 	ServerServiceName        = "server"
-	DefaultGRPCListenAddress = ":443"
+	DefaultGRPCListenAddress = ":8443"
 )
 
 // Implements the server sub-command.
@@ -45,10 +45,8 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	serverCmd.PersistentFlags().String("rest-address", "", "An optional listen address to launch a REST/gRPC gateway process")
 	serverCmd.PersistentFlags().String("redis-target", "", "An optional Redis endpoint to use as a PiService cache")
 	serverCmd.PersistentFlags().StringToStringP("label", "l", nil, "An optional label key=value to add to PiService response metadata; can be repeated")
-	serverCmd.PersistentFlags().String("cacert", "", "An optional CA certificate to use for PiService client TLS verification")
-	serverCmd.PersistentFlags().String("cert", "", "An optional client TLS certificate to use with PiService")
-	serverCmd.PersistentFlags().String("key", "", "An optional client TLS private key to use with PiService")
 	serverCmd.PersistentFlags().Bool("tls-client-auth", false, "Require PiService clients to provide a valid TLS client certificate")
+	serverCmd.PersistentFlags().String("rest-authority", "", "Set the Authority header for REST/gRPC gateway communication")
 	if err := viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address")); err != nil {
 		return nil, fmt.Errorf("failed to bind address pflag: %w", err)
 	}
@@ -61,17 +59,11 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	if err := viper.BindPFlag("label", serverCmd.PersistentFlags().Lookup("label")); err != nil {
 		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
 	}
-	if err := viper.BindPFlag("cacert", serverCmd.PersistentFlags().Lookup("cacert")); err != nil {
-		return nil, fmt.Errorf("failed to bind cacert pflag: %w", err)
-	}
-	if err := viper.BindPFlag("cert", serverCmd.PersistentFlags().Lookup("cert")); err != nil {
-		return nil, fmt.Errorf("failed to bind cert pflag: %w", err)
-	}
-	if err := viper.BindPFlag("key", serverCmd.PersistentFlags().Lookup("key")); err != nil {
-		return nil, fmt.Errorf("failed to bind key pflag: %w", err)
-	}
 	if err := viper.BindPFlag("tls-client-auth", serverCmd.PersistentFlags().Lookup("tls-client-auth")); err != nil {
-		return nil, fmt.Errorf("failed to bind tls-client-auth pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
+	}
+	if err := viper.BindPFlag("rest-authority", serverCmd.PersistentFlags().Lookup("rest-authority")); err != nil {
+		return nil, fmt.Errorf("failed to bind rest-authority pflag: %w", err)
 	}
 	return serverCmd, nil
 }
@@ -82,27 +74,70 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	address := viper.GetString("address")
 	restAddress := viper.GetString("rest-address")
 	redisTarget := viper.GetString("redis-target")
-	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress)
+	cacerts := viper.GetStringSlice("cacert")
+	cert := viper.GetString("cert")
+	key := viper.GetString("key")
+	requireTLSClientAuth := viper.GetBool("tls-client-auth")
+	otlpTarget := viper.GetString("otlp-target")
+	labels := viper.GetStringMapString("label")
+	restClientAuthority := viper.GetString("rest-authority")
+	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress, "cacerts", cacerts, "cert", cert, "key", key, "requireTLSClientAuth", requireTLSClientAuth, "otlpTarget", otlpTarget, "labels", labels, "restClientAuthority", restClientAuthority)
 	ctx := context.Background()
-	logger.V(0).Info("Preparing telemetry")
-	telemetryShutdown := initTelemetry(ctx, ServerServiceName, sdktrace.AlwaysSample())
-
-	logger.V(0).Info("Preparing services")
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
-		server.WithMetadata(viper.GetStringMapString("label")),
+		server.WithMetadata(newMetadata(labels)),
 		server.WithTracer(otel.Tracer(ServerServiceName)),
 		server.WithMeter(global.Meter(ServerServiceName)),
 		server.WithPrefix(ServerServiceName),
 	}
 	if redisTarget != "" {
+		logger.V(0).Info("Adding Redis cache option to PiServer")
 		options = append(options, server.WithCache(cache.NewRedisCache(ctx, redisTarget)))
 	}
-	tlsCreds, err := newServerTLSCredentials()
+
+	logger.V(0).Info("Preparing gRPC transport credentials")
+	certPool, err := newCACertPool(cacerts)
 	if err != nil {
 		return err
 	}
-	options = append(options, server.WithTransportCredentials(tlsCreds))
+	var serverTLSConfig *tls.Config
+	if cert != "" && key != "" {
+		serverTLSConfig, err = newTLSConfig(cert, key, certPool, nil)
+		if err != nil {
+			return err
+		}
+		if requireTLSClientAuth {
+			serverTLSConfig.ClientAuth = tls.RequireAndVerifyClientCert
+		}
+		clientTLSConfig, err := newTLSConfig(cert, key, nil, certPool)
+		if err != nil {
+			return err
+		}
+		options = append(options,
+			server.WithGRPCServerTransportCredentials(credentials.NewTLS(serverTLSConfig)),
+			server.WithRestClientGRPCTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+			server.WithRestClientAuthority(restClientAuthority),
+		)
+	} else {
+		options = append(options,
+			server.WithRestClientGRPCTransportCredentials(insecure.NewCredentials()),
+		)
+	}
+
+	logger.V(0).Info("Preparing telemetry")
+	var otelCreds credentials.TransportCredentials
+	if viper.GetBool("otlp-insecure") {
+		otelCreds = insecure.NewCredentials()
+	} else {
+		otelTLSConfig, err := newTLSConfig(viper.GetString("otlp-cert"), viper.GetString("otlp-key"), nil, certPool)
+		if err != nil {
+			return err
+		}
+		otelCreds = credentials.NewTLS(otelTLSConfig)
+	}
+	telemetryShutdown := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+
+	logger.V(0).Info("Preparing to start services")
 	piServer := server.NewPiServer(options...)
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -128,16 +163,24 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	})
 	if restAddress != "" {
 		g.Go(func() error {
-			logger.V(0).Info("Starting REST/gRPC gateway")
+			logger.V(0).Info("Preparing REST/gRPC gateway")
 			restHandler, err := piServer.NewRestGatewayHandler(ctx, address)
 			if err != nil {
 				return fmt.Errorf("failed to create new REST gateway handler: %w", err)
 			}
 			restServer = &http.Server{
-				Addr:    restAddress,
-				Handler: restHandler,
+				Addr:      restAddress,
+				Handler:   restHandler,
+				TLSConfig: serverTLSConfig,
 			}
-			if err := restServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			if serverTLSConfig != nil {
+				logger.V(0).Info("Starting REST/gRPC gateway with TLS")
+				err = restServer.ListenAndServeTLS("", "")
+			} else {
+				logger.V(0).Info("Starting REST/gRPC gateway without TLS")
+				err = restServer.ListenAndServe()
+			}
+			if !errors.Is(err, http.ErrServerClosed) {
 				return fmt.Errorf("restServer listener returned an error: %w", err)
 			}
 			return nil
@@ -166,48 +209,21 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	return g.Wait() // nolint:wrapcheck
 }
 
-// Creates the gRPC transport credentials to use with PiService server from the
-// various configuration options provided.
-func newServerTLSCredentials() (credentials.TransportCredentials, error) {
-	var tlsConf tls.Config
-	certFile := viper.GetString("cert")
-	keyFile := viper.GetString("key")
-	cacertFile := viper.GetString("cacert")
-	tlsClientAuth := viper.GetBool("tls-client-auth")
-	logger := logger.V(1).WithValues("certFile", certFile, "keyFile", keyFile, "cacertFile", cacertFile)
-	logger.V(0).Info("Preparing server TLS credentials")
-	if certFile != "" {
-		logger.V(1).Info("Loading x509 certificate and key")
-		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read certificate and key from files %s %s: %w", certFile, keyFile, err)
-		}
-		tlsConf.Certificates = []tls.Certificate{cert}
+// Creates a new metadata struct populated from labels given.
+func newMetadata(labels map[string]string) *api.GetDigitMetadata {
+	logger := logger.V(1).WithValues("labels", labels)
+	logger.V(0).Info("Preparing metadata")
+	var hostname string
+	if host, err := os.Hostname(); err == nil {
+		hostname = host
+	} else {
+		logger.Error(err, "Failed to get hostname; continuing")
+		hostname = "unknown"
 	}
-
-	if cacertFile != "" {
-		logger.V(1).Info("Loading CA from file")
-		ca, err := ioutil.ReadFile(cacertFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read CA certificate from file %s: %w", cacertFile, err)
-		}
-		certPool := x509.NewCertPool()
-		if ok := certPool.AppendCertsFromPEM(ca); !ok {
-			logger.V(0).Info("Failed to append CA cert %s to CA pool", cacertFile)
-			return nil, errFailedToAppendCACert
-		}
-		tlsConf.ClientCAs = certPool
+	metadata := &api.GetDigitMetadata{
+		Identity: hostname,
+		Labels:   labels,
 	}
-
-	switch {
-	case tlsClientAuth:
-		tlsConf.ClientAuth = tls.RequireAndVerifyClientCert
-
-	case cacertFile != "":
-		tlsConf.ClientAuth = tls.VerifyClientCertIfGiven
-
-	default:
-		tlsConf.ClientAuth = tls.NoClientCert
-	}
-	return credentials.NewTLS(&tlsConf), nil
+	logger.V(1).Info("Metadata created", "metadata", metadata)
+	return metadata
 }

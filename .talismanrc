@@ -19,7 +19,7 @@ fileignoreconfig:
 - filename: v2/cache_test.go
   checksum: 476d8cfd7d7d3a76b06a0854418d40f03d044bd6703e942fbd7b29edae823e4e
 - filename: v2/cmd/pi/server.go
-  checksum: fea18d72c9b5131da60ba42d1450aa82096bb35eb7b31a59edb4c90ffd1abcc1
+  checksum: 321404b7206e353b38805593eb678d0a7f9385dcf2988a851c8950fbf112afe4
 - filename: v2/README.md
   checksum: a1797d7e26b9e954da8e35198451942ba7739ad6b392c05e326613721b9c64ff
 - filename: v2/redis_cache.go
@@ -41,7 +41,7 @@ fileignoreconfig:
 - filename: v2/pi_test.go
   checksum: 3144875c2c11798a4a8e32a0137a0c9214eee21df7756abe0fb2698159a7e9fc
 - filename: v2/cmd/pi/client.go
-  checksum: 243e0f2988a45af10fb06ad9eb6f4914f17eece1eadd4662b5f820dca846ca56
+  checksum: ee947d59fff6cf192002399fa48854cdf2d91fb3499d8afcd1e2d8b7c288d5e5
 - filename: v2/pkg/server/server_test.go
   checksum: 95eaa87189253aede3177008d4f73fe927fe62fe267e0529a9795e9ff0d8ad87
 - filename: v2/supporting/Makefile

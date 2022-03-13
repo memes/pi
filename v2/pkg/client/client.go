@@ -27,26 +27,28 @@ const (
 
 // Implements the PiServiceClient interface.
 type PiClient struct {
-	// The logr.Logger instance to use
+	// The logr.Logger instance to use.
 	logger logr.Logger
 	// The client maximum timeout/deadline to use when making requests to a PiService.
 	maxTimeout time.Duration
-	// The OpenTelemetry tracer to use for spans
+	// The OpenTelemetry tracer to use for spans.
 	tracer trace.Tracer
-	// The OpenTelemetry meter to use for metrics
+	// The OpenTelemetry meter to use for metrics.
 	meter metric.Meter
-	// The prefix to use for metrics
+	// The prefix to use for metrics.
 	prefix string
-	// A counter for the number of connection errors
+	// A counter for the number of connection errors.
 	connectionErrors metric.Int64Counter
-	// A counter for the number of response errors
+	// A counter for the number of response errors.
 	responseErrors metric.Int64Counter
-	// A gauge for request durations
+	// A gauge for request durations.
 	durationMs metric.Float64Histogram
-	// gRPC transport credentials
+	// gRPC transport credentials for Pi Service gRPC client.
 	creds credentials.TransportCredentials
-	// gRPC server authority to specify for TLS verification
+	// gRPC server authority to specify for TLS verification.
 	authority string
+	// Specifies the gRPC user-agent.
+	userAgent string
 }
 
 // Defines a function signature for PiClient options.
@@ -60,6 +62,7 @@ func NewPiClient(options ...PiClientOption) *PiClient {
 		tracer:     trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryClientName),
 		meter:      metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
 		prefix:     DefaultOpenTelemetryClientName,
+		userAgent:  DefaultOpenTelemetryClientName + "/unspecified",
 	}
 	for _, option := range options {
 		option(client)
@@ -119,6 +122,13 @@ func WithAuthority(authority string) PiClientOption {
 	}
 }
 
+// Set the user-agent used by Pi Service client.
+func WithUserAgent(userAgent string) PiClientOption {
+	return func(c *PiClient) {
+		c.userAgent = userAgent
+	}
+}
+
 // Generates a name for the metric.
 func (c *PiClient) metricName(name string) string {
 	if c.prefix == "" {
@@ -151,6 +161,7 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	startTimestamp := time.Now()
 	options := []grpc.DialOption{
 		grpc.WithBlock(),
+		grpc.WithUserAgent(c.userAgent),
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
 	}
 	if c.creds != nil {

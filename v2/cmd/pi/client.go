@@ -2,10 +2,7 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"sync"
@@ -18,6 +15,7 @@ import (
 	"go.opentelemetry.io/otel/metric/global"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
+	grpcinsecure "google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -41,31 +39,19 @@ func NewClientCmd() (*cobra.Command, error) {
 	}
 	clientCmd.PersistentFlags().UintP("count", "c", DefaultDigitCount, "The number of decimal digits of pi to request")
 	clientCmd.PersistentFlags().DurationP("max-timeout", "m", DefaultMaxTimeout, "The maximum timeout for a Pi Service request")
-	clientCmd.PersistentFlags().String("cacert", "", "An optional CA certificate to use for Pi Service TLS verification")
-	clientCmd.PersistentFlags().String("cert", "", "An optional client TLS certificate to use with Pi Service")
-	clientCmd.PersistentFlags().String("key", "", "An optional client TLS private key to use with Pi Service")
-	clientCmd.PersistentFlags().Bool("insecure", false, "Disable TLS verification of Pi Service")
 	clientCmd.PersistentFlags().String("authority", "", "Set the authoritative name of the Pi Service target for TLS verification, overriding hostname")
+	clientCmd.PersistentFlags().Bool("insecure", false, "Disable TLS for gRPC connection to Pi Service")
 	if err := viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count")); err != nil {
 		return nil, fmt.Errorf("failed to bind count pflag: %w", err)
 	}
 	if err := viper.BindPFlag("max-timeout", clientCmd.PersistentFlags().Lookup("max-timeout")); err != nil {
 		return nil, fmt.Errorf("failed to bind max-timeout pflag: %w", err)
 	}
-	if err := viper.BindPFlag("cacert", clientCmd.PersistentFlags().Lookup("cacert")); err != nil {
-		return nil, fmt.Errorf("failed to bind cacert pflag: %w", err)
-	}
-	if err := viper.BindPFlag("cert", clientCmd.PersistentFlags().Lookup("cert")); err != nil {
-		return nil, fmt.Errorf("failed to bind cert pflag: %w", err)
-	}
-	if err := viper.BindPFlag("key", clientCmd.PersistentFlags().Lookup("key")); err != nil {
-		return nil, fmt.Errorf("failed to bind key pflag: %w", err)
+	if err := viper.BindPFlag("authority", clientCmd.PersistentFlags().Lookup("authority")); err != nil {
+		return nil, fmt.Errorf("failed to bind authority pflag: %w", err)
 	}
 	if err := viper.BindPFlag("insecure", clientCmd.PersistentFlags().Lookup("insecure")); err != nil {
 		return nil, fmt.Errorf("failed to bind insecure pflag: %w", err)
-	}
-	if err := viper.BindPFlag("authority", clientCmd.PersistentFlags().Lookup("authority")); err != nil {
-		return nil, fmt.Errorf("failed to bind authority pflag: %w", err)
 	}
 	return clientCmd, nil
 }
@@ -74,26 +60,57 @@ func NewClientCmd() (*cobra.Command, error) {
 // each of the fractional digits requested.
 func clientMain(cmd *cobra.Command, endpoints []string) error {
 	count := viper.GetInt("count")
-	logger := logger.V(1).WithValues("count", count, "endpoints", endpoints)
-	logger.V(0).Info("Preparing telemetry")
+	cacerts := viper.GetStringSlice("cacert")
+	cert := viper.GetString("cert")
+	key := viper.GetString("key")
+	otlpTarget := viper.GetString("otlp-target")
+	authority := viper.GetString("authority")
+	maxTimeout := viper.GetDuration("max-timeout")
+	insecure := viper.GetBool("insecure")
+	logger := logger.V(1).WithValues("count", count, "endpoints", endpoints, "cacerts", cacerts, "cert", cert, "key", key, "otlpTarget", otlpTarget, "authority", authority, "maxTimeout", maxTimeout, "insecure", insecure)
 	ctx := context.Background()
-	shutdown := initTelemetry(ctx, ClientServiceName, sdktrace.AlwaysSample())
-	defer shutdown(ctx)
-	logger.V(0).Info("Preparing client TLS config")
-	tlsCreds, err := newClientTLSCredentials()
-	if err != nil {
-		return err
-	}
-	logger.V(0).Info("Building client")
 	options := []client.PiClientOption{
 		client.WithLogger(logger),
-		client.WithMaxTimeout(viper.GetDuration("max-timeout")),
+		client.WithMaxTimeout(maxTimeout),
 		client.WithTracer(otel.Tracer(ClientServiceName)),
 		client.WithMeter(global.Meter(ClientServiceName)),
 		client.WithPrefix(ClientServiceName),
-		client.WithTransportCredentials(tlsCreds),
-		client.WithAuthority(viper.GetString("authority")),
+		client.WithAuthority(authority),
 	}
+
+	logger.V(0).Info("Preparing gRPC transport credentials")
+	certPool, err := newCACertPool(cacerts)
+	if err != nil {
+		return err
+	}
+	if insecure {
+		options = append(options,
+			client.WithTransportCredentials(grpcinsecure.NewCredentials()),
+		)
+	} else {
+		clientTLSConfig, err := newTLSConfig(cert, key, nil, certPool)
+		if err != nil {
+			return err
+		}
+		options = append(options,
+			client.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+		)
+	}
+
+	logger.V(0).Info("Preparing telemetry")
+	var otelCreds credentials.TransportCredentials
+	if viper.GetBool("otlp-insecure") {
+		otelCreds = grpcinsecure.NewCredentials()
+	} else {
+		otelTLSConfig, err := newTLSConfig(viper.GetString("otlp-cert"), viper.GetString("otlp-key"), nil, certPool)
+		if err != nil {
+			return err
+		}
+		otelCreds = credentials.NewTLS(otelTLSConfig)
+	}
+	shutdown := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+	defer shutdown(ctx)
+	logger.V(0).Info("Preparing to start client")
 	piClient := client.NewPiClient(options...)
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)
@@ -120,42 +137,4 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	}
 	fmt.Println()
 	return nil
-}
-
-// Creates the gRPC transport credentials to use with PiService client from the
-// various configuration options provided.
-func newClientTLSCredentials() (credentials.TransportCredentials, error) {
-	var tlsConf tls.Config
-	certFile := viper.GetString("cert")
-	keyFile := viper.GetString("key")
-	cacertFile := viper.GetString("cacert")
-	insecure := viper.GetBool("insecure")
-	logger := logger.V(1).WithValues("certFile", certFile, "keyFile", keyFile, "cacertFile", cacertFile, "insecure", insecure)
-	logger.V(0).Info("Preparing client TLS credentials")
-	if certFile != "" {
-		logger.V(1).Info("Loading x509 certificate and key")
-		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load certificate and key from %s and %s: %w", certFile, keyFile, err)
-		}
-		tlsConf.Certificates = []tls.Certificate{cert}
-	}
-
-	if insecure {
-		logger.V(1).Info("Skipping TLS verification")
-		tlsConf.InsecureSkipVerify = true
-	} else if cacertFile != "" {
-		logger.V(1).Info("Loading CA from file")
-		ca, err := ioutil.ReadFile(cacertFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read CA cert from %s: %w", cacertFile, err)
-		}
-		certPool := x509.NewCertPool()
-		if ok := certPool.AppendCertsFromPEM(ca); !ok {
-			logger.V(0).Info("Failed to append CA cert %s to CA pool", cacertFile)
-			return nil, errFailedToAppendCACert
-		}
-		tlsConf.RootCAs = certPool
-	}
-	return credentials.NewTLS(&tlsConf), nil
 }

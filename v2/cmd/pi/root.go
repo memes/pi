@@ -1,35 +1,19 @@
 package main
 
 import (
-	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/go-logr/zerologr"
-	"github.com/google/uuid"
 	homedir "github.com/mitchellh/go-homedir"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	gcpdetectors "go.opentelemetry.io/contrib/detectors/gcp"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/propagation"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 const (
@@ -55,8 +39,11 @@ func NewRootCmd() (*cobra.Command, error) {
 	rootCmd.PersistentFlags().CountP("verbose", "v", "Enable verbose logging; can be repeated to increase verbosity")
 	rootCmd.PersistentFlags().BoolP("pretty", "p", false, "Disables structured JSON logging to stdout, making it easier to read")
 	rootCmd.PersistentFlags().String("otlp-target", "", "An optional OpenTelemetry collection target that will receive metrics and traces")
-	rootCmd.PersistentFlags().String("otlp-cacert", "", "An optional path to a CA certificate file to use to validate OpenTelemetry target endpoint.")
-	rootCmd.PersistentFlags().Bool("otlp-insecure", false, "Disable TLS verification of OpenTelemetry target endpoint")
+	rootCmd.PersistentFlags().Bool("otlp-insecure", false, "Disable remote TLS verification for OpenTelemetry target")
+	rootCmd.PersistentFlags().String("otlp-authority", "", "Set the authoritative name of the OpenTelemetry target for TLS verification, overriding hostname")
+	rootCmd.PersistentFlags().StringArray("cacert", nil, "An optional CA certificate to use for remote TLS verification; can be repeated")
+	rootCmd.PersistentFlags().String("cert", "", "An optional TLS certificate to use")
+	rootCmd.PersistentFlags().String("key", "", "An optional TLS private key to use")
 	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
 		return nil, fmt.Errorf("failed to bind verbose pflag: %w", err)
 	}
@@ -66,11 +53,20 @@ func NewRootCmd() (*cobra.Command, error) {
 	if err := viper.BindPFlag("otlp-target", rootCmd.PersistentFlags().Lookup("otlp-target")); err != nil {
 		return nil, fmt.Errorf("failed to bind otlp-target pflag: %w", err)
 	}
-	if err := viper.BindPFlag("otlp-cacert", rootCmd.PersistentFlags().Lookup("otlp-cacert")); err != nil {
-		return nil, fmt.Errorf("failed to bind otlp-cacert pflag: %w", err)
-	}
 	if err := viper.BindPFlag("otlp-insecure", rootCmd.PersistentFlags().Lookup("otlp-insecure")); err != nil {
 		return nil, fmt.Errorf("failed to bind otlp-insecure pflag: %w", err)
+	}
+	if err := viper.BindPFlag("otlp-authority", rootCmd.PersistentFlags().Lookup("otlp-authority")); err != nil {
+		return nil, fmt.Errorf("failed to bind authority pflag: %w", err)
+	}
+	if err := viper.BindPFlag("cacert", rootCmd.PersistentFlags().Lookup("cacert")); err != nil {
+		return nil, fmt.Errorf("failed to bind cacert pflag: %w", err)
+	}
+	if err := viper.BindPFlag("cert", rootCmd.PersistentFlags().Lookup("cert")); err != nil {
+		return nil, fmt.Errorf("failed to bind cert pflag: %w", err)
+	}
+	if err := viper.BindPFlag("key", rootCmd.PersistentFlags().Lookup("key")); err != nil {
+		return nil, fmt.Errorf("failed to bind key pflag: %w", err)
 	}
 	serverCmd, err := NewServerCmd()
 	if err != nil {
@@ -123,160 +119,56 @@ func initConfig() {
 	}
 }
 
-// Create a new OpenTelemetry resource to describe the source of metrics and traces.
-func newTelemetryResource(ctx context.Context, name string) (*resource.Resource, error) {
-	logger := logger.V(1).WithValues("name", name)
-	logger.Info("Creating new OpenTelemetry resource descriptor")
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate UUID for telemetry resource: %w", err)
-	}
-	res, err := resource.New(ctx,
-		resource.WithAttributes(
-			semconv.ServiceNamespaceKey.String(PackageName),
-			semconv.ServiceNameKey.String(name),
-			semconv.ServiceVersionKey.String(version),
-			semconv.ServiceInstanceIDKey.String(id.String()),
-		),
-		resource.WithTelemetrySDK(),
-		resource.WithHost(),
-		resource.WithOS(),
-		// Some process information is unknown when running in a scratch
-		// container. See https://github.com/memes/pi/issues/3
-		resource.WithProcessPID(),
-		resource.WithProcessExecutableName(),
-		resource.WithProcessExecutablePath(),
-		resource.WithProcessCommandArgs(),
-		resource.WithProcessRuntimeName(),
-		resource.WithProcessRuntimeVersion(),
-		resource.WithProcessRuntimeDescription(),
-		// These detectors place last to override the base service attributes with specifiers from GCP
-		resource.WithDetectors(
-			&gcpdetectors.GCE{},
-			&gcpdetectors.GKE{},
-			gcpdetectors.NewCloudRun(),
-		),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new telemetry resource: %w", err)
-	}
-	logger.V(2).Info("Resource created", "resource", res)
-	return res, nil
-}
-
-// Returns a new metric pusher that will send OpenTelemetry metrics to the endpoint
-// provided as a configuration flag.
-func newMetricPusher(ctx context.Context) (*controller.Controller, error) {
-	logger.V(1).Info("Creating new OpenTelemetry metric pusher")
-	target := viper.GetString("otlp-target")
-	if target == "" {
-		logger.V(0).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
+// Creates a new pool of x509 certificates from the list of file paths provided,
+// appended to any system installed certificates.
+func newCACertPool(cacerts []string) (*x509.CertPool, error) {
+	logger := logger.V(1).WithValues("cacerts", cacerts)
+	if len(cacerts) == 0 {
+		logger.V(0).Info("No CA certificate paths provided; returning nil for CA cert pool")
 		return nil, nil
 	}
-	options := []otlpmetricgrpc.Option{
-		otlpmetricgrpc.WithEndpoint(target),
+	logger.V(0).Info("Building certificate pool from file(s)")
+	pool, err := x509.SystemCertPool()
+	if err != nil {
+		return nil, fmt.Errorf("failed to build new CA cert pool from SystemCertPool: %w", err)
 	}
-	if viper.GetBool("otlp-insecure") {
-		options = append(options, otlpmetricgrpc.WithInsecure())
-	} else {
-		cacert := viper.GetString("otlp-cacert")
-		if cacert != "" {
-			tlsCreds, err := credentials.NewClientTLSFromFile(cacert, "")
-			if err != nil {
-				return nil, fmt.Errorf("failed to create new transport credentials for metric pusher: %w", err)
-			}
-			options = append(options, otlpmetricgrpc.WithTLSCredentials(tlsCreds))
+	for _, cacert := range cacerts {
+		ca, err := ioutil.ReadFile(cacert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read from certificate file %s: %w", cacert, err)
+		}
+		if ok := pool.AppendCertsFromPEM(ca); !ok {
+			return nil, fmt.Errorf("failed to process CA cert %s: %w", cacert, errFailedToAppendCACert)
 		}
 	}
-	client := otlpmetricgrpc.NewClient(options...)
-	exporter, err := otlpmetric.New(ctx, client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new metric exporter: %w", err)
-	}
-	pusher := controller.New(processor.NewFactory(simple.NewWithInexpensiveDistribution(), exporter), controller.WithExporter(exporter), controller.WithCollectPeriod(2*time.Second))
-	global.SetMeterProvider(pusher)
-	err = pusher.Start(ctx)
-	return pusher, fmt.Errorf("failed to start metric pusher: %w", err)
+	return pool, nil
 }
 
-// Returns a new trace exporter that will send OpenTelemetry traces to the endpoint
-// provided as a configuration flag.
-func newTraceExporter(ctx context.Context) (*otlptrace.Exporter, error) {
-	logger.V(1).Info("Creating new OpenTelemetry trace exporter")
-	target := viper.GetString("otlp-target")
-	if target == "" {
-		logger.V(0).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
-		return nil, nil
+// Creates a new TLS configuration from supplied arguments. If a certificate and
+// key are provided, the loaded x509 certificate will be added as the certificate
+// to present to remote side of TLS connections. An optional pool of CA certificates
+// can be provided as ClientCA and/or RootCA verification.
+func newTLSConfig(certFile, keyFile string, clientCAs, rootCAs *x509.CertPool) (*tls.Config, error) {
+	logger := logger.V(1).WithValues("cert", certFile, "key", keyFile, "hasClientCAs", clientCAs != nil, "hasRootCAs", rootCAs != nil)
+	logger.V(0).Info("Preparing TLS configuration")
+	tlsConf := &tls.Config{
+		MinVersion: tls.VersionTLS12,
 	}
-	options := []otlptracegrpc.Option{
-		otlptracegrpc.WithEndpoint(target),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
-	}
-	if viper.GetBool("otlp-insecure") {
-		options = append(options, otlptracegrpc.WithInsecure())
-	} else {
-		cacert := viper.GetString("otlp-cacert")
-		if cacert != "" {
-			tlsCreds, err := credentials.NewClientTLSFromFile(cacert, "")
-			if err != nil {
-				return nil, fmt.Errorf("failed to create new transport credentials for trace exporter: %w", err)
-			}
-			options = append(options, otlptracegrpc.WithTLSCredentials(tlsCreds))
+	if certFile != "" && keyFile != "" {
+		logger.V(1).Info("Loading x509 certificate and key")
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load certificate %s and key %s: %w", certFile, keyFile, err)
 		}
+		tlsConf.Certificates = []tls.Certificate{cert}
 	}
-	client := otlptracegrpc.NewClient(options...)
-	exporter, err := otlptrace.New(ctx, client)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new trace exporter: %w", err)
+	if clientCAs != nil {
+		logger.V(1).Info("Add x509 certificate pool to ClientCAs")
+		tlsConf.ClientCAs = clientCAs
 	}
-	return exporter, nil
-}
-
-// Initializes OpenTelemetry metric and trace processing and deliver to a collector
-// endpoint, returning a function that can be called to shutdown the background
-// pipeline processes.
-func initTelemetry(ctx context.Context, name string, sampler sdktrace.Sampler) func(context.Context) {
-	logger := logger.V(1).WithValues("name", name, "sampler", sampler.Description())
-	logger.Info("Initializing OpenTelemetry")
-	metrics, err := newMetricPusher(ctx)
-	if err != nil {
-		logger.Error(err, "Failed to create new OpenTelemetry metric controller")
+	if rootCAs != nil {
+		logger.V(1).Info("Add x509 certificate pool to RootCAs")
+		tlsConf.RootCAs = rootCAs
 	}
-	exporter, err := newTraceExporter(ctx)
-	if err != nil {
-		logger.Error(err, "Failed to create OpenTelemetry trace exporter")
-	}
-	res, err := newTelemetryResource(ctx, name)
-	if err != nil {
-		logger.Error(err, "Failed to create OpenTelemetry resource")
-	}
-
-	// Without an exporter the traces cannot be processed and sent to a collector,
-	// so create a provider that does not ever sample or attempt to deliver traces.
-	var provider *sdktrace.TracerProvider
-	if exporter != nil {
-		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)), sdktrace.WithResource(res))
-		otel.SetTracerProvider(provider)
-	}
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
-
-	logger.Info("OpenTelemetry initialization complete, returning shutdown function")
-	// Return a function that will cancel OpenTelemetry processes when called.
-	return func(ctx context.Context) {
-		if provider != nil {
-			if err := provider.Shutdown(ctx); err != nil {
-				logger.Error(err, "Error raised while stopping tracer provider")
-			}
-		}
-		if exporter != nil {
-			if err := exporter.Shutdown(ctx); err != nil {
-				logger.Error(err, "Error raised while stopping trace exporter")
-			}
-		}
-		if metrics != nil {
-			if err := metrics.Stop(ctx); err != nil {
-				logger.Error(err, "Error raised while stopping metric contoller")
-			}
-		}
-	}
+	return tlsConf, nil
 }
