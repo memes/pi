@@ -7,3 +7,8 @@
 dist/
 /pi
 /v2/pi
+
+# Don't commit testing TLS certificates, etc.
+v2/supporting/*.csr
+v2/supporting/*.json
+v2/supporting/*.pem

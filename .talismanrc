@@ -44,3 +44,5 @@ fileignoreconfig:
   checksum: 243e0f2988a45af10fb06ad9eb6f4914f17eece1eadd4662b5f820dca846ca56
 - filename: v2/pkg/server/server_test.go
   checksum: 95eaa87189253aede3177008d4f73fe927fe62fe267e0529a9795e9ff0d8ad87
+- filename: v2/supporting/Makefile
+  checksum: 37133a5fdf17d02b0c98471967afb636f918033b11487b4916b8feba72bc7502
