@@ -1,4 +1,5 @@
-# Launch an OpenTelemetry collector, Jaeger, and Prometheus on podman
+# Launch an OpenTelemetry collector, Jaeger, and Prometheus with configurations
+# in PVs.
 ---
 apiVersion: v1
 kind: Pod
@@ -7,13 +8,27 @@ metadata:
 spec:
   containers:
     - name: jaeger
-      image: jaegertracing/all-in-one:1.31.0
+      image: jaegertracing/all-in-one:1.32.0
+      resources:
+        limits:
+          cpu: 500m
+          memory: 500Mi
+        requests:
+          cpu: 100m
+          memory: 100Mi
       ports:
         - containerPort: 16686
           hostPort: 16686
           protocol: TCP
     - name: otlp
-      image: otel/opentelemetry-collector:0.44.0
+      image: otel/opentelemetry-collector:0.46.0
+      resources:
+        limits:
+          cpu: 500m
+          memory: 500Mi
+        requests:
+          cpu: 100m
+          memory: 100Mi
       args:
         - --config
         - /run/otel/otel-collector-config.yaml
@@ -25,7 +40,14 @@ spec:
           hostPort: 4317
           protocol: TCP
     - name: prometheus
-      image: prom/prometheus:v2.33.3
+      image: prom/prometheus:v2.33.5
+      resources:
+        limits:
+          cpu: 500m
+          memory: 500Mi
+        requests:
+          cpu: 100m
+          memory: 100Mi
       args:
         - --config.file=/run/prometheus/prometheus.yml
         - --storage.tsdb.path=/prometheus

@@ -4,6 +4,10 @@ receivers:
   otlp:
     protocols:
       grpc:
+        endpoint: :4317
+        tls:
+          cert_file: /run/otel/otel.pi.example.com.pem
+          key_file: /run/otel/otel.pi.example.com-key.pem
 
 exporters:
   prometheus:

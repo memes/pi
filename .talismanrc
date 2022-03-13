@@ -46,3 +46,5 @@ fileignoreconfig:
   checksum: 95eaa87189253aede3177008d4f73fe927fe62fe267e0529a9795e9ff0d8ad87
 - filename: v2/supporting/Makefile
   checksum: 37133a5fdf17d02b0c98471967afb636f918033b11487b4916b8feba72bc7502
+- filename: v2/supporting/otel-collector-config.yaml
+  checksum: 9afb13648fe8cfa21e60bfba80cb4ca1afb2b9350eac74009e4770adf9a55ae9

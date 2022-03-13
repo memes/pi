@@ -1,7 +1,7 @@
 #!/bin/sh
 #
 # Quick script to run OpenTelemetry collector with Jaeger and Prometheus, in
-# podman
+# podman with optional TLS support.
 
 # Shutdown existing deployment, if running
 test -z "$(podman pod ps --filter name=otel-all-in-one --format '{{ .Id }}')" || \
@@ -16,9 +16,10 @@ podman volume exists otel-all-in-one-otel-config || \
 _container=$(podman create \
     --mount type=volume,src=otel-all-in-one-prom-config,target=/mnt/prom-config \
     --mount type=volume,src=otel-all-in-one-otel-config,target=/mnt/otel-config \
-    busybox:1.35.0)
+    otel/opentelemetry-collector:0.46.0)
 tar cf - prometheus.yml | podman cp - "${_container}:/mnt/prom-config/"
-tar cf - otel-collector-config.yaml | podman cp - "${_container}:/mnt/otel-config"
+tar cf - otel-collector-config.yaml otel.pi.example.com.pem otel.pi.example.com-key.pem | \
+    podman cp - "${_container}:/mnt/otel-config"
 podman rm "${_container}"
 
 # Launch OpenTelemetry, Prometheus and Jaeger
