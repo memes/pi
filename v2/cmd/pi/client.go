@@ -108,7 +108,10 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		}
 		otelCreds = credentials.NewTLS(otelTLSConfig)
 	}
-	shutdown := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+	shutdown, err := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+	if err != nil {
+		return err
+	}
 	defer shutdown(ctx)
 	logger.V(0).Info("Preparing to start client")
 	piClient := client.NewPiClient(options...)

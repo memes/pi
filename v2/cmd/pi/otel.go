@@ -61,7 +61,7 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new telemetry resource: %w", err)
 	}
-	logger.V(2).Info("Resource created", "resource", res)
+	logger.V(1).Info("OpenTelemetry resource created", "resource", res)
 	return res, nil
 }
 
@@ -91,6 +91,7 @@ func newMetricPusher(ctx context.Context, target string, creds credentials.Trans
 	if err != nil {
 		return nil, fmt.Errorf("failed to start metric pusher: %w", err)
 	}
+	logger.V(1).Info("OpenTelemetry metric pusher created and started", "pusher", pusher)
 	return pusher, nil
 }
 
@@ -115,26 +116,27 @@ func newTraceExporter(ctx context.Context, target string, creds credentials.Tran
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new trace exporter: %w", err)
 	}
+	logger.V(1).Info("OpenTelemetry trace exporter created and started", "exporter", exporter)
 	return exporter, nil
 }
 
 // Initializes OpenTelemetry metric and trace processing and deliver to a collector
 // target, returning a function that can be called to shutdown the background
 // pipeline processes.
-func initTelemetry(ctx context.Context, name, target string, creds credentials.TransportCredentials, sampler sdktrace.Sampler) func(context.Context) {
+func initTelemetry(ctx context.Context, name, target string, creds credentials.TransportCredentials, sampler sdktrace.Sampler) (func(context.Context), error) {
 	logger := logger.V(1).WithValues("name", name, "target", target, "creds", creds, "sampler", sampler.Description())
 	logger.Info("Initializing OpenTelemetry")
 	metrics, err := newMetricPusher(ctx, target, creds)
 	if err != nil {
-		logger.Error(err, "Failed to create new OpenTelemetry metric controller")
+		return nil, err
 	}
 	exporter, err := newTraceExporter(ctx, target, creds)
 	if err != nil {
-		logger.Error(err, "Failed to create OpenTelemetry trace exporter")
+		return nil, err
 	}
 	res, err := newTelemetryResource(ctx, name)
 	if err != nil {
-		logger.Error(err, "Failed to create OpenTelemetry resource")
+		return nil, err
 	}
 
 	// Without an exporter the traces cannot be processed and sent to a collector,
@@ -164,5 +166,5 @@ func initTelemetry(ctx context.Context, name, target string, creds credentials.T
 				logger.Error(err, "Error raised while stopping metric contoller")
 			}
 		}
-	}
+	}, nil
 }

@@ -135,7 +135,10 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		}
 		otelCreds = credentials.NewTLS(otelTLSConfig)
 	}
-	telemetryShutdown := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+	telemetryShutdown, err := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+	if err != nil {
+		return err
+	}
 
 	logger.V(0).Info("Preparing to start services")
 	piServer := server.NewPiServer(options...)
