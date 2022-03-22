@@ -117,7 +117,10 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 		if err := pusher.Stop(ctx); err != nil {
 			logger.Error(err, "Error raised while stopping metric pusher; continuing")
 		}
-		return exporter.Shutdown(ctx)
+		if err := exporter.Shutdown(ctx); err != nil {
+			return fmt.Errorf("failure to shutdown metric exporter: %w", err)
+		}
+		return nil
 	}, nil
 }
 
@@ -143,20 +146,23 @@ func initTrace(ctx context.Context, target string, creds credentials.TransportCr
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new trace exporter: %w", err)
 	}
-	processor := trace.NewBatchSpanProcessor(exporter)
+	spanProcessor := trace.NewBatchSpanProcessor(exporter)
 	provider := trace.NewTracerProvider(
 		trace.WithSampler(sampler),
-		trace.WithSpanProcessor(processor),
+		trace.WithSpanProcessor(spanProcessor),
 		trace.WithResource(res),
 	)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(provider)
 	logger.V(1).Info("OpenTelemetry trace handlers created and started")
 	return func(ctx context.Context) error {
-		if err := processor.Shutdown(ctx); err != nil {
+		if err := spanProcessor.Shutdown(ctx); err != nil {
 			logger.Error(err, "Error raised while shutting down trace processor; continuing")
 		}
-		return exporter.Shutdown(ctx)
+		if err := exporter.Shutdown(ctx); err != nil {
+			return fmt.Errorf("failure to shutdown trace exporter: %w", err)
+		}
+		return nil
 	}, nil
 }
 
