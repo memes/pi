@@ -19,6 +19,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -33,7 +34,7 @@ import (
 
 const (
 	// The default name to use when registering OpenTelemetry components.
-	DefaultOpenTelemetryServerName = "server"
+	DefaultOpenTelemetryServerName = "pkg.server"
 )
 
 type PiServer struct {
@@ -48,10 +49,10 @@ type PiServer struct {
 	tracer trace.Tracer
 	// The OpenTelemetry meter to use for metrics
 	meter metric.Meter
-	// The prefix to use for metrics
+	// The prefix to use for metrics and spans
 	prefix string
 	// A gauge for calculation durations
-	calculationMs metric.Float64Histogram
+	calculationMs metric.Int64Histogram
 	// A counter for the number of errors returned by cache
 	cacheErrors metric.Int64Counter
 	// A counter for cache hits
@@ -81,10 +82,23 @@ func NewPiServer(options ...PiServerOption) *PiServer {
 	for _, option := range options {
 		option(server)
 	}
-	server.calculationMs = server.newFloat64Histogram("calc_duration_ms", "The duration (ms) of calculations")
-	server.cacheErrors = server.newInt64Counter("cache_errors", "The count of cache errors")
-	server.cacheHits = server.newInt64Counter("cache_hits", "The count of cache hits")
-	server.cacheMisses = server.newInt64Counter("cache_misses", "The count of cache misses")
+	server.calculationMs = metric.Must(server.meter).NewInt64Histogram(
+		server.telemetryName("calc_duration_ms"),
+		metric.WithUnit(unit.Milliseconds),
+		metric.WithDescription("The duration (ms) of calculations"),
+	)
+	server.cacheErrors = metric.Must(server.meter).NewInt64Counter(
+		server.telemetryName("cache_errors"),
+		metric.WithDescription("The count of error responses from digit cache"),
+	)
+	server.cacheHits = metric.Must(server.meter).NewInt64Counter(
+		server.telemetryName("cache_hits"),
+		metric.WithDescription("The count of cache hits"),
+	)
+	server.cacheMisses = metric.Must(server.meter).NewInt64Counter(
+		server.telemetryName("cache_misses"),
+		metric.WithDescription("The count of cache misses"),
+	)
 	return server
 }
 
@@ -157,37 +171,27 @@ func WithRestClientAuthority(restClientAuthority string) PiServerOption {
 	}
 }
 
-// Generates a name for the metric.
-func (s *PiServer) metricName(name string) string {
+// Generates a name for the metric or span.
+func (s *PiServer) telemetryName(name string) string {
 	if s.prefix == "" {
 		return name
 	}
-	return fmt.Sprintf("%s_%s", s.prefix, name)
-}
-
-// Create a new Int64 OpenTelemetry metric counter.
-func (s *PiServer) newInt64Counter(name, description string) metric.Int64Counter {
-	return metric.Must(s.meter).NewInt64Counter(s.metricName(name), metric.WithDescription(description))
-}
-
-// Create a new floating point OpenTelemetry metric gauge.
-func (s *PiServer) newFloat64Histogram(name, description string) metric.Float64Histogram {
-	return metric.Must(s.meter).NewFloat64Histogram(s.metricName(name), metric.WithDescription(description))
+	return s.prefix + "." + name
 }
 
 // Implement the PiService GetDigit RPC method.
 func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
 	logger := s.logger.WithValues("index", in.Index)
 	logger.Info("GetDigit: enter")
-	attributes := []attribute.KeyValue{
-		attribute.Int("index", int(in.Index)),
-	}
-	ctx, span := s.tracer.Start(ctx, "GetDigit")
-	defer span.End()
-	span.SetAttributes(attributes...)
-	var duration float64
 	cacheIndex := (in.Index / 9) * 9
 	key := strconv.FormatUint(cacheIndex, 16)
+	attributes := []attribute.KeyValue{
+		attribute.Int(s.telemetryName("index"), int(in.Index)),
+		attribute.String(s.telemetryName("cacheKey"), key),
+	}
+	ctx, span := s.tracer.Start(ctx, DefaultOpenTelemetryServerName+"/GetDigit")
+	defer span.End()
+	span.SetAttributes(attributes...)
 	span.AddEvent("Checking cache")
 	digits, err := s.cache.GetValue(ctx, key)
 	if err != nil {
@@ -203,13 +207,14 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	measurements := []metric.Measurement{}
 	if digits == "" {
 		measurements = append(measurements, s.cacheMisses.Measurement(1))
-		attributes := append(attributes, attribute.Bool("cache_hit", false))
+		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), false))
 		span.SetAttributes(attributes...)
 		span.AddEvent("Calculating fractional digits")
 		ts := time.Now()
 		digits = pi.BBPDigits(cacheIndex)
-		duration = float64(time.Since(ts) / time.Millisecond)
-		measurements = append(measurements, s.calculationMs.Measurement(duration))
+		measurements = append(measurements,
+			s.calculationMs.Measurement(time.Since(ts).Milliseconds()),
+		)
 		err = s.cache.SetValue(ctx, key, digits)
 		if err != nil {
 			span.RecordError(err)
@@ -224,7 +229,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		}
 	} else {
 		measurements = append(measurements, s.cacheHits.Measurement(1))
-		attributes := append(attributes, attribute.Bool("cache_hit", true))
+		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), true))
 		span.SetAttributes(attributes...)
 	}
 	offset := in.Index % 9
@@ -292,13 +297,18 @@ func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string
 	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, options); err != nil {
 		return nil, fmt.Errorf("failed to register PiService handler for REST gateway: %w", err)
 	}
-	if err := mux.HandlePath("GET", "/v1/digit/{index}", func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-		span := trace.SpanFromContext(r.Context())
-		span.SetAttributes(attribute.String("index", pathParams["index"]))
-		span.SetStatus(otelcodes.Error, "v1 API")
-		w.WriteHeader(http.StatusGone)
-	}); err != nil {
+	if err := mux.HandlePath("GET", "/v1/digit/{index}",
+		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
+			span := trace.SpanFromContext(r.Context())
+			span.SetAttributes(attribute.String(s.telemetryName("index"), pathParams["index"]))
+			span.SetStatus(otelcodes.Error, "v1 API")
+			w.WriteHeader(http.StatusGone)
+		},
+	); err != nil {
 		return nil, fmt.Errorf("failed to register /v1 handler for REST gateway: %w", err)
 	}
-	return otelhttp.NewHandler(mux, "rest-gateway", otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents)), nil
+	return otelhttp.NewHandler(mux,
+		s.telemetryName("REST-GRPC Gateway"),
+		otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents),
+	), nil
 }

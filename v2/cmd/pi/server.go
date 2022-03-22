@@ -27,14 +27,14 @@ import (
 )
 
 const (
-	ServerServiceName        = "server"
+	ServerServiceName        = "pi.server"
 	DefaultGRPCListenAddress = ":8443"
 )
 
 // Implements the server sub-command.
 func NewServerCmd() (*cobra.Command, error) {
 	serverCmd := &cobra.Command{
-		Use:   ServerServiceName,
+		Use:   "server",
 		Short: "Run gRPC service to return fractional digits of pi",
 		Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
 
@@ -135,7 +135,9 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		}
 		otelCreds = credentials.NewTLS(otelTLSConfig)
 	}
-	telemetryShutdown, err := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+	telemetryShutdown, err := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds,
+		sdktrace.ParentBased(sdktrace.TraceIDRatioBased(viper.GetFloat64("otlp-sampling-ratio"))),
+	)
 	if err != nil {
 		return err
 	}

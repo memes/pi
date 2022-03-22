@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	ClientServiceName = "client"
+	ClientServiceName = "pi.client"
 	DefaultDigitCount = 100
 	DefaultMaxTimeout = 10 * time.Second
 )
@@ -29,7 +29,7 @@ const (
 // requests.
 func NewClientCmd() (*cobra.Command, error) {
 	clientCmd := &cobra.Command{
-		Use:   ClientServiceName + " target [target]",
+		Use:   "client target [target]",
 		Short: "Run a gRPC Pi Service client to request fractional digits of pi",
 		Long: `Launches a gRPC client that will connect to Pi Service target(s) and request the fractional digits of pi.
 
@@ -75,6 +75,7 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		client.WithTracer(otel.Tracer(ClientServiceName)),
 		client.WithMeter(global.Meter(ClientServiceName)),
 		client.WithPrefix(ClientServiceName),
+		client.WithUserAgent(ClientServiceName + "/" + version),
 		client.WithAuthority(authority),
 	}
 
@@ -108,7 +109,9 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		}
 		otelCreds = credentials.NewTLS(otelTLSConfig)
 	}
-	shutdown, err := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds, sdktrace.AlwaysSample())
+	shutdown, err := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds,
+		sdktrace.TraceIDRatioBased(viper.GetFloat64("otlp-sampling-ratio")),
+	)
 	if err != nil {
 		return err
 	}

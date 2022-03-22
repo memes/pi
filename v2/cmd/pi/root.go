@@ -17,8 +17,9 @@ import (
 )
 
 const (
-	AppName     = "pi"
-	PackageName = "github.com/memes/pi/v2/cmd/pi"
+	AppName                       = "pi"
+	PackageName                   = "github.com/memes/pi/v2/cmd/pi"
+	DefaultOTLPTraceSamplingRatio = 0.5
 )
 
 var (
@@ -41,6 +42,7 @@ func NewRootCmd() (*cobra.Command, error) {
 	rootCmd.PersistentFlags().String("otlp-target", "", "An optional OpenTelemetry collection target that will receive metrics and traces")
 	rootCmd.PersistentFlags().Bool("otlp-insecure", false, "Disable remote TLS verification for OpenTelemetry target")
 	rootCmd.PersistentFlags().String("otlp-authority", "", "Set the authoritative name of the OpenTelemetry target for TLS verification, overriding hostname")
+	rootCmd.PersistentFlags().Float64("otlp-sampling-ratio", DefaultOTLPTraceSamplingRatio, "Set the OpenTelemetry trace sampling ratio")
 	rootCmd.PersistentFlags().StringArray("cacert", nil, "An optional CA certificate to use for remote TLS verification; can be repeated")
 	rootCmd.PersistentFlags().String("cert", "", "An optional TLS certificate to use")
 	rootCmd.PersistentFlags().String("key", "", "An optional TLS private key to use")
@@ -57,7 +59,10 @@ func NewRootCmd() (*cobra.Command, error) {
 		return nil, fmt.Errorf("failed to bind otlp-insecure pflag: %w", err)
 	}
 	if err := viper.BindPFlag("otlp-authority", rootCmd.PersistentFlags().Lookup("otlp-authority")); err != nil {
-		return nil, fmt.Errorf("failed to bind authority pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind otlp-authority pflag: %w", err)
+	}
+	if err := viper.BindPFlag("otlp-sampling-ratio", rootCmd.PersistentFlags().Lookup("otlp-sampling-ratio")); err != nil {
+		return nil, fmt.Errorf("failed to bind otlp-sampling-ratio pflag: %w", err)
 	}
 	if err := viper.BindPFlag("cacert", rootCmd.PersistentFlags().Lookup("cacert")); err != nil {
 		return nil, fmt.Errorf("failed to bind cacert pflag: %w", err)

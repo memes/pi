@@ -12,7 +12,9 @@ import (
 	api "github.com/memes/pi/v2/api/v2"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel/attribute"
+	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -22,7 +24,7 @@ const (
 	// The default maximum timeout that will be applied to requests.
 	DefaultMaxTimeout = 10 * time.Second
 	// The default name to use when registering OpenTelemetry components.
-	DefaultOpenTelemetryClientName = "client"
+	DefaultOpenTelemetryClientName = "pkg.client"
 )
 
 // Implements the PiServiceClient interface.
@@ -42,7 +44,7 @@ type PiClient struct {
 	// A counter for the number of response errors.
 	responseErrors metric.Int64Counter
 	// A gauge for request durations.
-	durationMs metric.Float64Histogram
+	durationMs metric.Int64Histogram
 	// gRPC transport credentials for Pi Service gRPC client.
 	creds credentials.TransportCredentials
 	// gRPC server authority to specify for TLS verification.
@@ -67,9 +69,19 @@ func NewPiClient(options ...PiClientOption) *PiClient {
 	for _, option := range options {
 		option(client)
 	}
-	client.connectionErrors = client.newInt64Counter("connection_errors", "The count of connection errors")
-	client.responseErrors = client.newInt64Counter("response_errors", "The count of error responses")
-	client.durationMs = client.newFloat64Histogram("request_duration_ms", "The duration (ms) of requests")
+	client.connectionErrors = metric.Must(client.meter).NewInt64Counter(
+		client.telemetryName("connection_errors"),
+		metric.WithDescription("The count of connection errors seen by client"),
+	)
+	client.responseErrors = metric.Must(client.meter).NewInt64Counter(
+		client.telemetryName("response_errors"),
+		metric.WithDescription("The count of error responses received by client"),
+	)
+	client.durationMs = metric.Must(client.meter).NewInt64Histogram(
+		client.telemetryName("request_duration_ms"),
+		metric.WithUnit(unit.Milliseconds),
+		metric.WithDescription("The duration (ms) of requests"),
+	)
 	return client
 }
 
@@ -129,22 +141,12 @@ func WithUserAgent(userAgent string) PiClientOption {
 	}
 }
 
-// Generates a name for the metric.
-func (c *PiClient) metricName(name string) string {
+// Generates a name for the metric or span.
+func (c *PiClient) telemetryName(name string) string {
 	if c.prefix == "" {
 		return name
 	}
-	return fmt.Sprintf("%s_%s", c.prefix, name)
-}
-
-// Create a new Int64 OpenTelemetry metric counter.
-func (c *PiClient) newInt64Counter(name, description string) metric.Int64Counter {
-	return metric.Must(c.meter).NewInt64Counter(c.metricName(name), metric.WithDescription(description))
-}
-
-// Create a new floating point OpenTelemetry metric gauge.
-func (c *PiClient) newFloat64Histogram(name, description string) metric.Float64Histogram {
-	return metric.Must(c.meter).NewFloat64Histogram(c.metricName(name), metric.WithDescription(description))
+	return c.prefix + "." + name
 }
 
 // Initiate a gRPC connection to the endpoint and retrieve a single fractional
@@ -153,14 +155,18 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	logger := c.logger.V(1).WithValues("endpoint", endpoint, "index", index)
 	logger.Info("Starting connection to service")
 	attributes := []attribute.KeyValue{
-		attribute.String("endpoint", endpoint),
-		attribute.Int("index", int(index)),
+		attribute.String(c.telemetryName("endpoint"), endpoint),
+		attribute.Int(c.telemetryName("index"), int(index)),
+		attribute.String(c.telemetryName("user-agent"), c.userAgent),
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), c.maxTimeout)
 	defer cancel()
+	ctx, span := c.tracer.Start(ctx, DefaultOpenTelemetryClientName+"/FetchDigit")
+	defer span.End()
+	span.SetAttributes(attributes...)
+	span.AddEvent("Building gRPC client")
 	startTimestamp := time.Now()
 	options := []grpc.DialOption{
-		grpc.WithBlock(),
 		grpc.WithUserAgent(c.userAgent),
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
 	}
@@ -172,6 +178,8 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	}
 	conn, err := grpc.DialContext(ctx, endpoint, options...)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(otelcodes.Error, err.Error())
 		c.meter.RecordBatch(
 			ctx,
 			attributes,
@@ -181,25 +189,29 @@ func (c *PiClient) FetchDigit(endpoint string, index uint64) (uint32, error) {
 	}
 	defer conn.Close()
 	client := api.NewPiServiceClient(conn)
+	span.AddEvent("Calling GetDigit")
 	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
 		Index: index,
 	})
-	duration := float64(time.Since(startTimestamp) / time.Millisecond)
+	duration := time.Since(startTimestamp)
 	if err != nil {
+		span.RecordError(err)
+		span.SetStatus(otelcodes.Error, err.Error())
+		attributes = append(attributes, attribute.Bool(c.telemetryName("success"), false))
 		c.meter.RecordBatch(
 			ctx,
 			attributes,
 			c.responseErrors.Measurement(1),
-			c.durationMs.Measurement(duration),
+			c.durationMs.Measurement(duration.Milliseconds()),
 		)
 		return 0, fmt.Errorf("failure calling GetDigit: %w", err)
 	}
+	attributes = append(attributes, attribute.Bool(c.telemetryName("success"), true))
 	c.meter.RecordBatch(
 		ctx,
 		attributes,
-		c.durationMs.Measurement(duration),
+		c.durationMs.Measurement(duration.Milliseconds()),
 	)
 	logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
-
 	return response.Digit, nil
 }

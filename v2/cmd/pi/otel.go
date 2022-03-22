@@ -7,6 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	gcpdetectors "go.opentelemetry.io/contrib/detectors/gcp"
+	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
+	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -18,10 +20,14 @@ import (
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/encoding/gzip"
+)
+
+const (
+	metricReportingPeriod = 30 * time.Second
 )
 
 // Create a new OpenTelemetry resource to describe the source of metrics and traces.
@@ -33,6 +39,7 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 		return nil, fmt.Errorf("failed to generate UUID for telemetry resource: %w", err)
 	}
 	res, err := resource.New(ctx,
+		resource.WithSchemaURL(semconv.SchemaURL),
 		resource.WithAttributes(
 			semconv.ServiceNamespaceKey.String(PackageName),
 			semconv.ServiceNameKey.String(name),
@@ -65,17 +72,20 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 	return res, nil
 }
 
-// Returns a new metric pusher that will send OpenTelemetry metrics to the target
-// provided as a configuration flag.
-func newMetricPusher(ctx context.Context, target string, creds credentials.TransportCredentials) (*controller.Controller, error) {
-	logger := logger.V(1).WithValues("target", target, "creds", creds)
-	logger.V(1).Info("Creating new OpenTelemetry metric pusher")
+// Initialises a pusher that will send OpenTelemetry metrics to the target
+// provided, returning a shutdown function.
+func initMetrics(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource) (func(context.Context) error, error) {
+	logger := logger.V(1).WithValues("target", target, "creds", creds, "res", res)
+	logger.V(1).Info("Creating OpenTelemetry metric handlers")
 	if target == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
-		return nil, nil
+		return func(_ context.Context) error {
+			return nil
+		}, nil
 	}
 	options := []otlpmetricgrpc.Option{
 		otlpmetricgrpc.WithEndpoint(target),
+		otlpmetricgrpc.WithCompressor(gzip.Name),
 	}
 	if creds != nil {
 		options = append(options, otlpmetricgrpc.WithTLSCredentials(creds))
@@ -85,85 +95,101 @@ func newMetricPusher(ctx context.Context, target string, creds credentials.Trans
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new metric exporter: %w", err)
 	}
-	pusher := controller.New(processor.NewFactory(simple.NewWithInexpensiveDistribution(), exporter), controller.WithExporter(exporter), controller.WithCollectPeriod(2*time.Second))
-	global.SetMeterProvider(pusher)
-	err = pusher.Start(ctx)
-	if err != nil {
+	pusher := controller.New(
+		processor.NewFactory(simple.NewWithHistogramDistribution(), exporter),
+		controller.WithExporter(exporter),
+		controller.WithResource(res),
+		controller.WithCollectPeriod(metricReportingPeriod),
+	)
+	if err = pusher.Start(ctx); err != nil {
 		return nil, fmt.Errorf("failed to start metric pusher: %w", err)
 	}
-	logger.V(1).Info("OpenTelemetry metric pusher created and started", "pusher", pusher)
-	return pusher, nil
+	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(pusher)); err != nil {
+		return nil, fmt.Errorf("failed to start runtime metrics: %w", err)
+	}
+	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(pusher)); err != nil {
+		return nil, fmt.Errorf("failed to start host metrics: %w", err)
+	}
+
+	global.SetMeterProvider(pusher)
+	logger.V(1).Info("OpenTelemetry metric handlers created and started")
+	return func(ctx context.Context) error {
+		if err := pusher.Stop(ctx); err != nil {
+			logger.Error(err, "Error raised while stopping metric pusher; continuing")
+		}
+		return exporter.Shutdown(ctx)
+	}, nil
 }
 
-// Returns a new trace exporter that will send OpenTelemetry traces to the target
-// provided as a configuration flag.
-func newTraceExporter(ctx context.Context, target string, creds credentials.TransportCredentials) (*otlptrace.Exporter, error) {
-	logger := logger.V(1).WithValues("target", target, "creds", creds)
+// Initialises a pipeline handler that will send OpenTelemetry spans to the target
+// provided, returning a shutdown function.
+func initTrace(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource, sampler trace.Sampler) (func(context.Context) error, error) {
+	logger := logger.V(1).WithValues("target", target, "creds", creds, "res", res, "sampler", sampler.Description())
 	logger.V(1).Info("Creating new OpenTelemetry trace exporter")
 	if target == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
-		return nil, nil
+		return func(_ context.Context) error {
+			return nil
+		}, nil
 	}
 	options := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(target),
-		otlptracegrpc.WithDialOption(grpc.WithBlock()),
+		otlptracegrpc.WithCompressor(gzip.Name),
 	}
 	if creds != nil {
 		options = append(options, otlptracegrpc.WithTLSCredentials(creds))
 	}
-	client := otlptracegrpc.NewClient(options...)
-	exporter, err := otlptrace.New(ctx, client)
+	exporter, err := otlptrace.New(ctx, otlptracegrpc.NewClient(options...))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new trace exporter: %w", err)
 	}
-	logger.V(1).Info("OpenTelemetry trace exporter created and started", "exporter", exporter)
-	return exporter, nil
+	processor := trace.NewBatchSpanProcessor(exporter)
+	provider := trace.NewTracerProvider(
+		trace.WithSampler(sampler),
+		trace.WithSpanProcessor(processor),
+		trace.WithResource(res),
+	)
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	otel.SetTracerProvider(provider)
+	logger.V(1).Info("OpenTelemetry trace handlers created and started")
+	return func(ctx context.Context) error {
+		if err := processor.Shutdown(ctx); err != nil {
+			logger.Error(err, "Error raised while shutting down trace processor; continuing")
+		}
+		return exporter.Shutdown(ctx)
+	}, nil
 }
 
 // Initializes OpenTelemetry metric and trace processing and deliver to a collector
 // target, returning a function that can be called to shutdown the background
 // pipeline processes.
-func initTelemetry(ctx context.Context, name, target string, creds credentials.TransportCredentials, sampler sdktrace.Sampler) (func(context.Context), error) {
+func initTelemetry(ctx context.Context, name, target string, creds credentials.TransportCredentials, sampler trace.Sampler) (func(context.Context), error) {
 	logger := logger.V(1).WithValues("name", name, "target", target, "creds", creds, "sampler", sampler.Description())
 	logger.Info("Initializing OpenTelemetry")
-	metrics, err := newMetricPusher(ctx, target, creds)
-	if err != nil {
-		return nil, err
-	}
-	exporter, err := newTraceExporter(ctx, target, creds)
-	if err != nil {
-		return nil, err
-	}
 	res, err := newTelemetryResource(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-
-	// Without an exporter the traces cannot be processed and sent to a collector,
-	// so create a provider that does not ever sample or attempt to deliver traces.
-	var provider *sdktrace.TracerProvider
-	if exporter != nil {
-		provider = sdktrace.NewTracerProvider(sdktrace.WithSampler(sampler), sdktrace.WithSpanProcessor(sdktrace.NewBatchSpanProcessor(exporter)), sdktrace.WithResource(res))
-		otel.SetTracerProvider(provider)
+	shutdownMetrics, err := initMetrics(ctx, target, creds, res)
+	if err != nil {
+		return nil, err
 	}
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
+	shutdownTraces, err := initTrace(ctx, target, creds, res, sampler)
+	if err != nil {
+		return nil, err
+	}
 
 	logger.Info("OpenTelemetry initialization complete, returning shutdown function")
 	// Return a function that will cancel OpenTelemetry processes when called.
 	return func(ctx context.Context) {
-		if provider != nil {
-			if err := provider.Shutdown(ctx); err != nil {
-				logger.Error(err, "Error raised while stopping tracer provider")
+		if shutdownTraces != nil {
+			if err := shutdownTraces(ctx); err != nil {
+				logger.Error(err, "Error raised while shutting down tracing; continuing")
 			}
 		}
-		if exporter != nil {
-			if err := exporter.Shutdown(ctx); err != nil {
-				logger.Error(err, "Error raised while stopping trace exporter")
-			}
-		}
-		if metrics != nil {
-			if err := metrics.Stop(ctx); err != nil {
-				logger.Error(err, "Error raised while stopping metric contoller")
+		if shutdownMetrics != nil {
+			if err := shutdownMetrics(ctx); err != nil {
+				logger.Error(err, "Error raised while shutting down metrics; continuing")
 			}
 		}
 	}, nil
