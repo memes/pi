@@ -135,7 +135,7 @@ linters-settings:
       - unnecessaryBlock
   nolintlint:
     allow-unused: false
-    allow-leading-space: true
+    allow-leading-space: false
     allow-no-explanation: []
-    require-explanation: false
+    require-explanation: true
     require-specific: true
