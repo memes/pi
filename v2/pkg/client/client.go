@@ -18,6 +18,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+
+	// Importing this package injects xds://endpoint support into the client.
+	_ "google.golang.org/grpc/xds"
 )
 
 const (

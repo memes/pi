@@ -21,7 +21,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -47,6 +46,7 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	serverCmd.PersistentFlags().StringToStringP("label", "l", nil, "An optional label key=value to add to PiService response metadata; can be repeated")
 	serverCmd.PersistentFlags().Bool("tls-client-auth", false, "Require PiService clients to provide a valid TLS client certificate")
 	serverCmd.PersistentFlags().String("rest-authority", "", "Set the Authority header for REST/gRPC gateway communication")
+	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for PiService; requires an xDS environment")
 	if err := viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address")); err != nil {
 		return nil, fmt.Errorf("failed to bind address pflag: %w", err)
 	}
@@ -65,6 +65,9 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	if err := viper.BindPFlag("rest-authority", serverCmd.PersistentFlags().Lookup("rest-authority")); err != nil {
 		return nil, fmt.Errorf("failed to bind rest-authority pflag: %w", err)
 	}
+	if err := viper.BindPFlag("xds", serverCmd.PersistentFlags().Lookup("xds")); err != nil {
+		return nil, fmt.Errorf("failed to bind xds pflag: %w", err)
+	}
 	return serverCmd, nil
 }
 
@@ -81,7 +84,8 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	otlpTarget := viper.GetString("otlp-target")
 	labels := viper.GetStringMapString("label")
 	restClientAuthority := viper.GetString("rest-authority")
-	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress, "cacerts", cacerts, "cert", cert, "key", key, "requireTLSClientAuth", requireTLSClientAuth, "otlpTarget", otlpTarget, "labels", labels, "restClientAuthority", restClientAuthority)
+	xds := viper.GetBool("xds")
+	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress, "cacerts", cacerts, "cert", cert, "key", key, "requireTLSClientAuth", requireTLSClientAuth, "otlpTarget", otlpTarget, "labels", labels, "restClientAuthority", restClientAuthority, "xds", xds)
 	ctx := context.Background()
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
@@ -135,7 +139,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		}
 		otelCreds = credentials.NewTLS(otelTLSConfig)
 	}
-	telemetryShutdown, err := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds,
+	shutdownFunctions, err := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds,
 		sdktrace.ParentBased(sdktrace.TraceIDRatioBased(viper.GetFloat64("otlp-sampling-ratio"))),
 	)
 	if err != nil {
@@ -151,33 +155,56 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
 	defer signal.Stop(interrupt)
 
-	var grpcServer *grpc.Server
-	var restServer *http.Server
+	listener, err := net.Listen("tcp", address)
+	if err != nil {
+		return fmt.Errorf("failed to start gRPC listener: %w", err)
+	}
 	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		logger.V(0).Info("Starting gRPC service")
-		grpcServer = piServer.NewGrpcServer()
-		listener, err := net.Listen("tcp", address)
-		if err != nil {
-			return fmt.Errorf("failed to start gRPC listener: %w", err)
-		}
-		if err := grpcServer.Serve(listener); err != nil {
-			return fmt.Errorf("failed to start gRPC server: %w", err)
-		}
-		return nil
-	})
-	if restAddress != "" {
+	if xds {
+		xdsServer := piServer.NewXDSServer()
+		shutdownFunctions = append([]shutdownFunction{func(_ context.Context) error {
+			xdsServer.GracefulStop()
+			return nil
+		}}, shutdownFunctions...)
 		g.Go(func() error {
-			logger.V(0).Info("Preparing REST/gRPC gateway")
-			restHandler, err := piServer.NewRestGatewayHandler(ctx, address)
-			if err != nil {
-				return fmt.Errorf("failed to create new REST gateway handler: %w", err)
+			logger.V(0).Info("Starting xDS gRPC service")
+			if err := xdsServer.Serve(listener); err != nil {
+				return fmt.Errorf("failed to start xDS gRPC server: %w", err)
 			}
-			restServer = &http.Server{
-				Addr:      restAddress,
-				Handler:   restHandler,
-				TLSConfig: serverTLSConfig,
+			return nil
+		})
+	} else {
+		grpcServer := piServer.NewGrpcServer()
+		shutdownFunctions = append([]shutdownFunction{func(_ context.Context) error {
+			grpcServer.GracefulStop()
+			return nil
+		}}, shutdownFunctions...)
+		g.Go(func() error {
+			logger.V(0).Info("Starting gRPC service")
+			if err := grpcServer.Serve(listener); err != nil {
+				return fmt.Errorf("failed to start gRPC server: %w", err)
 			}
+			return nil
+		})
+	}
+	if restAddress != "" {
+		logger.V(0).Info("Preparing REST/gRPC gateway")
+		restHandler, err := piServer.NewRestGatewayHandler(ctx, address)
+		if err != nil {
+			return fmt.Errorf("failed to create new REST gateway handler: %w", err)
+		}
+		restServer := &http.Server{
+			Addr:      restAddress,
+			Handler:   restHandler,
+			TLSConfig: serverTLSConfig,
+		}
+		shutdownFunctions = append(shutdownFunctions, func(ctx context.Context) error {
+			if err := restServer.Shutdown(ctx); err != nil {
+				return fmt.Errorf("error returned by REST service shutdown: %w", err)
+			}
+			return nil
+		})
+		g.Go(func() error {
 			if serverTLSConfig != nil {
 				logger.V(0).Info("Starting REST/gRPC gateway with TLS")
 				err = restServer.ListenAndServeTLS("", "")
@@ -202,16 +229,12 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	cancel()
 	ctx, shutdown := context.WithTimeout(context.Background(), 60*time.Second)
 	defer shutdown()
-	if restServer != nil {
-		if err := restServer.Shutdown(ctx); err != nil {
-			logger.Error(err, "Failed to shutdown REST gateway cleanly")
+	for _, fn := range shutdownFunctions {
+		if err := fn(ctx); err != nil {
+			logger.Error(err, "Failure during service shutdown; continuing")
 		}
 	}
-	if grpcServer != nil {
-		grpcServer.GracefulStop()
-	}
-	telemetryShutdown(ctx)
-	return g.Wait() // nolint:wrapcheck
+	return g.Wait() //nolint:wrapcheck // Errors returned from group are already wrapped
 }
 
 // Creates a new metadata struct populated from labels given.

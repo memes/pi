@@ -109,13 +109,19 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		}
 		otelCreds = credentials.NewTLS(otelTLSConfig)
 	}
-	shutdown, err := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds,
+	shutdownFuncs, err := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds,
 		sdktrace.TraceIDRatioBased(viper.GetFloat64("otlp-sampling-ratio")),
 	)
 	if err != nil {
 		return err
 	}
-	defer shutdown(ctx)
+	defer func(ctx context.Context) {
+		for _, fn := range shutdownFuncs {
+			if err := fn(ctx); err != nil {
+				logger.Error(err, "Failure during service shutdown; continuing")
+			}
+		}
+	}(ctx)
 	logger.V(0).Info("Preparing to start client")
 	piClient := client.NewPiClient(options...)
 	// Randomize the retrieval of numbers

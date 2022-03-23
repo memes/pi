@@ -30,6 +30,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/xds"
 )
 
 const (
@@ -264,25 +265,43 @@ func (s *PiServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequ
 
 // Satisfy the gRPC health service Watch method - always returns an Unimplemented error.
 func (s *PiServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
-	return status.Error(codes.Unimplemented, "unimplemented") // nolint:wrapcheck
+	return status.Error(codes.Unimplemented, "unimplemented") //nolint:wrapcheck // This error is not received by application code
 }
 
-// Create a new grpc.Server that is ready to be attached to a net.Listener.
-func (s *PiServer) NewGrpcServer() *grpc.Server {
+// Return a set of gRPC options for this instance.
+func (s *PiServer) grpcOptions() []grpc.ServerOption {
 	options := []grpc.ServerOption{
 		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
 	}
 	if s.serverGRPCCredentials != nil {
 		options = append(options, grpc.Creds(s.serverGRPCCredentials))
 	}
+	return options
+}
+
+// Create a new grpc.Server that is ready to be attached to a net.Listener.
+func (s *PiServer) NewGrpcServer() *grpc.Server {
+	s.logger.V(1).Info("Building a standard gRPC server")
+	options := s.grpcOptions()
 	grpcServer := grpc.NewServer(options...)
-	healthServer := health.NewServer()
-	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
+	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 	api.RegisterPiServiceServer(grpcServer, s)
 	reflection.Register(grpcServer)
 	return grpcServer
 }
 
+// Create a new xds.GRPCServer that is ready to be attached to a net.Listener.
+func (s *PiServer) NewXDSServer() *xds.GRPCServer {
+	s.logger.V(1).Info("xDS is enabled; building an xDS aware gRPC server")
+	options := s.grpcOptions()
+	xdsServer := xds.NewGRPCServer(options...)
+	grpc_health_v1.RegisterHealthServer(xdsServer, health.NewServer())
+	api.RegisterPiServiceServer(xdsServer, s)
+	reflection.Register(xdsServer)
+	return xdsServer
+}
+
+// Registers the gRPC services to the
 // Create a new REST gateway handler that translates and forwards incoming REST
 // requests to the specified gRPC endpoint address.
 func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string) (http.Handler, error) {
