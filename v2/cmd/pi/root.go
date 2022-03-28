@@ -17,9 +17,18 @@ import (
 )
 
 const (
-	AppName                       = "pi"
-	PackageName                   = "github.com/memes/pi/v2/cmd/pi"
-	DefaultOTLPTraceSamplingRatio = 0.5
+	AppName                            = "pi"
+	PackageName                        = "github.com/memes/pi/v2/cmd/pi"
+	DefaultOTLPTraceSamplingRatio      = 0.5
+	VerboseFlagName                    = "verbose"
+	PrettyFlagName                     = "pretty"
+	OpenTelemetryTargetFlagName        = "otlp-target"
+	OpenTelemetryInsecureFlagName      = "otlp-insecure"
+	OpenTelemetryAuthorityFlagName     = "otlp-authority"
+	OpenTelemetrySamplingRatioFlagName = "otlp-sampling-ratio"
+	CACertFlagName                     = "cacert"
+	TLSCertFlagName                    = "cert"
+	TLSKeyFlagName                     = "key"
 )
 
 var (
@@ -37,40 +46,40 @@ func NewRootCmd() (*cobra.Command, error) {
 		Short:   "Get a fractional digit of pi at an arbitrary index",
 		Long:    `Provides a gRPC client/server demo for distributed calculation of fractional digits of pi.`,
 	}
-	rootCmd.PersistentFlags().CountP("verbose", "v", "Enable verbose logging; can be repeated to increase verbosity")
-	rootCmd.PersistentFlags().BoolP("pretty", "p", false, "Disables structured JSON logging to stdout, making it easier to read")
-	rootCmd.PersistentFlags().String("otlp-target", "", "An optional OpenTelemetry collection target that will receive metrics and traces")
-	rootCmd.PersistentFlags().Bool("otlp-insecure", false, "Disable remote TLS verification for OpenTelemetry target")
-	rootCmd.PersistentFlags().String("otlp-authority", "", "Set the authoritative name of the OpenTelemetry target for TLS verification, overriding hostname")
-	rootCmd.PersistentFlags().Float64("otlp-sampling-ratio", DefaultOTLPTraceSamplingRatio, "Set the OpenTelemetry trace sampling ratio")
-	rootCmd.PersistentFlags().StringArray("cacert", nil, "An optional CA certificate to use for remote TLS verification; can be repeated")
-	rootCmd.PersistentFlags().String("cert", "", "An optional TLS certificate to use")
-	rootCmd.PersistentFlags().String("key", "", "An optional TLS private key to use")
-	if err := viper.BindPFlag("verbose", rootCmd.PersistentFlags().Lookup("verbose")); err != nil {
+	rootCmd.PersistentFlags().CountP(VerboseFlagName, "v", "Enable verbose logging; can be repeated to increase verbosity")
+	rootCmd.PersistentFlags().BoolP(PrettyFlagName, "p", false, "Disables structured JSON logging to stdout, making it easier to read")
+	rootCmd.PersistentFlags().String(OpenTelemetryTargetFlagName, "", "An optional OpenTelemetry collection target that will receive metrics and traces")
+	rootCmd.PersistentFlags().Bool(OpenTelemetryInsecureFlagName, false, "Disable remote TLS verification for OpenTelemetry target")
+	rootCmd.PersistentFlags().String(OpenTelemetryAuthorityFlagName, "", "Set the authoritative name of the OpenTelemetry target for TLS verification, overriding hostname")
+	rootCmd.PersistentFlags().Float64(OpenTelemetrySamplingRatioFlagName, DefaultOTLPTraceSamplingRatio, "Set the OpenTelemetry trace sampling ratio")
+	rootCmd.PersistentFlags().StringArray(CACertFlagName, nil, "An optional CA certificate to use for remote TLS verification; can be repeated")
+	rootCmd.PersistentFlags().String(TLSCertFlagName, "", "An optional TLS certificate to use")
+	rootCmd.PersistentFlags().String(TLSKeyFlagName, "", "An optional TLS private key to use")
+	if err := viper.BindPFlag(VerboseFlagName, rootCmd.PersistentFlags().Lookup(VerboseFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind verbose pflag: %w", err)
 	}
-	if err := viper.BindPFlag("pretty", rootCmd.PersistentFlags().Lookup("pretty")); err != nil {
+	if err := viper.BindPFlag(PrettyFlagName, rootCmd.PersistentFlags().Lookup(PrettyFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind pretty pflag: %w", err)
 	}
-	if err := viper.BindPFlag("otlp-target", rootCmd.PersistentFlags().Lookup("otlp-target")); err != nil {
+	if err := viper.BindPFlag(OpenTelemetryTargetFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryTargetFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind otlp-target pflag: %w", err)
 	}
-	if err := viper.BindPFlag("otlp-insecure", rootCmd.PersistentFlags().Lookup("otlp-insecure")); err != nil {
+	if err := viper.BindPFlag(OpenTelemetryInsecureFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryInsecureFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind otlp-insecure pflag: %w", err)
 	}
-	if err := viper.BindPFlag("otlp-authority", rootCmd.PersistentFlags().Lookup("otlp-authority")); err != nil {
+	if err := viper.BindPFlag(OpenTelemetryAuthorityFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryAuthorityFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind otlp-authority pflag: %w", err)
 	}
-	if err := viper.BindPFlag("otlp-sampling-ratio", rootCmd.PersistentFlags().Lookup("otlp-sampling-ratio")); err != nil {
+	if err := viper.BindPFlag(OpenTelemetrySamplingRatioFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetrySamplingRatioFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind otlp-sampling-ratio pflag: %w", err)
 	}
-	if err := viper.BindPFlag("cacert", rootCmd.PersistentFlags().Lookup("cacert")); err != nil {
+	if err := viper.BindPFlag(CACertFlagName, rootCmd.PersistentFlags().Lookup(CACertFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind cacert pflag: %w", err)
 	}
-	if err := viper.BindPFlag("cert", rootCmd.PersistentFlags().Lookup("cert")); err != nil {
+	if err := viper.BindPFlag(TLSCertFlagName, rootCmd.PersistentFlags().Lookup(TLSCertFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind cert pflag: %w", err)
 	}
-	if err := viper.BindPFlag("key", rootCmd.PersistentFlags().Lookup("key")); err != nil {
+	if err := viper.BindPFlag(TLSKeyFlagName, rootCmd.PersistentFlags().Lookup(TLSKeyFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind key pflag: %w", err)
 	}
 	serverCmd, err := NewServerCmd()
@@ -100,7 +109,7 @@ func initConfig() {
 	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_"))
 	viper.AutomaticEnv()
 	err := viper.ReadInConfig()
-	verbosity := viper.GetInt("verbose")
+	verbosity := viper.GetInt(VerboseFlagName)
 	switch {
 	case verbosity > 2:
 		zerolog.SetGlobalLevel(zerolog.TraceLevel)
@@ -109,9 +118,9 @@ func initConfig() {
 	case verbosity == 1:
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	default:
-		zerolog.SetGlobalLevel(zerolog.ErrorLevel)
+		zerolog.SetGlobalLevel(zerolog.WarnLevel)
 	}
-	if viper.GetBool("pretty") {
+	if viper.GetBool(PrettyFlagName) {
 		zl = zl.Output(zerolog.ConsoleWriter{Out: os.Stdout})
 	}
 	logger = zerologr.New(&zl)
@@ -154,7 +163,7 @@ func newCACertPool(cacerts []string) (*x509.CertPool, error) {
 // to present to remote side of TLS connections. An optional pool of CA certificates
 // can be provided as ClientCA and/or RootCA verification.
 func newTLSConfig(certFile, keyFile string, clientCAs, rootCAs *x509.CertPool) (*tls.Config, error) {
-	logger := logger.V(1).WithValues("cert", certFile, "key", keyFile, "hasClientCAs", clientCAs != nil, "hasRootCAs", rootCAs != nil)
+	logger := logger.V(1).WithValues(TLSCertFlagName, certFile, TLSKeyFlagName, keyFile, "hasClientCAs", clientCAs != nil, "hasRootCAs", rootCAs != nil)
 	logger.V(0).Info("Preparing TLS configuration")
 	tlsConf := &tls.Config{
 		MinVersion: tls.VersionTLS12,

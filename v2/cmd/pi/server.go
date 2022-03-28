@@ -22,12 +22,18 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/credentials/insecure"
+	grpcinsecure "google.golang.org/grpc/credentials/insecure"
 )
 
 const (
 	ServerServiceName        = "pi.server"
 	DefaultGRPCListenAddress = ":8443"
+	RESTAddressFlagName      = "rest-address"
+	RedisTargetFlagName      = "redis-target"
+	LabelFlagName            = "label"
+	TLSClientAuthFlagName    = "tls-client-auth"
+	RESTAuthorityFlagName    = "rest-authority"
+	XDSFlagName              = "xds"
 )
 
 // Implements the server sub-command.
@@ -38,34 +44,31 @@ func NewServerCmd() (*cobra.Command, error) {
 		Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
 
 A single decimal digit of pi will be returned per request. An optional Redis DB can be used to cache the calculated digits. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: serverMain,
 	}
-	serverCmd.PersistentFlags().StringP("address", "a", DefaultGRPCListenAddress, "Address to listen for gRPC PiService requests")
-	serverCmd.PersistentFlags().String("rest-address", "", "An optional listen address to launch a REST/gRPC gateway process")
-	serverCmd.PersistentFlags().String("redis-target", "", "An optional Redis endpoint to use as a PiService cache")
-	serverCmd.PersistentFlags().StringToStringP("label", "l", nil, "An optional label key=value to add to PiService response metadata; can be repeated")
-	serverCmd.PersistentFlags().Bool("tls-client-auth", false, "Require PiService clients to provide a valid TLS client certificate")
-	serverCmd.PersistentFlags().String("rest-authority", "", "Set the Authority header for REST/gRPC gateway communication")
+	serverCmd.PersistentFlags().String(RESTAddressFlagName, "", "An optional listen address to launch a REST/gRPC gateway process")
+	serverCmd.PersistentFlags().String(RedisTargetFlagName, "", "An optional Redis endpoint to use as a PiService cache")
+	serverCmd.PersistentFlags().StringToStringP(LabelFlagName, "l", nil, "An optional label key=value to add to PiService response metadata; can be repeated")
+	serverCmd.PersistentFlags().Bool(TLSClientAuthFlagName, false, "Require PiService clients to provide a valid TLS client certificate")
+	serverCmd.PersistentFlags().String(RESTAuthorityFlagName, "", "Set the Authority header for REST/gRPC gateway communication")
 	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for PiService; requires an xDS environment")
-	if err := viper.BindPFlag("address", serverCmd.PersistentFlags().Lookup("address")); err != nil {
-		return nil, fmt.Errorf("failed to bind address pflag: %w", err)
-	}
-	if err := viper.BindPFlag("rest-address", serverCmd.PersistentFlags().Lookup("rest-address")); err != nil {
+	if err := viper.BindPFlag(RESTAddressFlagName, serverCmd.PersistentFlags().Lookup(RESTAddressFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind rest-address pflag: %w", err)
 	}
-	if err := viper.BindPFlag("redis-target", serverCmd.PersistentFlags().Lookup("redis-target")); err != nil {
+	if err := viper.BindPFlag(RedisTargetFlagName, serverCmd.PersistentFlags().Lookup(RedisTargetFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind redis-target pflag: %w", err)
 	}
-	if err := viper.BindPFlag("label", serverCmd.PersistentFlags().Lookup("label")); err != nil {
+	if err := viper.BindPFlag(LabelFlagName, serverCmd.PersistentFlags().Lookup(LabelFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
 	}
-	if err := viper.BindPFlag("tls-client-auth", serverCmd.PersistentFlags().Lookup("tls-client-auth")); err != nil {
+	if err := viper.BindPFlag(TLSClientAuthFlagName, serverCmd.PersistentFlags().Lookup(TLSClientAuthFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
 	}
-	if err := viper.BindPFlag("rest-authority", serverCmd.PersistentFlags().Lookup("rest-authority")); err != nil {
+	if err := viper.BindPFlag(RESTAuthorityFlagName, serverCmd.PersistentFlags().Lookup(RESTAuthorityFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind rest-authority pflag: %w", err)
 	}
-	if err := viper.BindPFlag("xds", serverCmd.PersistentFlags().Lookup("xds")); err != nil {
+	if err := viper.BindPFlag(XDSFlagName, serverCmd.PersistentFlags().Lookup(XDSFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind xds pflag: %w", err)
 	}
 	return serverCmd, nil
@@ -74,19 +77,42 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 // Server sub-command entrypoint. This function will launch the gRPC PiService
 // and an optional REST gateway.
 func serverMain(cmd *cobra.Command, args []string) error {
-	address := viper.GetString("address")
-	restAddress := viper.GetString("rest-address")
-	redisTarget := viper.GetString("redis-target")
-	cacerts := viper.GetStringSlice("cacert")
-	cert := viper.GetString("cert")
-	key := viper.GetString("key")
-	requireTLSClientAuth := viper.GetBool("tls-client-auth")
-	otlpTarget := viper.GetString("otlp-target")
-	labels := viper.GetStringMapString("label")
-	restClientAuthority := viper.GetString("rest-authority")
-	xds := viper.GetBool("xds")
-	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress, "cacerts", cacerts, "cert", cert, "key", key, "requireTLSClientAuth", requireTLSClientAuth, "otlpTarget", otlpTarget, "labels", labels, "restClientAuthority", restClientAuthority, "xds", xds)
-	ctx := context.Background()
+	address := DefaultGRPCListenAddress
+	if len(args) > 0 {
+		address = args[0]
+	}
+	restAddress := viper.GetString(RESTAddressFlagName)
+	redisTarget := viper.GetString(RedisTargetFlagName)
+	cacerts := viper.GetStringSlice(CACertFlagName)
+	cert := viper.GetString(TLSCertFlagName)
+	key := viper.GetString(TLSKeyFlagName)
+	requireTLSClientAuth := viper.GetBool(TLSClientAuthFlagName)
+	otlpTarget := viper.GetString(OpenTelemetryTargetFlagName)
+	labels := viper.GetStringMapString(LabelFlagName)
+	restClientAuthority := viper.GetString(RESTAuthorityFlagName)
+	xds := viper.GetBool(XDSFlagName)
+	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress, "cacerts", cacerts, TLSCertFlagName, cert, TLSKeyFlagName, key, "requireTLSClientAuth", requireTLSClientAuth, "otlpTarget", otlpTarget, "labels", labels, "restClientAuthority", restClientAuthority, XDSFlagName, xds)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	shutdownFuncs := []shutdownFunction{}
+	defer func(ctx context.Context) {
+		for _, fn := range shutdownFuncs {
+			if err := fn(ctx); err != nil {
+				logger.Error(err, "Failure during service shutdown; continuing")
+			}
+		}
+	}(ctx)
+
+	logger.V(0).Info("Preparing telemetry")
+	telemetryShutdownFuncs, err := initTelemetry(ctx, ServerServiceName,
+		sdktrace.ParentBased(sdktrace.TraceIDRatioBased(viper.GetFloat64(OpenTelemetrySamplingRatioFlagName))),
+	)
+	if err != nil {
+		return err
+	}
+	shutdownFuncs = append(telemetryShutdownFuncs, shutdownFuncs...)
+
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
 		server.WithMetadata(newMetadata(labels)),
@@ -99,7 +125,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		options = append(options, server.WithCache(cache.NewRedisCache(ctx, redisTarget)))
 	}
 
-	logger.V(0).Info("Preparing gRPC transport credentials")
+	logger.V(0).Info("Preparing gRPC transport security options")
 	certPool, err := newCACertPool(cacerts)
 	if err != nil {
 		return err
@@ -124,37 +150,12 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		)
 	} else {
 		options = append(options,
-			server.WithRestClientGRPCTransportCredentials(insecure.NewCredentials()),
+			server.WithRestClientGRPCTransportCredentials(grpcinsecure.NewCredentials()),
 		)
-	}
-
-	logger.V(0).Info("Preparing telemetry")
-	var otelCreds credentials.TransportCredentials
-	if viper.GetBool("otlp-insecure") {
-		otelCreds = insecure.NewCredentials()
-	} else {
-		otelTLSConfig, err := newTLSConfig(viper.GetString("otlp-cert"), viper.GetString("otlp-key"), nil, certPool)
-		if err != nil {
-			return err
-		}
-		otelCreds = credentials.NewTLS(otelTLSConfig)
-	}
-	shutdownFunctions, err := initTelemetry(ctx, ServerServiceName, otlpTarget, otelCreds,
-		sdktrace.ParentBased(sdktrace.TraceIDRatioBased(viper.GetFloat64("otlp-sampling-ratio"))),
-	)
-	if err != nil {
-		return err
 	}
 
 	logger.V(0).Info("Preparing to start services")
 	piServer := server.NewPiServer(options...)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(interrupt)
-
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("failed to start gRPC listener: %w", err)
@@ -162,10 +163,10 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	g, ctx := errgroup.WithContext(ctx)
 	if xds {
 		xdsServer := piServer.NewXDSServer()
-		shutdownFunctions = append([]shutdownFunction{func(_ context.Context) error {
+		shutdownFuncs = append([]shutdownFunction{func(_ context.Context) error {
 			xdsServer.GracefulStop()
 			return nil
-		}}, shutdownFunctions...)
+		}}, shutdownFuncs...)
 		g.Go(func() error {
 			logger.V(0).Info("Starting xDS gRPC service")
 			if err := xdsServer.Serve(listener); err != nil {
@@ -175,10 +176,10 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		})
 	} else {
 		grpcServer := piServer.NewGrpcServer()
-		shutdownFunctions = append([]shutdownFunction{func(_ context.Context) error {
+		shutdownFuncs = append([]shutdownFunction{func(_ context.Context) error {
 			grpcServer.GracefulStop()
 			return nil
-		}}, shutdownFunctions...)
+		}}, shutdownFuncs...)
 		g.Go(func() error {
 			logger.V(0).Info("Starting gRPC service")
 			if err := grpcServer.Serve(listener); err != nil {
@@ -198,7 +199,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 			Handler:   restHandler,
 			TLSConfig: serverTLSConfig,
 		}
-		shutdownFunctions = append(shutdownFunctions, func(ctx context.Context) error {
+		shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
 			if err := restServer.Shutdown(ctx); err != nil {
 				return fmt.Errorf("error returned by REST service shutdown: %w", err)
 			}
@@ -219,6 +220,9 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		})
 	}
 
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(interrupt)
 	select {
 	case <-interrupt:
 		break
@@ -227,9 +231,9 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	}
 	logger.V(0).Info("Shutting down on signal")
 	cancel()
-	ctx, shutdown := context.WithTimeout(context.Background(), 60*time.Second)
-	defer shutdown()
-	for _, fn := range shutdownFunctions {
+	ctx, cancelShutdown := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancelShutdown()
+	for _, fn := range shutdownFuncs {
 		if err := fn(ctx); err != nil {
 			logger.Error(err, "Failure during service shutdown; continuing")
 		}

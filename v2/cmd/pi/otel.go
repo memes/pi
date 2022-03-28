@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/spf13/viper"
 	gcpdetectors "go.opentelemetry.io/contrib/detectors/gcp"
 	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
@@ -23,6 +24,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"google.golang.org/grpc/credentials"
+	grpcinsecure "google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 )
 
@@ -31,6 +33,10 @@ const (
 )
 
 type shutdownFunction func(context.Context) error
+
+func noopShutdownFunction(_ context.Context) error {
+	return nil
+}
 
 // Create a new OpenTelemetry resource to describe the source of metrics and traces.
 func newTelemetryResource(ctx context.Context, name string) (*resource.Resource, error) {
@@ -76,13 +82,13 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 
 // Initialises a pusher that will send OpenTelemetry metrics to the target
 // provided, returning a shutdown function.
-func initMetrics(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource) (shutdownFunction, error) {
+func initMetrics(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource) ([]shutdownFunction, error) {
 	logger := logger.V(1).WithValues("target", target, "creds", creds, "res", res)
 	logger.V(1).Info("Creating OpenTelemetry metric handlers")
 	if target == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no metrics will be sent to collector")
-		return func(_ context.Context) error {
-			return nil
+		return []shutdownFunction{
+			noopShutdownFunction,
 		}, nil
 	}
 	options := []otlpmetricgrpc.Option{
@@ -95,7 +101,17 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 	client := otlpmetricgrpc.NewClient(options...)
 	exporter, err := otlpmetric.New(ctx, client)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create new metric exporter: %w", err)
+		return []shutdownFunction{
+			noopShutdownFunction,
+		}, fmt.Errorf("failed to create new metric exporter: %w", err)
+	}
+	shutdownFuncs := []shutdownFunction{
+		func(ctx context.Context) error {
+			if err := exporter.Shutdown(ctx); err != nil {
+				return fmt.Errorf("error during OpenTelemetry metric exporter shutdown: %w", err)
+			}
+			return nil
+		},
 	}
 	pusher := controller.New(
 		processor.NewFactory(simple.NewWithHistogramDistribution(), exporter),
@@ -104,37 +120,37 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 		controller.WithCollectPeriod(metricReportingPeriod),
 	)
 	if err = pusher.Start(ctx); err != nil {
-		return nil, fmt.Errorf("failed to start metric pusher: %w", err)
+		return shutdownFuncs, fmt.Errorf("failed to start metric pusher: %w", err)
 	}
+	shutdownFuncs = append([]shutdownFunction{
+		func(ctx context.Context) error {
+			if err := pusher.Stop(ctx); err != nil {
+				return fmt.Errorf("error during OpenTelemetry metric pusher shutdown: %w", err)
+			}
+			return nil
+		},
+	}, shutdownFuncs...)
 	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(pusher)); err != nil {
-		return nil, fmt.Errorf("failed to start runtime metrics: %w", err)
+		return shutdownFuncs, fmt.Errorf("failed to start runtime metrics: %w", err)
 	}
 	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(pusher)); err != nil {
-		return nil, fmt.Errorf("failed to start host metrics: %w", err)
+		return shutdownFuncs, fmt.Errorf("failed to start host metrics: %w", err)
 	}
 
 	global.SetMeterProvider(pusher)
 	logger.V(1).Info("OpenTelemetry metric handlers created and started")
-	return func(ctx context.Context) error {
-		if err := pusher.Stop(ctx); err != nil {
-			logger.Error(err, "Error raised while stopping metric pusher; continuing")
-		}
-		if err := exporter.Shutdown(ctx); err != nil {
-			return fmt.Errorf("failure to shutdown metric exporter: %w", err)
-		}
-		return nil
-	}, nil
+	return shutdownFuncs, nil
 }
 
 // Initialises a pipeline handler that will send OpenTelemetry spans to the target
 // provided, returning a shutdown function.
-func initTrace(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource, sampler trace.Sampler) (shutdownFunction, error) {
+func initTrace(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource, sampler trace.Sampler) ([]shutdownFunction, error) {
 	logger := logger.V(1).WithValues("target", target, "creds", creds, "res", res, "sampler", sampler.Description())
 	logger.V(1).Info("Creating new OpenTelemetry trace exporter")
 	if target == "" {
 		logger.V(0).Info("OpenTelemetry endpoint is not set; no traces will be sent to collector")
-		return func(_ context.Context) error {
-			return nil
+		return []shutdownFunction{
+			noopShutdownFunction,
 		}, nil
 	}
 	options := []otlptracegrpc.Option{
@@ -148,47 +164,90 @@ func initTrace(ctx context.Context, target string, creds credentials.TransportCr
 	if err != nil {
 		return nil, fmt.Errorf("failed to create new trace exporter: %w", err)
 	}
+	shutdownFuncs := []shutdownFunction{
+		func(ctx context.Context) error {
+			if err := exporter.Shutdown(ctx); err != nil {
+				return fmt.Errorf("error during OpenTelemetry trace exporter shutdown: %w", err)
+			}
+			return nil
+		},
+	}
+
+	// NOTE: provider.Shutdown will shutdown every registered span processor
+	// so don't add an explicit shutdown function.
 	spanProcessor := trace.NewBatchSpanProcessor(exporter)
+
 	provider := trace.NewTracerProvider(
 		trace.WithSampler(sampler),
 		trace.WithSpanProcessor(spanProcessor),
 		trace.WithResource(res),
 	)
+	shutdownFuncs = append([]shutdownFunction{
+		func(ctx context.Context) error {
+			if err := provider.Shutdown(ctx); err != nil {
+				return fmt.Errorf("error during OpenTelemetry trace provider shutdown: %w", err)
+			}
+			return nil
+		},
+	}, shutdownFuncs...)
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(provider)
 	logger.V(1).Info("OpenTelemetry trace handlers created and started")
-	return func(ctx context.Context) error {
-		if err := spanProcessor.Shutdown(ctx); err != nil {
-			logger.Error(err, "Error raised while shutting down trace processor; continuing")
-		}
-		if err := exporter.Shutdown(ctx); err != nil {
-			return fmt.Errorf("failure to shutdown trace exporter: %w", err)
-		}
-		return nil
-	}, nil
+	return shutdownFuncs, nil
 }
 
 // Initializes OpenTelemetry metric and trace processing and deliver to a collector
 // target, returning a list of function that can be called to shutdown the background
 // pipeline processes.
-func initTelemetry(ctx context.Context, name, target string, creds credentials.TransportCredentials, sampler trace.Sampler) ([]shutdownFunction, error) {
-	logger := logger.V(1).WithValues("name", name, "target", target, "creds", creds, "sampler", sampler.Description())
+func initTelemetry(ctx context.Context, name string, sampler trace.Sampler) ([]shutdownFunction, error) {
+	otel.SetLogger(logger)
+	target := viper.GetString(OpenTelemetryTargetFlagName)
+	cacerts := viper.GetStringSlice(CACertFlagName)
+	cert := viper.GetString(TLSCertFlagName)
+	key := viper.GetString(TLSKeyFlagName)
+	insecure := viper.GetBool(InsecureFlagName)
+	logger := logger.V(1).WithValues(
+		"name", name,
+		"target", target,
+		"cacerts", cacerts,
+		"cert", cert,
+		"key", key,
+		"insecure", insecure,
+		"sampler", sampler.Description(),
+	)
 	logger.Info("Initializing OpenTelemetry")
 	shutdownFunctions := []shutdownFunction{}
+
 	res, err := newTelemetryResource(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	var shutdownMetrics, shutdownTraces shutdownFunction
-	if shutdownMetrics, err = initMetrics(ctx, target, creds, res); err != nil {
-		return nil, err
+
+	var creds credentials.TransportCredentials
+	if insecure {
+		creds = grpcinsecure.NewCredentials()
+	} else {
+		certPool, err := newCACertPool(cacerts)
+		if err != nil {
+			return nil, err
+		}
+		tlsConfig, err := newTLSConfig(cert, key, nil, certPool)
+		if err != nil {
+			return nil, err
+		}
+		creds = credentials.NewTLS(tlsConfig)
 	}
-	if shutdownTraces, err = initTrace(ctx, target, creds, res, sampler); err != nil {
-		return nil, err
+
+	shutdownMetrics, err := initMetrics(ctx, target, creds, res)
+	if err != nil {
+		return shutdownMetrics, err
+	}
+	shutdownFunctions = append(shutdownMetrics, shutdownFunctions...)
+	shutdownTraces, err := initTrace(ctx, target, creds, res, sampler)
+	shutdownFunctions = append(shutdownTraces, shutdownFunctions...)
+	if err != nil {
+		return shutdownFunctions, err
 	}
 	logger.Info("OpenTelemetry initialization complete, returning shutdown functions")
-	return append([]shutdownFunction{
-		shutdownTraces,
-		shutdownMetrics,
-	}, shutdownFunctions...), nil
+	return shutdownFunctions, nil
 }

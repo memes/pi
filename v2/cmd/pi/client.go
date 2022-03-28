@@ -11,17 +11,23 @@ import (
 	"github.com/memes/pi/v2/pkg/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric/global"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	grpcinsecure "google.golang.org/grpc/credentials/insecure"
 )
 
 const (
-	ClientServiceName = "pi.client"
-	DefaultDigitCount = 100
-	DefaultMaxTimeout = 10 * time.Second
+	ClientServiceName  = "pi.client"
+	DefaultDigitCount  = 100
+	DefaultMaxTimeout  = 10 * time.Second
+	CountFlagName      = "count"
+	MaxTimeoutFlagName = "max-timeout"
+	AuthorityFlagName  = "authority"
+	InsecureFlagName   = "insecure"
 )
 
 // Implements the client sub-command which attempts to connect to one or
@@ -37,20 +43,20 @@ func NewClientCmd() (*cobra.Command, error) {
 		Args: cobra.MinimumNArgs(1),
 		RunE: clientMain,
 	}
-	clientCmd.PersistentFlags().UintP("count", "c", DefaultDigitCount, "The number of decimal digits of pi to request")
-	clientCmd.PersistentFlags().DurationP("max-timeout", "m", DefaultMaxTimeout, "The maximum timeout for a Pi Service request")
-	clientCmd.PersistentFlags().String("authority", "", "Set the authoritative name of the Pi Service target for TLS verification, overriding hostname")
-	clientCmd.PersistentFlags().Bool("insecure", false, "Disable TLS for gRPC connection to Pi Service")
-	if err := viper.BindPFlag("count", clientCmd.PersistentFlags().Lookup("count")); err != nil {
+	clientCmd.PersistentFlags().UintP(CountFlagName, "c", DefaultDigitCount, "The number of decimal digits of pi to request")
+	clientCmd.PersistentFlags().DurationP(MaxTimeoutFlagName, "m", DefaultMaxTimeout, "The maximum timeout for a Pi Service request")
+	clientCmd.PersistentFlags().String(AuthorityFlagName, "", "Set the authoritative name of the Pi Service target for TLS verification, overriding hostname")
+	clientCmd.PersistentFlags().Bool(InsecureFlagName, false, "Disable TLS for gRPC connection to Pi Service")
+	if err := viper.BindPFlag(CountFlagName, clientCmd.PersistentFlags().Lookup(CountFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind count pflag: %w", err)
 	}
-	if err := viper.BindPFlag("max-timeout", clientCmd.PersistentFlags().Lookup("max-timeout")); err != nil {
+	if err := viper.BindPFlag(MaxTimeoutFlagName, clientCmd.PersistentFlags().Lookup(MaxTimeoutFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind max-timeout pflag: %w", err)
 	}
-	if err := viper.BindPFlag("authority", clientCmd.PersistentFlags().Lookup("authority")); err != nil {
+	if err := viper.BindPFlag(AuthorityFlagName, clientCmd.PersistentFlags().Lookup(AuthorityFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind authority pflag: %w", err)
 	}
-	if err := viper.BindPFlag("insecure", clientCmd.PersistentFlags().Lookup("insecure")); err != nil {
+	if err := viper.BindPFlag(InsecureFlagName, clientCmd.PersistentFlags().Lookup(InsecureFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind insecure pflag: %w", err)
 	}
 	return clientCmd, nil
@@ -59,62 +65,12 @@ func NewClientCmd() (*cobra.Command, error) {
 // Client sub-command entrypoint. This function will launch gRPC requests for
 // each of the fractional digits requested.
 func clientMain(cmd *cobra.Command, endpoints []string) error {
-	count := viper.GetInt("count")
-	cacerts := viper.GetStringSlice("cacert")
-	cert := viper.GetString("cert")
-	key := viper.GetString("key")
-	otlpTarget := viper.GetString("otlp-target")
-	authority := viper.GetString("authority")
-	maxTimeout := viper.GetDuration("max-timeout")
-	insecure := viper.GetBool("insecure")
-	logger := logger.V(1).WithValues("count", count, "endpoints", endpoints, "cacerts", cacerts, "cert", cert, "key", key, "otlpTarget", otlpTarget, "authority", authority, "maxTimeout", maxTimeout, "insecure", insecure)
-	ctx := context.Background()
-	options := []client.PiClientOption{
-		client.WithLogger(logger),
-		client.WithMaxTimeout(maxTimeout),
-		client.WithTracer(otel.Tracer(ClientServiceName)),
-		client.WithMeter(global.Meter(ClientServiceName)),
-		client.WithPrefix(ClientServiceName),
-		client.WithUserAgent(ClientServiceName + "/" + version),
-		client.WithAuthority(authority),
-	}
+	count := viper.GetInt(CountFlagName)
+	logger := logger.V(1).WithValues(CountFlagName, count, "endpoints", endpoints)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	logger.V(0).Info("Preparing gRPC transport credentials")
-	certPool, err := newCACertPool(cacerts)
-	if err != nil {
-		return err
-	}
-	if insecure {
-		options = append(options,
-			client.WithTransportCredentials(grpcinsecure.NewCredentials()),
-		)
-	} else {
-		clientTLSConfig, err := newTLSConfig(cert, key, nil, certPool)
-		if err != nil {
-			return err
-		}
-		options = append(options,
-			client.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
-		)
-	}
-
-	logger.V(0).Info("Preparing telemetry")
-	var otelCreds credentials.TransportCredentials
-	if viper.GetBool("otlp-insecure") {
-		otelCreds = grpcinsecure.NewCredentials()
-	} else {
-		otelTLSConfig, err := newTLSConfig(viper.GetString("otlp-cert"), viper.GetString("otlp-key"), nil, certPool)
-		if err != nil {
-			return err
-		}
-		otelCreds = credentials.NewTLS(otelTLSConfig)
-	}
-	shutdownFuncs, err := initTelemetry(ctx, ClientServiceName, otlpTarget, otelCreds,
-		sdktrace.TraceIDRatioBased(viper.GetFloat64("otlp-sampling-ratio")),
-	)
-	if err != nil {
-		return err
-	}
+	shutdownFuncs := []shutdownFunction{}
 	defer func(ctx context.Context) {
 		for _, fn := range shutdownFuncs {
 			if err := fn(ctx); err != nil {
@@ -122,25 +78,53 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 			}
 		}
 	}(ctx)
-	logger.V(0).Info("Preparing to start client")
-	piClient := client.NewPiClient(options...)
+
+	logger.V(0).Info("Preparing OpenTelemetry")
+	telemetryShutdownFuncs, err := initTelemetry(ctx, ClientServiceName,
+		sdktrace.TraceIDRatioBased(viper.GetFloat64(OpenTelemetrySamplingRatioFlagName)),
+	)
+	if err != nil {
+		return err
+	}
+	shutdownFuncs = append(telemetryShutdownFuncs, shutdownFuncs...)
+
+	logger.V(0).Info("Preparing gRPC client connection")
+	dialOptions, err := buildDialOptions(ctx)
+	if err != nil {
+		return err
+	}
+	conn, err := grpc.DialContext(ctx, endpoints[0], dialOptions...)
+	if err != nil {
+		return fmt.Errorf("failure establishing client dial context: %w", err)
+	}
+	defer conn.Close()
+
+	logger.V(0).Info("Preparing PiService client")
+	piClientOptions := []client.PiClientOption{
+		client.WithLogger(logger),
+		client.WithMaxTimeout(viper.GetDuration(MaxTimeoutFlagName)),
+		client.WithTracer(otel.Tracer(ClientServiceName)),
+		client.WithMeter(global.Meter(ClientServiceName)),
+		client.WithPrefix(ClientServiceName),
+	}
+	piClient := client.NewPiClient(piClientOptions...)
+
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)
 	digits := make([]byte, count)
 	var wg sync.WaitGroup
-	for i, index := range indices {
-		endpoint := endpoints[i%len(endpoints)]
+	for _, index := range indices {
 		wg.Add(1)
-		go func(endpoint string, index uint64) {
+		go func(conn *grpc.ClientConn, index uint64) {
 			defer wg.Done()
-			digit, err := piClient.FetchDigit(endpoint, index)
+			digit, err := piClient.FetchDigit(ctx, conn, index)
 			if err != nil {
 				logger.Error(err, "Error fetching digit", "index", index)
 				digits[index] = '-'
 			} else {
 				digits[index] = '0' + byte(digit)
 			}
-		}(endpoint, uint64(index))
+		}(conn, uint64(index))
 	}
 	wg.Wait()
 	fmt.Print("Result is: 3.")
@@ -149,4 +133,47 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	}
 	fmt.Println()
 	return nil
+}
+
+// Creates a set of gRPC DialOptions that are appropriate for the PiService client
+// as determined by various command line flags.
+func buildDialOptions(_ context.Context) ([]grpc.DialOption, error) {
+	cacerts := viper.GetStringSlice(CACertFlagName)
+	cert := viper.GetString(TLSCertFlagName)
+	key := viper.GetString(TLSKeyFlagName)
+	authority := viper.GetString(AuthorityFlagName)
+	insecure := viper.GetBool(InsecureFlagName)
+	logger := logger.V(1).WithValues(
+		"cacerts", cacerts,
+		"cert", cert,
+		"key", key,
+		"authority", authority,
+		"insecure", insecure,
+	)
+	logger.V(0).Info("Preparing gRPC transport credentials")
+	options := []grpc.DialOption{
+		grpc.WithUserAgent(ClientServiceName + "/" + version),
+		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+	}
+	certPool, err := newCACertPool(cacerts)
+	if err != nil {
+		return nil, err
+	}
+	if insecure {
+		options = append(options,
+			grpc.WithTransportCredentials(grpcinsecure.NewCredentials()),
+		)
+	} else {
+		clientTLSConfig, err := newTLSConfig(cert, key, nil, certPool)
+		if err != nil {
+			return nil, err
+		}
+		options = append(options,
+			grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+		)
+	}
+	if authority != "" {
+		options = append(options, grpc.WithAuthority(authority))
+	}
+	return options, nil
 }

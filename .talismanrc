@@ -19,7 +19,7 @@ fileignoreconfig:
 - filename: v2/cache_test.go
   checksum: 476d8cfd7d7d3a76b06a0854418d40f03d044bd6703e942fbd7b29edae823e4e
 - filename: v2/cmd/pi/server.go
-  checksum: 321404b7206e353b38805593eb678d0a7f9385dcf2988a851c8950fbf112afe4
+  checksum: fde2642ef7303db98d7d637bc9b096a4050e5772ed0ff01c6d9526a61986809c
 - filename: v2/README.md
   checksum: a1797d7e26b9e954da8e35198451942ba7739ad6b392c05e326613721b9c64ff
 - filename: v2/redis_cache.go
@@ -41,7 +41,7 @@ fileignoreconfig:
 - filename: v2/pi_test.go
   checksum: 3144875c2c11798a4a8e32a0137a0c9214eee21df7756abe0fb2698159a7e9fc
 - filename: v2/cmd/pi/client.go
-  checksum: ee947d59fff6cf192002399fa48854cdf2d91fb3499d8afcd1e2d8b7c288d5e5
+  checksum: 953691b5a3c8af514080dba15b55037b5b033b86ea49e88fdcd808e28cff37cb
 - filename: v2/pkg/server/server_test.go
   checksum: 95eaa87189253aede3177008d4f73fe927fe62fe267e0529a9795e9ff0d8ad87
 - filename: v2/supporting/Makefile
@@ -50,3 +50,5 @@ fileignoreconfig:
   checksum: 9afb13648fe8cfa21e60bfba80cb4ca1afb2b9350eac74009e4770adf9a55ae9
 - filename: v2/pkg/server/server.go
   checksum: 5d6a44561c37ff9bd4b5263f5550b49082b12a7d9dda53bb0b9d9329ede0faf7
+- filename: v2/cmd/pi/otel.go
+  checksum: ccae110fe9dff7f4a08bc3becf4d92b434698cefa06fa241cc8a16d88a5f1f8d
