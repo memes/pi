@@ -175,7 +175,7 @@ func buildDialOptions(_ context.Context) ([]grpc.DialOption, error) {
 	}
 	creds, err := xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: clientCreds})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error generating xDS client credentials: %w", err)
 	}
 	options = append(options,
 		grpc.WithTransportCredentials(creds),

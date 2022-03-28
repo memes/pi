@@ -149,11 +149,11 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		if xds {
 			serverCreds, err = xdscreds.NewServerCredentials(xdscreds.ServerOptions{FallbackCreds: serverCreds})
 			if err != nil {
-				return err
+				return fmt.Errorf("error creating xDS server credentials: %w", err)
 			}
 			clientCreds, err = xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: clientCreds})
 			if err != nil {
-				return err
+				return fmt.Errorf("error creating xDS client credentials: %w", err)
 			}
 		}
 		options = append(options,
@@ -166,7 +166,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		if xds {
 			clientCreds, err = xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: clientCreds})
 			if err != nil {
-				return err
+				return fmt.Errorf("error creating xDS client credentials with insecure fallback: %w", err)
 			}
 		}
 		options = append(options,
