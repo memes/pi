@@ -28,6 +28,8 @@ const (
 	MaxTimeoutFlagName = "max-timeout"
 	AuthorityFlagName  = "authority"
 	InsecureFlagName   = "insecure"
+	// A default round-robin configuration to use with client-side load balancer.
+	DefaultRoundRobinConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
 )
 
 // Implements the client sub-command which attempts to connect to one or
@@ -153,6 +155,7 @@ func buildDialOptions(_ context.Context) ([]grpc.DialOption, error) {
 	logger.V(0).Info("Preparing gRPC transport credentials")
 	options := []grpc.DialOption{
 		grpc.WithUserAgent(ClientServiceName + "/" + version),
+		grpc.WithDefaultServiceConfig(DefaultRoundRobinConfig),
 		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
 	}
 	certPool, err := newCACertPool(cacerts)
