@@ -18,6 +18,7 @@ linters:
     - errcheck
     - errorlint
     - exportloopref
+    - gochecknoglobals
     - gochecknoinits
     - goconst
     - gocritic

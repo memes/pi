@@ -24,12 +24,15 @@ import (
 
 var (
 	// The package logr.Logger instance to use.
+	//nolint: gochecknoglobals // Allow package consumers to set the logger
 	Logger = logr.Discard()
 	// The number of Miller-Rabin rounds to use in FindNextPrime when
 	// determining if an integer is probabilistically a prime. A value of
 	// zero will apply a Baillie-PSW only test and requires Go 1.8+.
+	//nolint: gochecknoglobals // Allow package consumers to override
 	MillerRabinRounds = 0
 	// The constant 2; declared to avoid repeated allocation in FindNextPrime.
+	//nolint: gochecknoglobals // Avoid repeated allocation
 	two = big.NewInt(2)
 )
 

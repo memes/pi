@@ -236,6 +236,7 @@ const (
 var (
 	// Use a set of the first 10,000 prime numbers to verify the prime
 	// solvers.
+	//nolint: gochecknoglobals // reused by multiple tests in package
 	verificationPrimes = []int64{
 		2, 3, 5, 7, 11, 13, 17, 19, 23, 29,
 		31, 37, 41, 43, 47, 53, 59, 61, 67, 71,
@@ -1238,7 +1239,9 @@ var (
 		104549, 104551, 104561, 104579, 104593, 104597, 104623, 104639, 104651, 104659,
 		104677, 104681, 104683, 104693, 104701, 104707, 104711, 104717, 104723, 104729,
 	}
-	primeTableSize   = len(verificationPrimes)
+	//nolint: gochecknoglobals // reused by multiple tests in package
+	primeTableSize = len(verificationPrimes)
+	//nolint: gochecknoglobals // reused by multiple tests in package
 	primeVerifyLimit = verificationPrimes[primeTableSize-1]
 )
 
