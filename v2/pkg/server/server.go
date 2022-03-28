@@ -316,6 +316,16 @@ func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string
 	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, options); err != nil {
 		return nil, fmt.Errorf("failed to register PiService handler for REST gateway: %w", err)
 	}
+	if err := mux.HandlePath("GET", "/api/v2/swagger.json",
+		func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+			w.Header().Add("Content-Type", "application/json")
+			if _, err := w.Write(api.SwaggerJSON); err != nil {
+				s.logger.Error(err, "Writing swagger JSON to response raised an error; continuing")
+			}
+		},
+	); err != nil {
+		return nil, fmt.Errorf("failed to register /api/v2 handler for swagger definition: %w", err)
+	}
 	if err := mux.HandlePath("GET", "/v1/digit/{index}",
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			span := trace.SpanFromContext(r.Context())
