@@ -18,6 +18,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	grpcinsecure "google.golang.org/grpc/credentials/insecure"
+	xdscreds "google.golang.org/grpc/credentials/xds"
 )
 
 const (
@@ -162,19 +163,23 @@ func buildDialOptions(_ context.Context) ([]grpc.DialOption, error) {
 	if err != nil {
 		return nil, err
 	}
+	var clientCreds credentials.TransportCredentials
 	if insecure {
-		options = append(options,
-			grpc.WithTransportCredentials(grpcinsecure.NewCredentials()),
-		)
+		clientCreds = grpcinsecure.NewCredentials()
 	} else {
 		clientTLSConfig, err := newTLSConfig(cert, key, nil, certPool)
 		if err != nil {
 			return nil, err
 		}
-		options = append(options,
-			grpc.WithTransportCredentials(credentials.NewTLS(clientTLSConfig)),
-		)
+		clientCreds = credentials.NewTLS(clientTLSConfig)
 	}
+	creds, err := xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: clientCreds})
+	if err != nil {
+		return nil, err
+	}
+	options = append(options,
+		grpc.WithTransportCredentials(creds),
+	)
 	if authority != "" {
 		options = append(options, grpc.WithAuthority(authority))
 	}

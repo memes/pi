@@ -50,6 +50,7 @@
         "trimpath",
         "tsdb",
         "vmax",
+        "xdscreds",
         "yamllint",
         "zerologr",
         "zpages"

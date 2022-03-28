@@ -23,6 +23,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/credentials"
 	grpcinsecure "google.golang.org/grpc/credentials/insecure"
+	xdscreds "google.golang.org/grpc/credentials/xds"
 )
 
 const (
@@ -143,14 +144,33 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		serverCreds := credentials.NewTLS(serverTLSConfig)
+		clientCreds := credentials.NewTLS(clientTLSConfig)
+		if xds {
+			serverCreds, err = xdscreds.NewServerCredentials(xdscreds.ServerOptions{FallbackCreds: serverCreds})
+			if err != nil {
+				return err
+			}
+			clientCreds, err = xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: clientCreds})
+			if err != nil {
+				return err
+			}
+		}
 		options = append(options,
-			server.WithGRPCServerTransportCredentials(credentials.NewTLS(serverTLSConfig)),
-			server.WithRestClientGRPCTransportCredentials(credentials.NewTLS(clientTLSConfig)),
+			server.WithGRPCServerTransportCredentials(serverCreds),
+			server.WithRestClientGRPCTransportCredentials(clientCreds),
 			server.WithRestClientAuthority(restClientAuthority),
 		)
 	} else {
+		clientCreds := grpcinsecure.NewCredentials()
+		if xds {
+			clientCreds, err = xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: clientCreds})
+			if err != nil {
+				return err
+			}
+		}
 		options = append(options,
-			server.WithRestClientGRPCTransportCredentials(grpcinsecure.NewCredentials()),
+			server.WithRestClientGRPCTransportCredentials(clientCreds),
 		)
 	}
 
