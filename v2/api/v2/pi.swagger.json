@@ -48,7 +48,7 @@
         "parameters": [
           {
             "name": "index",
-            "description": "Zero-based index of the fractional digit of pi to return",
+            "description": "Zero-based index of the fractional digit of pi to return.",
             "in": "path",
             "required": true,
             "type": "string",
@@ -65,14 +65,11 @@
     "protobufAny": {
       "type": "object",
       "properties": {
-        "typeUrl": {
+        "@type": {
           "type": "string"
-        },
-        "value": {
-          "type": "string",
-          "format": "byte"
         }
-      }
+      },
+      "additionalProperties": {}
     },
     "rpcStatus": {
       "type": "object",
@@ -97,21 +94,21 @@
       "properties": {
         "identity": {
           "type": "string",
-          "title": "Identity of the pi server; usually the hostname as reported by OS"
+          "description": "Identity of the pi server; usually the hostname as reported by OS."
         },
-        "addresses": {
+        "tags": {
           "type": "array",
           "items": {
             "type": "string"
           },
-          "title": "List of IPv4 and/or IPv6 addresses associated with the pi service"
+          "description": "List of string tags that were provided by the Pi Service configuration."
         },
-        "labels": {
+        "annotations": {
           "type": "object",
           "additionalProperties": {
             "type": "string"
           },
-          "title": "Map of key:value string pairs that were provided by the pi service configuration"
+          "description": "Map of key:value string pairs that were provided by the Pi Service configuration."
         }
       }
     },
@@ -121,7 +118,7 @@
         "index": {
           "type": "string",
           "format": "uint64",
-          "title": "Zero-based index of the fractional digit of pi being returned"
+          "description": "Zero-based index of the fractional digit of pi being returned."
         },
         "digit": {
           "type": "integer",

@@ -31,7 +31,8 @@ const (
 	DefaultGRPCListenAddress = ":8443"
 	RESTAddressFlagName      = "rest-address"
 	RedisTargetFlagName      = "redis-target"
-	LabelFlagName            = "label"
+	TagFlagName              = "tag"
+	AnnotationFlagName       = "annotation"
 	TLSClientAuthFlagName    = "tls-client-auth"
 	RESTAuthorityFlagName    = "rest-authority"
 	XDSFlagName              = "xds"
@@ -50,7 +51,8 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	}
 	serverCmd.PersistentFlags().String(RESTAddressFlagName, "", "An optional listen address to launch a REST/gRPC gateway process")
 	serverCmd.PersistentFlags().String(RedisTargetFlagName, "", "An optional Redis endpoint to use as a PiService cache")
-	serverCmd.PersistentFlags().StringToStringP(LabelFlagName, "l", nil, "An optional label key=value to add to PiService response metadata; can be repeated")
+	serverCmd.PersistentFlags().StringArray(TagFlagName, nil, "An optional string tag to add to PiService response metadata; can be repeated")
+	serverCmd.PersistentFlags().StringToString(AnnotationFlagName, nil, "An optional key=value annotation to add to PiService response metadata; can be repeated")
 	serverCmd.PersistentFlags().Bool(TLSClientAuthFlagName, false, "Require PiService clients to provide a valid TLS client certificate")
 	serverCmd.PersistentFlags().String(RESTAuthorityFlagName, "", "Set the Authority header for REST/gRPC gateway communication")
 	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for PiService; requires an xDS environment")
@@ -60,8 +62,11 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	if err := viper.BindPFlag(RedisTargetFlagName, serverCmd.PersistentFlags().Lookup(RedisTargetFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind redis-target pflag: %w", err)
 	}
-	if err := viper.BindPFlag(LabelFlagName, serverCmd.PersistentFlags().Lookup(LabelFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
+	if err := viper.BindPFlag(TagFlagName, serverCmd.PersistentFlags().Lookup(TagFlagName)); err != nil {
+		return nil, fmt.Errorf("failed to bind tag pflag: %w", err)
+	}
+	if err := viper.BindPFlag(AnnotationFlagName, serverCmd.PersistentFlags().Lookup(AnnotationFlagName)); err != nil {
+		return nil, fmt.Errorf("failed to bind annotation pflag: %w", err)
 	}
 	if err := viper.BindPFlag(TLSClientAuthFlagName, serverCmd.PersistentFlags().Lookup(TLSClientAuthFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
@@ -89,10 +94,11 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	key := viper.GetString(TLSKeyFlagName)
 	requireTLSClientAuth := viper.GetBool(TLSClientAuthFlagName)
 	otlpTarget := viper.GetString(OpenTelemetryTargetFlagName)
-	labels := viper.GetStringMapString(LabelFlagName)
+	tags := viper.GetStringSlice(TagFlagName)
+	annotations := viper.GetStringMapString(AnnotationFlagName)
 	restClientAuthority := viper.GetString(RESTAuthorityFlagName)
 	xds := viper.GetBool(XDSFlagName)
-	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress, "cacerts", cacerts, TLSCertFlagName, cert, TLSKeyFlagName, key, "requireTLSClientAuth", requireTLSClientAuth, "otlpTarget", otlpTarget, "labels", labels, "restClientAuthority", restClientAuthority, XDSFlagName, xds)
+	logger := logger.V(1).WithValues("address", address, "redisTarget", redisTarget, "restAddress", restAddress, "cacerts", cacerts, TLSCertFlagName, cert, TLSKeyFlagName, key, "requireTLSClientAuth", requireTLSClientAuth, "otlpTarget", otlpTarget, "tags", tags, "annotations", annotations, "restClientAuthority", restClientAuthority, XDSFlagName, xds)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -116,7 +122,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
-		server.WithMetadata(newMetadata(labels)),
+		server.WithMetadata(newMetadata(tags, annotations)),
 		server.WithTracer(otel.Tracer(ServerServiceName)),
 		server.WithMeter(global.Meter(ServerServiceName)),
 		server.WithPrefix(ServerServiceName),
@@ -262,8 +268,8 @@ func serverMain(cmd *cobra.Command, args []string) error {
 }
 
 // Creates a new metadata struct populated from labels given.
-func newMetadata(labels map[string]string) *api.GetDigitMetadata {
-	logger := logger.V(1).WithValues("labels", labels)
+func newMetadata(tags []string, annotations map[string]string) *api.GetDigitMetadata {
+	logger := logger.V(1).WithValues("tags", tags, "annotations", annotations)
 	logger.V(0).Info("Preparing metadata")
 	var hostname string
 	if host, err := os.Hostname(); err == nil {
@@ -273,8 +279,9 @@ func newMetadata(labels map[string]string) *api.GetDigitMetadata {
 		hostname = "unknown"
 	}
 	metadata := &api.GetDigitMetadata{
-		Identity: hostname,
-		Labels:   labels,
+		Identity:    hostname,
+		Tags:        tags,
+		Annotations: annotations,
 	}
 	logger.V(1).Info("Metadata created", "metadata", metadata)
 	return metadata

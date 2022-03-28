@@ -30,21 +30,21 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
 };
 
 message GetDigitRequest {
-  // Zero-based index of the fractional digit of pi to return
+  // Zero-based index of the fractional digit of pi to return.
   uint64 index = 1;
 };
 
 message GetDigitMetadata {
-  // Identity of the pi server; usually the hostname as reported by OS
+  // Identity of the pi server; usually the hostname as reported by OS.
   string identity = 1;
-  // List of IPv4 and/or IPv6 addresses associated with the pi service
-  repeated string addresses = 2;
-  // Map of key:value string pairs that were provided by the pi service configuration
-  map<string, string> labels = 3;
+  // List of string tags that were provided by the Pi Service configuration.
+  repeated string tags = 2;
+  // Map of key:value string pairs that were provided by the Pi Service configuration.
+  map<string, string> annotations = 3;
 };
 
 message GetDigitResponse {
-  // Zero-based index of the fractional digit of pi being returned
+  // Zero-based index of the fractional digit of pi being returned.
   uint64 index = 1;
   // Fractional digit of pi at request offset; this is always an unsigned integer
   // between 0 and 9 inclusive

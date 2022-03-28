@@ -19,17 +19,17 @@ fileignoreconfig:
 - filename: v2/cache_test.go
   checksum: 476d8cfd7d7d3a76b06a0854418d40f03d044bd6703e942fbd7b29edae823e4e
 - filename: v2/cmd/pi/server.go
-  checksum: fde2642ef7303db98d7d637bc9b096a4050e5772ed0ff01c6d9526a61986809c
+  checksum: 0b2019be047878fb850aab3d253cbbd8f48866d21ed333ff12757bab739b4455
 - filename: v2/README.md
   checksum: a1797d7e26b9e954da8e35198451942ba7739ad6b392c05e326613721b9c64ff
 - filename: v2/redis_cache.go
   checksum: 954673a5a40c03815dd690f32fc42c1cccbf75e2b741a72dd6ac118e8948cc20
 - filename: v2/api/v2/pi.swagger.json
-  checksum: 270fdef47d507fcb943d4371a8e1d05194d5baf709215a35577e7abe44ac072f
+  checksum: 97cec00438d0b85b7c4bf35110c104bafa2c2968b437e2d86b4a3e71a8114ecd
 - filename: v2/api/v2/pi.proto
-  checksum: 3ba8017c6f0434d86a5f016954c94651c6b7f9ee4d464d6cec7ab4b426a4fbec
+  checksum: 48177e84402ed9a8cc05afab092a88d19f44283c61bb4a9a00392949711f3307
 - filename: v2/api/v2/pi.pb.go
-  checksum: 779dbc66674e79e4a5d16c4e9c585e80513e8987e28836a575033f96fe2c8462
+  checksum: b10c407796d9ba69fb6dcf5a7d2dd4a852abb873830d213154955ee77c95830e
 - filename: v2/cache.go
   checksum: 1a8759660a4d0d653079453dfcb1125c92ea0d0cee57f6fc38109cc1e23d70ee
 - filename: v2/bpp_spigot_test.go
