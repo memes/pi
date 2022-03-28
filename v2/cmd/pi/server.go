@@ -230,7 +230,6 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		break
 	}
 	logger.V(0).Info("Shutting down on signal")
-	cancel()
 	ctx, cancelShutdown := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelShutdown()
 	for _, fn := range shutdownFuncs {
@@ -238,6 +237,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 			logger.Error(err, "Failure during service shutdown; continuing")
 		}
 	}
+	cancel()
 	return g.Wait() //nolint:wrapcheck // Errors returned from group are already wrapped
 }
 
