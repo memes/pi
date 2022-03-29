@@ -80,7 +80,7 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 	return res, nil
 }
 
-// Initialises a pusher that will send OpenTelemetry metrics to the target
+// Initializes a pusher that will send OpenTelemetry metrics to the target
 // provided, returning a shutdown function.
 func initMetrics(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource) ([]shutdownFunction, error) {
 	logger := logger.V(1).WithValues("target", target, "creds", creds, "res", res)
@@ -142,7 +142,7 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 	return shutdownFuncs, nil
 }
 
-// Initialises a pipeline handler that will send OpenTelemetry spans to the target
+// Initializes a pipeline handler that will send OpenTelemetry spans to the target
 // provided, returning a shutdown function.
 func initTrace(ctx context.Context, target string, creds credentials.TransportCredentials, res *resource.Resource, sampler trace.Sampler) ([]shutdownFunction, error) {
 	logger := logger.V(1).WithValues("target", target, "creds", creds, "res", res, "sampler", sampler.Description())
