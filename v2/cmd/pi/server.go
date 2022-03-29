@@ -124,7 +124,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		server.WithLogger(logger),
 		server.WithMetadata(newMetadata(tags, annotations)),
 		server.WithTracer(otel.Tracer(ServerServiceName)),
-		server.WithMeter(global.Meter(ServerServiceName)),
+		server.WithMeter(global.MeterProvider().Meter(ServerServiceName)),
 		server.WithPrefix(ServerServiceName),
 	}
 	if redisTarget != "" {
@@ -181,7 +181,10 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	}
 
 	logger.V(0).Info("Preparing to start services")
-	piServer := server.NewPiServer(options...)
+	piServer, err := server.NewPiServer(options...)
+	if err != nil {
+		return fmt.Errorf("failed to create new PiService server: %w", err)
+	}
 	listener, err := net.Listen("tcp", address)
 	if err != nil {
 		return fmt.Errorf("failed to start gRPC listener: %w", err)

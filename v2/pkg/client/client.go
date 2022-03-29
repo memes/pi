@@ -13,6 +13,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/instrument/syncint64"
+	"go.opentelemetry.io/otel/metric/nonrecording"
 	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
@@ -41,42 +44,52 @@ type PiClient struct {
 	// The prefix to use for metrics.
 	prefix string
 	// A counter for the number of connection errors.
-	connectionErrors metric.Int64Counter
+	connectionErrors syncint64.Counter
 	// A counter for the number of response errors.
-	responseErrors metric.Int64Counter
+	responseErrors syncint64.Counter
 	// A gauge for request durations.
-	durationMs metric.Int64Histogram
+	durationMs syncint64.Histogram
 }
 
 // Defines a function signature for PiClient options.
 type PiClientOption func(*PiClient)
 
 // Create a new PiClient with optional settings.
-func NewPiClient(options ...PiClientOption) *PiClient {
+func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 	client := &PiClient{
 		logger:     logr.Discard(),
 		maxTimeout: DefaultMaxTimeout,
 		tracer:     trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryClientName),
-		meter:      metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
+		meter:      nonrecording.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
 		prefix:     DefaultOpenTelemetryClientName,
 	}
 	for _, option := range options {
 		option(client)
 	}
-	client.connectionErrors = metric.Must(client.meter).NewInt64Counter(
+	var err error
+	client.connectionErrors, err = client.meter.SyncInt64().Counter(
 		client.telemetryName("connection_errors"),
-		metric.WithDescription("The count of connection errors seen by client"),
+		instrument.WithDescription("The count of connection errors seen by client"),
 	)
-	client.responseErrors = metric.Must(client.meter).NewInt64Counter(
+	if err != nil {
+		return nil, err
+	}
+	client.responseErrors, err = client.meter.SyncInt64().Counter(
 		client.telemetryName("response_errors"),
-		metric.WithDescription("The count of error responses received by client"),
+		instrument.WithDescription("The count of error responses received by client"),
 	)
-	client.durationMs = metric.Must(client.meter).NewInt64Histogram(
+	if err != nil {
+		return nil, err
+	}
+	client.durationMs, err = client.meter.SyncInt64().Histogram(
 		client.telemetryName("request_duration_ms"),
-		metric.WithUnit(unit.Milliseconds),
-		metric.WithDescription("The duration (ms) of requests"),
+		instrument.WithUnit(unit.Milliseconds),
+		instrument.WithDescription("The duration (ms) of requests"),
 	)
-	return client
+	if err != nil {
+		return nil, err
+	}
+	return client, nil
 }
 
 // Use the supplied logr.logger.
@@ -140,25 +153,17 @@ func (c *PiClient) FetchDigit(ctx context.Context, conn *grpc.ClientConn, index 
 	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
 		Index: index,
 	})
-	duration := time.Since(startTimestamp)
+	durationMs := time.Since(startTimestamp).Milliseconds()
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
 		attributes = append(attributes, attribute.Bool(c.telemetryName("success"), false))
-		c.meter.RecordBatch(
-			ctx,
-			attributes,
-			c.responseErrors.Measurement(1),
-			c.durationMs.Measurement(duration.Milliseconds()),
-		)
+		c.responseErrors.Add(ctx, 1, attributes...)
+		c.durationMs.Record(ctx, durationMs, attributes...)
 		return 0, fmt.Errorf("failure calling GetDigit: %w", err)
 	}
 	attributes = append(attributes, attribute.Bool(c.telemetryName("success"), true))
-	c.meter.RecordBatch(
-		ctx,
-		attributes,
-		c.durationMs.Measurement(duration.Milliseconds()),
-	)
+	c.durationMs.Record(ctx, durationMs, attributes...)
 	logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
 	return response.Digit, nil
 }

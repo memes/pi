@@ -19,6 +19,9 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/instrument/syncint64"
+	"go.opentelemetry.io/otel/metric/nonrecording"
 	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
@@ -53,13 +56,13 @@ type PiServer struct {
 	// The prefix to use for metrics and spans
 	prefix string
 	// A gauge for calculation durations
-	calculationMs metric.Int64Histogram
+	calculationMs syncint64.Histogram
 	// A counter for the number of errors returned by cache
-	cacheErrors metric.Int64Counter
+	cacheErrors syncint64.Counter
 	// A counter for cache hits
-	cacheHits metric.Int64Counter
+	cacheHits syncint64.Counter
 	// A counter for cache misses
-	cacheMisses metric.Int64Counter
+	cacheMisses syncint64.Counter
 	// Transport credentials to use with gRPC PiService listener.
 	serverGRPCCredentials credentials.TransportCredentials
 	// Transport credentials to use with REST gateway gRPC client.
@@ -72,35 +75,48 @@ type PiServer struct {
 type PiServerOption func(*PiServer)
 
 // Create a new piServer and apply any options.
-func NewPiServer(options ...PiServerOption) *PiServer {
+func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 	server := &PiServer{
 		logger:                    logr.Discard(),
 		cache:                     cachepkg.NewNoopCache(),
 		tracer:                    trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryServerName),
-		meter:                     metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
+		meter:                     nonrecording.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
 		restClientGRPCCredentials: insecure.NewCredentials(),
 	}
 	for _, option := range options {
 		option(server)
 	}
-	server.calculationMs = metric.Must(server.meter).NewInt64Histogram(
+	var err error
+	server.calculationMs, err = server.meter.SyncInt64().Histogram(
 		server.telemetryName("calc_duration_ms"),
-		metric.WithUnit(unit.Milliseconds),
-		metric.WithDescription("The duration (ms) of calculations"),
+		instrument.WithUnit(unit.Milliseconds),
+		instrument.WithDescription("The duration (ms) of calculations"),
 	)
-	server.cacheErrors = metric.Must(server.meter).NewInt64Counter(
+	if err != nil {
+		return nil, err
+	}
+	server.cacheErrors, err = server.meter.SyncInt64().Counter(
 		server.telemetryName("cache_errors"),
-		metric.WithDescription("The count of error responses from digit cache"),
+		instrument.WithDescription("The count of error responses from digit cache"),
 	)
-	server.cacheHits = metric.Must(server.meter).NewInt64Counter(
+	if err != nil {
+		return nil, err
+	}
+	server.cacheHits, err = server.meter.SyncInt64().Counter(
 		server.telemetryName("cache_hits"),
-		metric.WithDescription("The count of cache hits"),
+		instrument.WithDescription("The count of cache hits"),
 	)
-	server.cacheMisses = metric.Must(server.meter).NewInt64Counter(
+	if err != nil {
+		return nil, err
+	}
+	server.cacheMisses, err = server.meter.SyncInt64().Counter(
 		server.telemetryName("cache_misses"),
-		metric.WithDescription("The count of cache misses"),
+		instrument.WithDescription("The count of cache misses"),
 	)
-	return server
+	if err != nil {
+		return nil, err
+	}
+	return server, nil
 }
 
 // Use the supplied logger for the server and pi packages.
@@ -198,59 +214,38 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
-		s.meter.RecordBatch(
-			ctx,
-			attributes,
-			s.cacheErrors.Measurement(1),
-		)
+		s.cacheErrors.Add(ctx, 1, attributes...)
 		return nil, fmt.Errorf("cache %T GetValue method returned an error: %w", s.cache, err)
 	}
-	measurements := []metric.Measurement{}
 	if digits == "" {
-		measurements = append(measurements, s.cacheMisses.Measurement(1))
 		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), false))
 		span.SetAttributes(attributes...)
 		span.AddEvent("Calculating fractional digits")
+		s.cacheMisses.Add(ctx, 1, attributes...)
 		ts := time.Now()
 		digits = pi.BBPDigits(cacheIndex)
-		measurements = append(measurements,
-			s.calculationMs.Measurement(time.Since(ts).Milliseconds()),
-		)
+		s.calculationMs.Record(ctx, time.Since(ts).Milliseconds(), attributes...)
 		err = s.cache.SetValue(ctx, key, digits)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(otelcodes.Error, err.Error())
-			measurements = append(measurements, s.cacheErrors.Measurement(1))
-			s.meter.RecordBatch(
-				ctx,
-				attributes,
-				measurements...,
-			)
+			s.cacheErrors.Add(ctx, 1, attributes...)
 			return nil, fmt.Errorf("cache %T SetValue method returned an error: %w", s.cache, err)
 		}
 	} else {
-		measurements = append(measurements, s.cacheHits.Measurement(1))
 		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), true))
 		span.SetAttributes(attributes...)
+		s.cacheHits.Add(ctx, 1, attributes...)
 	}
 	offset := in.Index % 9
 	digit, err := strconv.ParseUint(digits[offset:offset+1], 10, 32)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
-		s.meter.RecordBatch(
-			ctx,
-			attributes,
-			measurements...,
-		)
+
 		return nil, fmt.Errorf("method GetDigit failed to parse as uint: %w", err)
 	}
 	logger.Info("GetDigit: exit", "digit", digit)
-	s.meter.RecordBatch(
-		ctx,
-		attributes,
-		measurements...,
-	)
 	return &api.GetDigitResponse{
 		Index:    in.Index,
 		Digit:    uint32(digit),

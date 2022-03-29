@@ -107,10 +107,13 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		client.WithLogger(logger),
 		client.WithMaxTimeout(viper.GetDuration(MaxTimeoutFlagName)),
 		client.WithTracer(otel.Tracer(ClientServiceName)),
-		client.WithMeter(global.Meter(ClientServiceName)),
+		client.WithMeter(global.MeterProvider().Meter(ClientServiceName)),
 		client.WithPrefix(ClientServiceName),
 	}
-	piClient := client.NewPiClient(piClientOptions...)
+	piClient, err := client.NewPiClient(piClientOptions...)
+	if err != nil {
+		return fmt.Errorf("failed to create new PiService client: %w", err)
+	}
 
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)

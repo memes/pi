@@ -8,8 +8,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	gcpdetectors "go.opentelemetry.io/contrib/detectors/gcp"
-	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
-	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
+	hostinstrumentation "go.opentelemetry.io/contrib/instrumentation/host"
+	runtimeinstrumentation "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -130,10 +130,10 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 			return nil
 		},
 	}, shutdownFuncs...)
-	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(pusher)); err != nil {
+	if err = runtimeinstrumentation.Start(runtimeinstrumentation.WithMeterProvider(pusher)); err != nil {
 		return shutdownFuncs, fmt.Errorf("failed to start runtime metrics: %w", err)
 	}
-	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(pusher)); err != nil {
+	if err = hostinstrumentation.Start(hostinstrumentation.WithMeterProvider(pusher)); err != nil {
 		return shutdownFuncs, fmt.Errorf("failed to start host metrics: %w", err)
 	}
 

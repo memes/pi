@@ -39,7 +39,10 @@ func TestGetDigit_WithNoopCache(t *testing.T) {
 		t.Error("Noop cache is nil")
 	}
 	t.Parallel()
-	piServer := server.NewPiServer(server.WithCache(testCache))
+	piServer, err := server.NewPiServer(server.WithCache(testCache))
+	if err != nil {
+		t.Errorf("Error calling NewPiServer: %v", err)
+	}
 	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
 			testGetDigit(ctx, t, &api.GetDigitRequest{
@@ -60,7 +63,10 @@ func TestFractionalDigit_WithRedisCache(t *testing.T) {
 		t.Error("Redis cache is nil")
 	}
 	t.Parallel()
-	piServer := server.NewPiServer(server.WithCache(testCache))
+	piServer, err := server.NewPiServer(server.WithCache(testCache))
+	if err != nil {
+		t.Errorf("Error calling NewPiServer: %v", err)
+	}
 	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
 			testGetDigit(ctx, t, &api.GetDigitRequest{

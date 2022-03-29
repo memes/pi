@@ -1338,8 +1338,8 @@ func Example() {
 	// Calculate the first 9 decimal digits of pi
 	digits := pi.BBPDigits(0)
 	fmt.Printf("The first 10 digits of pi are: 3.%s\n", digits)
-	// Output: pi.go:106: "level"=1 "msg"="BBPDigits: enter" "n"=0
-	// pi.go:168: "level"=1 "msg"="BBPDigits: exit" "n"=0 "result"="141592653"
+	// Output: pi.go:109: "level"=1 "msg"="BBPDigits: enter" "n"=0
+	// pi.go:171: "level"=1 "msg"="BBPDigits: exit" "n"=0 "result"="141592653"
 	// The first 10 digits of pi are: 3.141592653
 }
 
