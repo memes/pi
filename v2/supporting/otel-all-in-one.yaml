@@ -1,5 +1,77 @@
-# Launch an OpenTelemetry collector, Jaeger, and Prometheus with configurations
-# in PVs.
+# Launch an OpenTelemetry collector, Jaeger, and Prometheus with mounted
+# ConfigMaps. OpenTelemetry collector is listening on gRPC port 4137 in
+# plaintext, Jaeger UI is exposed on HTTP port 16686, and Prometheus UI is
+# exposed on HTTP port 9090.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-prometheus-config
+data:
+  prometheus.yaml: |-
+    scrape_configs:
+      - job_name: otel-collector
+        scrape_interval: 10s
+        static_configs:
+          - targets:
+              - :8889
+          - targets:
+              - :8888
+      - job_name: prometheus
+        scrape_interval: 10s
+        static_configs:
+          - targets:
+              - :9090
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+data:
+  otel-collector-config.yaml: |-
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: :4317
+    exporters:
+      prometheus:
+        endpoint: :8889
+      logging:
+      jaeger:
+        endpoint: :14250
+        tls:
+          insecure: true
+    processors:
+      batch:
+    extensions:
+      health_check:
+      pprof:
+        endpoint: :1888
+      zpages:
+        endpoint: :55679
+    service:
+      extensions:
+        - pprof
+        - zpages
+        - health_check
+      pipelines:
+        traces:
+          receivers:
+            - otlp
+          processors:
+            - batch
+          exporters:
+            - logging
+            - jaeger
+        metrics:
+          receivers:
+            - otlp
+          processors:
+            - batch
+          exporters:
+            - logging
+            - prometheus
 ---
 apiVersion: v1
 kind: Pod
@@ -7,6 +79,25 @@ metadata:
   name: otel-all-in-one
 spec:
   containers:
+    - name: otel-collector
+      image: otel/opentelemetry-collector:0.46.0
+      resources:
+        limits:
+          cpu: 500m
+          memory: 500Mi
+        requests:
+          cpu: 100m
+          memory: 100Mi
+      args:
+        - --config
+        - /run/otel/config/otel-collector-config.yaml
+      volumeMounts:
+        - mountPath: /run/otel/config
+          name: otel-collector-config
+      ports:
+        - containerPort: 4317
+          hostPort: 4317
+          protocol: TCP
     - name: jaeger
       image: jaegertracing/all-in-one:1.32.0
       resources:
@@ -20,25 +111,6 @@ spec:
         - containerPort: 16686
           hostPort: 16686
           protocol: TCP
-    - name: otlp
-      image: otel/opentelemetry-collector:0.46.0
-      resources:
-        limits:
-          cpu: 500m
-          memory: 500Mi
-        requests:
-          cpu: 100m
-          memory: 100Mi
-      args:
-        - --config
-        - /run/otel/otel-collector-config.yaml
-      volumeMounts:
-        - mountPath: /run/otel
-          name: otel-config-pvc
-      ports:
-        - containerPort: 4317
-          hostPort: 4317
-          protocol: TCP
     - name: prometheus
       image: prom/prometheus:v2.33.5
       resources:
@@ -49,21 +121,28 @@ spec:
           cpu: 100m
           memory: 100Mi
       args:
-        - --config.file=/run/prometheus/prometheus.yml
+        - --config.file=/run/prometheus/prometheus.yaml
         - --storage.tsdb.path=/prometheus
         - --web.console.libraries=/usr/share/prometheus/console_libraries
         - --web.console.templates=/usr/share/prometheus/consoles
       volumeMounts:
         - mountPath: /run/prometheus
-          name: prom-config-pvc
+          name: otel-prometheus-config
+          readOnly: true
       ports:
         - containerPort: 9090
           hostPort: 9090
           protocol: TCP
   volumes:
-    - name: prom-config-pvc
-      persistentVolumeClaim:
-        claimName: otel-all-in-one-prom-config
-    - name: otel-config-pvc
-      persistentVolumeClaim:
-        claimName: otel-all-in-one-otel-config
+    - name: otel-collector-config
+      configMap:
+        name: otel-collector-config
+        items:
+          - key: otel-collector-config.yaml
+            path: otel-collector-config.yaml
+    - name: otel-prometheus-config
+      configMap:
+        name: otel-prometheus-config
+        items:
+          - key: prometheus.yaml
+            path: prometheus.yaml

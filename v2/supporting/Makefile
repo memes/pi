@@ -98,11 +98,11 @@ define host-csr-content
 endef
 
 # Default target generates fake certificate for default hosts
-all: $(foreach host,$(DEFAULT_SET),$(host).$(DOMAIN).pem)
+all: $(foreach host,$(DEFAULT_SET),$(host).$(DOMAIN).pem) otel-all-in-one-tls.yaml
 
 # Delete all certs, keys and csr's, except for those used by the CA
 clean:
-	-rm $(filter-out $(CA_CERT) $(subst ca,ca-key,$(CA_CERT)) $(CA_CSR) $(CA_CONFIG),$(wildcard *pem *csr *json))
+	-rm $(filter-out $(CA_CERT) $(subst ca,ca-key,$(CA_CERT)) $(CA_CSR) $(CA_CONFIG),$(wildcard *pem *csr *json)) otel-all-in-one-tls.yaml
 
 # Clean-up the CA files too
 realclean: clean
@@ -130,3 +130,6 @@ $(CA_CONFIG):
 	cfssljson -bare $*
 
 .PHONY: all clean realclean
+
+otel-all-in-one-tls.yaml: otel.$(DOMAIN).pem kustomization.yaml otel-all-in-one.yaml
+	kustomize build $(@D) > $@

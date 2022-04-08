@@ -12,3 +12,4 @@ dist/
 v2/supporting/*.csr
 v2/supporting/*.json
 v2/supporting/*.pem
+v2/supporting/otel-all-in-one-tls.yaml

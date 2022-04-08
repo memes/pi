@@ -1,0 +1,47 @@
+# Generate a new pod configuration for OpenTelemetry Collector with TLS certs,
+# changing the configuration to use TLS for collector's gRPC endpoint.
+# The Jaeger and Prometheus UIs will remain HTTP only.
+#
+# Run Makefile to automatically generate certificates and invoke this
+# customization.
+---
+configMapGenerator:
+  - name: otel-collector-tls
+    files:
+      - otel.pi.example.com-key.pem
+      - otel.pi.example.com.pem
+
+resources:
+  - otel-all-in-one.yaml
+
+patches:
+  - target:
+      kind: Pod
+      name: otel-all-in-one
+    # yamllint disable rule:line-length
+    patch: |-
+      - op: replace
+        path: /metadata/name
+        value: otel-all-in-one-tls
+      - op: add
+        path: /spec/containers/0/args/-
+        value: --set=receivers.otlp.protocols.grpc.tls.cert_file=/run/otel/tls/otel.pem
+      - op: add
+        path: /spec/containers/0/args/-
+        value: --set=receivers.otlp.protocols.grpc.tls.key_file=/run/otel/tls/otel.key
+      - op: add
+        path: /spec/containers/0/volumeMounts/-
+        value:
+          mountPath: /run/otel/tls
+          name: otel-collector-tls
+      - op: add
+        path: /spec/volumes/-
+        value:
+          name: otel-collector-tls
+          configMap:
+            name: otel-collector-tls
+            items:
+              - key: otel.pi.example.com.pem
+                path: otel.pem
+              - key: otel.pi.example.com-key.pem
+                path: otel.key
