@@ -19,15 +19,15 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/host v0.31.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.31.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.31.0
-	go.opentelemetry.io/otel v1.6.1
+	go.opentelemetry.io/otel v1.6.3
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.28.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.28.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.6.1
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.6.1
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.6.3
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.6.3
 	go.opentelemetry.io/otel/metric v0.28.0
-	go.opentelemetry.io/otel/sdk v1.6.1
+	go.opentelemetry.io/otel/sdk v1.6.3
 	go.opentelemetry.io/otel/sdk/metric v0.28.0
-	go.opentelemetry.io/otel/trace v1.6.1
+	go.opentelemetry.io/otel/trace v1.6.3
 	golang.org/x/net v0.0.0-20220325170049-de3da57026de
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	google.golang.org/genproto v0.0.0-20220329172620-7be39ac1afc7
@@ -69,7 +69,7 @@ require (
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20210529063254-f4c35e4016d9 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.6.1 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.6.3 // indirect
 	go.opentelemetry.io/proto/otlp v0.15.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220309155454-6242fa91716a // indirect
 	golang.org/x/sys v0.0.0-20220329152356-43be30ef3008 // indirect
