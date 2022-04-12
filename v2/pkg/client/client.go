@@ -20,8 +20,8 @@ import (
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 
-	// Importing this package injects xds://endpoint support into the client.
-	_ "google.golang.org/grpc/xds"
+	"google.golang.org/grpc/status"
+	_ "google.golang.org/grpc/xds" // Importing this package injects xds://endpoint support into the client.
 )
 
 const (
@@ -45,8 +45,8 @@ type PiClient struct {
 	prefix string
 	// A counter for the number of connection errors.
 	connectionErrors syncint64.Counter
-	// A counter for the number of response errors.
-	responseErrors syncint64.Counter
+	// A counter for the number of errors returned by the service.
+	serviceErrors syncint64.Counter
 	// A gauge for request durations.
 	durationMs syncint64.Histogram
 }
@@ -74,12 +74,12 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating connectionErrors Counter: %w", err)
 	}
-	client.responseErrors, err = client.meter.SyncInt64().Counter(
-		client.telemetryName("response_errors"),
-		instrument.WithDescription("The count of error responses received by client"),
+	client.serviceErrors, err = client.meter.SyncInt64().Counter(
+		client.telemetryName("service_errors"),
+		instrument.WithDescription("The count of service errors received by client"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error returned while creating responseErrors Counter: %w", err)
+		return nil, fmt.Errorf("error returned while creating serviceErrors Counter: %w", err)
 	}
 	client.durationMs, err = client.meter.SyncInt64().Histogram(
 		client.telemetryName("request_duration_ms"),
@@ -154,16 +154,24 @@ func (c *PiClient) FetchDigit(ctx context.Context, conn *grpc.ClientConn, index 
 		Index: index,
 	})
 	durationMs := time.Since(startTimestamp).Milliseconds()
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(otelcodes.Error, err.Error())
-		attributes = append(attributes, attribute.Bool(c.telemetryName("success"), false))
-		c.responseErrors.Add(ctx, 1, attributes...)
+	if err == nil {
+		attributes = append(attributes, attribute.Bool(c.telemetryName("success"), true))
 		c.durationMs.Record(ctx, durationMs, attributes...)
-		return 0, fmt.Errorf("failure calling GetDigit: %w", err)
+		logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
+		return response.Digit, nil
 	}
-	attributes = append(attributes, attribute.Bool(c.telemetryName("success"), true))
+	span.RecordError(err)
+	span.SetStatus(otelcodes.Error, err.Error())
+	attributes = append(attributes, attribute.Bool(c.telemetryName("success"), false))
 	c.durationMs.Record(ctx, durationMs, attributes...)
-	logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
-	return response.Digit, nil
+	// Simple but dumb way to determine if the error is a connection error or
+	// service error; if the error can be marshaled to a gRPC status, then it
+	// is an error raised by the service implementation, not related to
+	// connectivity.
+	if _, ok := status.FromError(err); ok {
+		c.serviceErrors.Add(ctx, 1, attributes...)
+	} else {
+		c.connectionErrors.Add(ctx, 1, attributes...)
+	}
+	return 0, fmt.Errorf("failure calling GetDigit: %w", err)
 }

@@ -215,7 +215,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
 		s.cacheErrors.Add(ctx, 1, attributes...)
-		return nil, fmt.Errorf("cache %T GetValue method returned an error: %w", s.cache, err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("cache %T GetValue method returned an error: %v", s.cache, err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 	}
 	if digits == "" {
 		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), false))
@@ -230,7 +230,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 			span.RecordError(err)
 			span.SetStatus(otelcodes.Error, err.Error())
 			s.cacheErrors.Add(ctx, 1, attributes...)
-			return nil, fmt.Errorf("cache %T SetValue method returned an error: %w", s.cache, err)
+			return nil, status.Error(codes.Internal, fmt.Sprintf("cache %T SetValue method returned an error: %v", s.cache, err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 		}
 	} else {
 		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), true))
@@ -242,8 +242,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
-
-		return nil, fmt.Errorf("method GetDigit failed to parse as uint: %w", err)
+		return nil, status.Error(codes.Internal, fmt.Sprintf("method GetDigit failed to parse as uint: %v", err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 	}
 	logger.Info("GetDigit: exit", "digit", digit)
 	return &api.GetDigitResponse{
