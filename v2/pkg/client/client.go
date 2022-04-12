@@ -72,14 +72,14 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 		instrument.WithDescription("The count of connection errors seen by client"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error returned while creating connectionErrors Counter: %w", err)
 	}
 	client.responseErrors, err = client.meter.SyncInt64().Counter(
 		client.telemetryName("response_errors"),
 		instrument.WithDescription("The count of error responses received by client"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error returned while creating responseErrors Counter: %w", err)
 	}
 	client.durationMs, err = client.meter.SyncInt64().Histogram(
 		client.telemetryName("request_duration_ms"),
@@ -87,7 +87,7 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 		instrument.WithDescription("The duration (ms) of requests"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error returned while creating durationMs Histogram: %w", err)
 	}
 	return client, nil
 }

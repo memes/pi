@@ -93,28 +93,28 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 		instrument.WithDescription("The duration (ms) of calculations"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error returned while creating calculationMs Histogram: %w", err)
 	}
 	server.cacheErrors, err = server.meter.SyncInt64().Counter(
 		server.telemetryName("cache_errors"),
 		instrument.WithDescription("The count of error responses from digit cache"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error returned while creating cacheErrors Counter: %w", err)
 	}
 	server.cacheHits, err = server.meter.SyncInt64().Counter(
 		server.telemetryName("cache_hits"),
 		instrument.WithDescription("The count of cache hits"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error returned while creating cacheHits Counter: %w", err)
 	}
 	server.cacheMisses, err = server.meter.SyncInt64().Counter(
 		server.telemetryName("cache_misses"),
 		instrument.WithDescription("The count of cache misses"),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error returned while creating cacheMisses Counter: %w", err)
 	}
 	return server, nil
 }
