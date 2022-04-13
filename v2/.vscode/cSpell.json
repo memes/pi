@@ -23,6 +23,7 @@
         "logtostderr",
         "markdownlint",
         "mitchellh",
+        "MTLS",
         "nolint",
         "openapiv",
         "openapiv2",
