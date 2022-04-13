@@ -73,14 +73,8 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	shutdownFuncs := []shutdownFunction{}
-	defer func(ctx context.Context) {
-		for _, fn := range shutdownFuncs {
-			if err := fn(ctx); err != nil {
-				logger.Error(err, "Failure during service shutdown; continuing")
-			}
-		}
-	}(ctx)
+	shutdownFunctions := &ShutdownFunctions{}
+	defer shutdownFunctions.Execute(ctx, logger)
 
 	logger.V(0).Info("Preparing OpenTelemetry")
 	telemetryShutdownFuncs, err := initTelemetry(ctx, ClientServiceName,
@@ -89,7 +83,7 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	if err != nil {
 		return err
 	}
-	shutdownFuncs = append(telemetryShutdownFuncs, shutdownFuncs...)
+	shutdownFunctions.AppendFunctions(telemetryShutdownFuncs)
 
 	logger.V(0).Info("Preparing gRPC client connection")
 	dialOptions, err := buildDialOptions(ctx)

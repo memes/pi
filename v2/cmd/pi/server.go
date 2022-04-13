@@ -102,14 +102,8 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	shutdownFuncs := []shutdownFunction{}
-	defer func(ctx context.Context) {
-		for _, fn := range shutdownFuncs {
-			if err := fn(ctx); err != nil {
-				logger.Error(err, "Failure during service shutdown; continuing")
-			}
-		}
-	}(ctx)
+	shutdownFunctions := ShutdownFunctions{}
+	defer shutdownFunctions.Execute(ctx, logger)
 
 	logger.V(0).Info("Preparing telemetry")
 	telemetryShutdownFuncs, err := initTelemetry(ctx, ServerServiceName,
@@ -118,7 +112,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	shutdownFuncs = append(telemetryShutdownFuncs, shutdownFuncs...)
+	shutdownFunctions.AppendFunctions(telemetryShutdownFuncs)
 
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
@@ -192,10 +186,10 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	g, ctx := errgroup.WithContext(ctx)
 	if xds {
 		xdsServer := piServer.NewXDSServer()
-		shutdownFuncs = append([]shutdownFunction{func(_ context.Context) error {
+		shutdownFunctions.AppendFunction(func(_ context.Context) error {
 			xdsServer.GracefulStop()
 			return nil
-		}}, shutdownFuncs...)
+		})
 		g.Go(func() error {
 			logger.V(0).Info("Starting xDS gRPC service")
 			if err := xdsServer.Serve(listener); err != nil {
@@ -205,10 +199,10 @@ func serverMain(cmd *cobra.Command, args []string) error {
 		})
 	} else {
 		grpcServer := piServer.NewGrpcServer()
-		shutdownFuncs = append([]shutdownFunction{func(_ context.Context) error {
+		shutdownFunctions.AppendFunction(func(_ context.Context) error {
 			grpcServer.GracefulStop()
 			return nil
-		}}, shutdownFuncs...)
+		})
 		g.Go(func() error {
 			logger.V(0).Info("Starting gRPC service")
 			if err := grpcServer.Serve(listener); err != nil {
@@ -228,12 +222,12 @@ func serverMain(cmd *cobra.Command, args []string) error {
 			Handler:   restHandler,
 			TLSConfig: serverTLSConfig,
 		}
-		shutdownFuncs = append(shutdownFuncs, func(ctx context.Context) error {
+		shutdownFunctions.AppendFunctions([]ShutdownFunction{func(ctx context.Context) error {
 			if err := restServer.Shutdown(ctx); err != nil {
 				return fmt.Errorf("error returned by REST service shutdown: %w", err)
 			}
 			return nil
-		})
+		}})
 		g.Go(func() error {
 			if serverTLSConfig != nil {
 				logger.V(0).Info("Starting REST/gRPC gateway with TLS")
@@ -261,11 +255,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	logger.V(0).Info("Shutting down on signal")
 	ctx, cancelShutdown := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancelShutdown()
-	for _, fn := range shutdownFuncs {
-		if err := fn(ctx); err != nil {
-			logger.Error(err, "Failure during service shutdown; continuing")
-		}
-	}
+	shutdownFunctions.Execute(ctx, logger)
 	cancel()
 	return g.Wait() //nolint:wrapcheck // Errors returned from group are already wrapped
 }
