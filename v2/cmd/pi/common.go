@@ -215,14 +215,13 @@ func initTrace(ctx context.Context, target string, creds credentials.TransportCr
 		trace.WithSpanProcessor(spanProcessor),
 		trace.WithResource(res),
 	)
-	shutdownFuncs = append([]ShutdownFunction{
+	shutdownFuncs = append(shutdownFuncs,
 		func(ctx context.Context) error {
 			if err := provider.Shutdown(ctx); err != nil {
 				return fmt.Errorf("error during OpenTelemetry trace provider shutdown: %w", err)
 			}
 			return nil
-		},
-	}, shutdownFuncs...)
+		})
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}))
 	otel.SetTracerProvider(provider)
 	logger.V(1).Info("OpenTelemetry trace handlers created and started")
@@ -275,9 +274,9 @@ func initTelemetry(ctx context.Context, name string, sampler trace.Sampler) ([]S
 	if err != nil {
 		return shutdownMetrics, err
 	}
-	shutdownFunctions = append(shutdownMetrics, shutdownFunctions...)
+	shutdownFunctions = append(shutdownFunctions, shutdownMetrics...)
 	shutdownTraces, err := initTrace(ctx, target, creds, res, sampler)
-	shutdownFunctions = append(shutdownTraces, shutdownFunctions...)
+	shutdownFunctions = append(shutdownFunctions, shutdownTraces...)
 	if err != nil {
 		return shutdownFunctions, err
 	}
