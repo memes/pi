@@ -36,6 +36,7 @@ const (
 	MTLSFlagName             = "mtls"
 	RESTAuthorityFlagName    = "rest-authority"
 	XDSFlagName              = "xds"
+	DefaultReadHeaderTimeout = 10 * time.Second
 )
 
 // Implements the server sub-command.
@@ -218,9 +219,10 @@ func serverMain(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to create new REST gateway handler: %w", err)
 		}
 		restServer := &http.Server{
-			Addr:      restAddress,
-			Handler:   restHandler,
-			TLSConfig: serverTLSConfig,
+			Addr:              restAddress,
+			Handler:           restHandler,
+			TLSConfig:         serverTLSConfig,
+			ReadHeaderTimeout: DefaultReadHeaderTimeout,
 		}
 		shutdownFunctions.AppendFunctions([]ShutdownFunction{func(ctx context.Context) error {
 			if err := restServer.Shutdown(ctx); err != nil {
