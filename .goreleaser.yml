@@ -42,6 +42,7 @@ sboms:
     artifacts: source
 signs:
   - artifacts: checksum
+    cmd: cosign
     env:
       - COSIGN_EXPERIMENTAL=1
     certificate: '${artifact}.pem'
