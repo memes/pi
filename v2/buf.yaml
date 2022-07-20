@@ -1,4 +1,5 @@
 # Buf configuration
+# spell-checker: disable
 ---
 version: v1
 name: buf.build/memes/pi

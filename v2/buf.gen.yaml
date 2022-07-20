@@ -1,4 +1,5 @@
 # Generate gRPC, REST gateway, and OpenAPI v2 files
+# spell-checker: disable
 ---
 version: v1
 plugins:

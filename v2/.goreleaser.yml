@@ -1,4 +1,5 @@
 # use goreleaser for v2 builds and containers
+# spell-checker: disable
 ---
 project_name: pi
 builds:

@@ -33,7 +33,7 @@ const (
 	RedisTargetFlagName      = "redis-target"
 	TagFlagName              = "tag"
 	AnnotationFlagName       = "annotation"
-	MTLSFlagName             = "mtls"
+	MutualTLSFlagName        = "mtls"
 	RESTAuthorityFlagName    = "rest-authority"
 	XDSFlagName              = "xds"
 	DefaultReadHeaderTimeout = 10 * time.Second
@@ -54,7 +54,7 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	serverCmd.PersistentFlags().String(RedisTargetFlagName, "", "An optional Redis endpoint to use as a PiService cache")
 	serverCmd.PersistentFlags().StringArray(TagFlagName, nil, "An optional string tag to add to PiService response metadata; can be repeated")
 	serverCmd.PersistentFlags().StringToString(AnnotationFlagName, nil, "An optional key=value annotation to add to PiService response metadata; can be repeated")
-	serverCmd.PersistentFlags().Bool(MTLSFlagName, false, "Require PiService clients to provide a valid TLS client certificate")
+	serverCmd.PersistentFlags().Bool(MutualTLSFlagName, false, "Require PiService clients to provide a valid TLS client certificate")
 	serverCmd.PersistentFlags().String(RESTAuthorityFlagName, "", "Set the Authority header for REST/gRPC gateway communication")
 	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for PiService; requires an xDS environment")
 	if err := viper.BindPFlag(RESTAddressFlagName, serverCmd.PersistentFlags().Lookup(RESTAddressFlagName)); err != nil {
@@ -69,7 +69,7 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	if err := viper.BindPFlag(AnnotationFlagName, serverCmd.PersistentFlags().Lookup(AnnotationFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind annotation pflag: %w", err)
 	}
-	if err := viper.BindPFlag(MTLSFlagName, serverCmd.PersistentFlags().Lookup(MTLSFlagName)); err != nil {
+	if err := viper.BindPFlag(MutualTLSFlagName, serverCmd.PersistentFlags().Lookup(MutualTLSFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
 	}
 	if err := viper.BindPFlag(RESTAuthorityFlagName, serverCmd.PersistentFlags().Lookup(RESTAuthorityFlagName)); err != nil {
@@ -93,7 +93,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	cacerts := viper.GetStringSlice(CACertFlagName)
 	cert := viper.GetString(TLSCertFlagName)
 	key := viper.GetString(TLSKeyFlagName)
-	mTLS := viper.GetBool(MTLSFlagName)
+	mTLS := viper.GetBool(MutualTLSFlagName)
 	otlpTarget := viper.GetString(OpenTelemetryTargetFlagName)
 	tags := viper.GetStringSlice(TagFlagName)
 	annotations := viper.GetStringMapString(AnnotationFlagName)

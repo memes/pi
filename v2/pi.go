@@ -111,9 +111,9 @@ func BBPDigits(n uint64) string {
 	var sum float64
 	var t int64
 	for a := int64(3); a <= (2 * N); a = FindNextPrime(a) {
-		vmax := int64(math.Log(float64(2*N)) / math.Log(float64(a)))
+		v_max := int64(math.Log(float64(2*N)) / math.Log(float64(a)))
 		av := int64(1)
-		for i := int64(0); i < vmax; i++ {
+		for i := int64(0); i < v_max; i++ {
 			av *= a
 		}
 		var s, num, den, v, kq, kq2 int64 = 0, 1, 1, 0, 1, 1
@@ -153,7 +153,7 @@ func BBPDigits(n uint64) string {
 				t = invMod(den, av)
 				t = (t * num) % av
 				t = (t * k) % av
-				for i := v; i < vmax; i++ {
+				for i := v; i < v_max; i++ {
 					t = (t * a) % av
 				}
 				s += t

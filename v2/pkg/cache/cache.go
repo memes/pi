@@ -22,7 +22,7 @@ type Cache interface {
 	SetValue(ctx context.Context, key string, value string) error
 }
 
-// NoopCache implements Cache interface without any real cacheing.
+// NoopCache implements Cache interface without any real caching.
 type NoopCache struct{}
 
 // Always returns an empty string and no error for every key.
