@@ -26,6 +26,8 @@ jobs:
           sudo chmod 0755 /usr/local/bin/talisman
       - name: Install Python
         uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
       - name: Execute pre-commit
         uses: pre-commit/action@v3.0.0
   hadolint:
@@ -37,7 +39,7 @@ jobs:
         uses: hadolint/hadolint-action@v2.1.0
         with:
           dockerfile: "Dockerfile"
-  go-lint:
+  go-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
@@ -55,7 +57,3 @@ jobs:
             ${{ runner.os }}-go-
       - name: Run go tests
         run: go test -v -short ./v2/...
-      - name: Execute linter
-        uses: golangci/golangci-lint-action@v3.2.0
-        with:
-          version: latest
