@@ -21,7 +21,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/instrument/syncint64"
-	"go.opentelemetry.io/otel/metric/nonrecording"
 	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
@@ -80,7 +79,7 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 		logger:                    logr.Discard(),
 		cache:                     cachepkg.NewNoopCache(),
 		tracer:                    trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryServerName),
-		meter:                     nonrecording.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
+		meter:                     metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
 		restClientGRPCCredentials: insecure.NewCredentials(),
 	}
 	for _, option := range options {

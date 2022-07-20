@@ -15,7 +15,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/instrument/syncint64"
-	"go.opentelemetry.io/otel/metric/nonrecording"
 	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
@@ -60,7 +59,7 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 		logger:     logr.Discard(),
 		maxTimeout: DefaultMaxTimeout,
 		tracer:     trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryClientName),
-		meter:      nonrecording.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
+		meter:      metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
 		prefix:     DefaultOpenTelemetryClientName,
 	}
 	for _, option := range options {
