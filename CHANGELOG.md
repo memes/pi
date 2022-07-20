@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v2.0.0-rc6] - 2022-07-20
+
+### Added
+
+### Changed
+
+- release GitHub action modified to use keyless cosign
+
+### Removed
+
 ## [v2.0.0-rc5] - 2022-07-20
 
 > NOTE: Entries for -rc1 through -rc4 have been removed as the tags and builds
@@ -80,6 +90,7 @@ REST gateway for compatibility. The client app always uses gRPC transport.
 
 ### Removed
 
+[v2.0.0-rc6]: https://github.com/memes/pi/compare/v2.0.0-rc5...v2.0.0-rc6
 [v2.0.0-rc5]: https://github.com/memes/pi/compare/1.0.4...v2.0.0-rc5
 [1.0.4]: https://github.com/memes/pi/compare/1.0.3...1.0.4
 [1.0.3]: https://github.com/memes/pi/compare/1.0.2...1.0.3
