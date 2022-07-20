@@ -9,14 +9,13 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/pi",
+            "program": "${workspaceFolder}/v2/cmd/pi",
             "args": [
                 "server",
                 "--verbose",
-                "--address",
-                ":8443",
                 "--rest-address",
-                ":8080"
+                ":8080",
+                ":8443"
             ]
         },
         {
@@ -24,20 +23,19 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/pi",
+            "program": "${workspaceFolder}/v2/cmd/pi",
             "args": [
                 "server",
                 "--verbose",
                 "--cacert",
-                "${workspaceFolder}/supporting/ca.pem",
+                "${workspaceFolder}/v2/supporting/ca.pem",
                 "--cert",
-                "${workspaceFolder}/supporting/service.pi.example.com.pem",
+                "${workspaceFolder}/v2/supporting/service.pi.example.com.pem",
                 "--key",
-                "${workspaceFolder}/supporting/service.pi.example.com-key.pem",
-                "--address",
-                ":8443",
+                "${workspaceFolder}/v2/supporting/service.pi.example.com-key.pem",
                 "--rest-address",
-                ":8080"
+                ":8080",
+                ":8443"
             ]
         },
         {
@@ -45,7 +43,7 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/pi",
+            "program": "${workspaceFolder}/v2/cmd/pi",
             "args": [
                 "server",
                 "--verbose",
@@ -60,12 +58,12 @@
             "type": "go",
             "request": "launch",
             "mode": "auto",
-            "program": "${workspaceFolder}/cmd/pi",
+            "program": "${workspaceFolder}/v2/cmd/pi",
             "args": [
                 "client",
                 "--verbose",
                 "--cacert",
-                "${workspaceFolder}/supporting/ca.pem",
+                "${workspaceFolder}/v2/supporting/ca.pem",
                 ":8443"
             ]
         }

@@ -7,40 +7,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.0-rc3] - 2021-11-10
+## [v2.0.0-rc5] - 2022-07-20
+
+> NOTE: Entries for -rc1 through -rc4 have been removed as the tags and builds
+> for those have been removed. These notes include all changes from the `1.0.4`
+> tag to `v2.0.0-rc5`.
+
+Refactored Pi code as [v2](/v2) to support use as a library and application.
+When used as a server the primary transport is through gRPC, with an optional
+REST gateway for compatibility. The client app always uses gRPC transport.
 
 ### Added
 
-### Changed
-
-- OpenTelemetry process detectors to support running in a container built on scratch
-- Additonal logging during OpenTelemetry initialization
-
-### Removed
-
-## [2.0.0-rc2] - 2021-11-09
-
-### Added
-
-### Changed
-
-- lower prime testing to first 100 when `-short` flag is set
-- remove `nobody` from scratch docker image
-
-### Removed
-
-## [2.0.0-rc1] - 2021-11-09
-
-Refactored Pi code as v2 to support use as a library and application. When used
-as a server the primary transport is through gRPC, with an optional REST gateway
-for compatibility. The client app is always gRPC.
-
-### Added
-
-- protobuf definition for data transfer with [buf](https://buf.build) tooling for
-  code generation
-- Cache interface definition, with optional Redis implementation for sample server
-- goreleaser for binary and container building
+- gRPC is primary transport for client and server, with optional REST-gRPC gateway
+  support
+- switch to [buf](https://buf.build) tooling for code generation from protobuf
+- OpenTelemetry tracing and metric collector support in application
+- Use goreleaser for binary and container building via GitHub action on tag
+  - SBOM generation through [syft](https://github.com/anchore/syft)
+  - [cosign](https://github.com/sigstore/cosign) keyless signed containers
+  on tag
 
 ### Changed
 
@@ -94,9 +80,7 @@ for compatibility. The client app is always gRPC.
 
 ### Removed
 
-[2.0.0-rc3]: https://github.com/memes/pi/compare/2.0.0-rc2...2.0.0-rc3
-[2.0.0-rc2]: https://github.com/memes/pi/compare/2.0.0-rc1...2.0.0-rc2
-[2.0.0-rc1]: https://github.com/memes/pi/compare/1.0.4...2.0.0-rc1
+[v2.0.0-rc5]: https://github.com/memes/pi/compare/1.0.4...v2.0.0-rc5
 [1.0.4]: https://github.com/memes/pi/compare/1.0.3...1.0.4
 [1.0.3]: https://github.com/memes/pi/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/memes/pi/compare/1.0.1...1.0.2

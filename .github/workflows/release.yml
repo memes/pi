@@ -1,4 +1,4 @@
-# spell-checker: ignore hashicorp ghaction DOCKERHUB workdir
+# spell-checker: disable
 ---
 name: release
 
@@ -6,32 +6,40 @@ name: release
 on:
   push:
     tags:
-      - '*'
+      - 'v2*'
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
 
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
-      - id: checkout
-        name: Checkout
+      - name: Checkout source
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - id: setup-go
-        name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v3
         with:
           go-version: 1.18
-      - id: run-tests
-        name: Run go tests
-        run: cd v2 && go test -v -short ./...
-      - id: import-gpg
-        name: Import GPG key
+      - name: Cache packages
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('v2/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run go tests
+        run: go test -v -short ./v2/...
+      - name: Install cosign
         if: ${{ success() }}
-        uses: hashicorp/ghaction-import-gpg@v2.1.0
-        env:
-          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
-          PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        uses: sigstore/cosign-installer@v2.4.1
+      - name: Install syft
+        if: ${{ success() }}
+        uses: anchore/sbom-action/download-syft@v0.11.0
       - id: docker-login
         name: Login to Docker hub
         if: ${{ success() }}
@@ -48,15 +56,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - id: goreleaser
-        name: Run GoReleaser
+      - name: Run GoReleaser
         if: ${{ success() }}
         uses: goreleaser/goreleaser-action@v3
         with:
           distribution: goreleaser
           version: latest
           args: release --rm-dist
-          workdir: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GPG_FINGERPRINT: ${{ steps.import-gpg.outputs.fingerprint }}

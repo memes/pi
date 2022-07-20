@@ -5,11 +5,11 @@
 
 # Don't commit built packages
 dist/
-/pi
-/v2/pi
+**/pi
+**/pi.exe
 
 # Don't commit testing TLS certificates, etc.
-v2/supporting/*.csr
-v2/supporting/*.json
-v2/supporting/*.pem
-v2/supporting/otel-all-in-one-tls.yaml
+supporting/*.csr
+supporting/*.json
+supporting/*.pem
+supporting/otel-all-in-one-tls.yaml

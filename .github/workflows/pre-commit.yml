@@ -1,5 +1,6 @@
 # These github actions will perform linting using pre-commit.
 # yamllint disable rule:line-length
+# spell-checker: disable
 ---
 name: pre-commit
 
@@ -8,6 +9,7 @@ on:
   pull_request:
   push:
     branches: [main]
+
 permissions:
   contents: read
   pull-requests: read
@@ -16,28 +18,44 @@ jobs:
   pre-commit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - name: install talisman
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Install talisman
         run: |
           sudo curl -sLo /usr/local/bin/talisman https://github.com/thoughtworks/talisman/releases/download/v1.28.0/talisman_linux_amd64
           sudo chmod 0755 /usr/local/bin/talisman
-      - uses: actions/setup-python@v4
-      - uses: pre-commit/action@v3.0.0
+      - name: Install Python
+        uses: actions/setup-python@v4
+      - name: Execute pre-commit
+        uses: pre-commit/action@v3.0.0
   hadolint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: hadolint/hadolint-action@v2.1.0
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Execute hadolint
+        uses: hadolint/hadolint-action@v2.1.0
         with:
-          dockerfile: "v2/Dockerfile"
-  golangci-lint:
+          dockerfile: "Dockerfile"
+  go-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/setup-go@v3
+      - name: Checkout source
+        uses: actions/checkout@v3
+      - name: Setup go
+        uses: actions/setup-go@v3
         with:
           go-version: 1.18
-      - uses: actions/checkout@v3
-      - uses: golangci/golangci-lint-action@v3.2.0
+      - name: Cache packages
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('v2/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Run go tests
+        run: go test -v -short ./v2/...
+      - name: Execute linter
+        uses: golangci/golangci-lint-action@v3.2.0
         with:
           version: latest
-          working-directory: v2

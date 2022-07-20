@@ -3,7 +3,7 @@
 version: "1.0"
 fileignoreconfig:
 - filename: .github/workflows/release.yml
-  checksum: a4e6bf06dae2dee91f45d39affbadf2c56c73def595ae4f1c94efff6a40a467a
+  checksum: 0aa0df817f312fe247dbd9b0d7bcbd6d1fc31525bfdbc13b050ec123d0083f2b
 - filename: go.sum
   checksum: 4cf2a7a763e09f773620eca4025349e02ea4eeeba0565122f8191d14baf79de1
 - filename: v2/buf.lock
@@ -56,3 +56,7 @@ fileignoreconfig:
   checksum: a73f1ae02cfc8349e15cbc29bbbb992925c5dda9be0f832765ddffdf4af7df1a
 - filename: v2/supporting/otel-all-in-one.yaml
   checksum: 897e58b3dc0459284fab25c88eb458455f9cad54d571f7ffcc2ebd7851ac8e5a
+- filename: go.work.sum
+  checksum: a8a95736a8e5a63a754bb7c2a6055375777f5445d00559f4ba344964ea73cc0c
+- filename: .github/workflows/pre-commit.yml
+  checksum: fd775abf705cfa74ab16bb6807fe36cbaa9950758a79ce3017752eb708d46588
