@@ -12,7 +12,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pi "github.com/memes/pi/v2"
-	api "github.com/memes/pi/v2/api/v2"
+	api "github.com/memes/pi/v2/internal/api/v2"
 	cachepkg "github.com/memes/pi/v2/pkg/cache"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"

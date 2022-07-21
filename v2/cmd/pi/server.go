@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"time"
 
-	api "github.com/memes/pi/v2/api/v2"
+	api "github.com/memes/pi/v2/internal/api/v2"
 	"github.com/memes/pi/v2/pkg/cache"
 	"github.com/memes/pi/v2/pkg/server"
 	"github.com/spf13/cobra"
