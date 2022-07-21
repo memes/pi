@@ -16,7 +16,7 @@ avoid committing secrets.
 
 [golangci-lint] is used to enforce Go code passes
 linting and formatting rules ([gofumpt] is the expected Go code formatter). Rules
-are defined in [.golangci.yml](v2/.golangci.yml).
+are defined in [.golangci.yml](.golangci.yml).
 
 1. Install [pre-commit] in a virtual python environment or globally: see [instructions](https://pre-commit.com/#installation)
 2. Install [golangci-lint] from a binary or from source: see [instructions](https://golangci-lint.run/usage/install/#local-installation)
@@ -31,9 +31,12 @@ are defined in [.golangci.yml](v2/.golangci.yml).
    ```
 
 5. Create a new branch for changes
-6. Execute golangci-lint to validate changes and address any issues raised
+6. Execute tests and `golangci-lint` in `v2` directory to validate changes.
+   Please address any issues raised.
 
    ```shell
+   cd v2
+   go test -short -v ./...
    golangci-lint run
    ```
 
