@@ -30,7 +30,7 @@ const (
 
 var (
 	// Version is updated from git tags during build.
-	version = "unspecified"
+	version = "v2-snapshot"
 	// Failed to load CA cert.
 	errFailedToAppendCACert = errors.New("failed to append CA cert to CA pool")
 )
