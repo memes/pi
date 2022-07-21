@@ -28,11 +28,11 @@
                 "server",
                 "--verbose",
                 "--cacert",
-                "${workspaceFolder}/v2/supporting/ca.pem",
+                "${workspaceFolder}/supporting/ca.pem",
                 "--cert",
-                "${workspaceFolder}/v2/supporting/service.pi.example.com.pem",
+                "${workspaceFolder}/supporting/service.pi.example.com.pem",
                 "--key",
-                "${workspaceFolder}/v2/supporting/service.pi.example.com-key.pem",
+                "${workspaceFolder}/supporting/service.pi.example.com-key.pem",
                 "--rest-address",
                 ":8080",
                 ":8443"
@@ -45,7 +45,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}/v2/cmd/pi",
             "args": [
-                "server",
+                "client",
                 "--verbose",
                 "--insecure",
                 "--count",
@@ -63,7 +63,9 @@
                 "client",
                 "--verbose",
                 "--cacert",
-                "${workspaceFolder}/v2/supporting/ca.pem",
+                "${workspaceFolder}/supporting/ca.pem",
+                "--count",
+                "10",
                 ":8443"
             ]
         }
