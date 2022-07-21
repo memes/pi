@@ -39,6 +39,14 @@ jobs:
         uses: hadolint/hadolint-action@v2.1.0
         with:
           dockerfile: "Dockerfile"
+  golangci-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Execute linter
+        uses: golangci/golangci-lint-action@v3.2.0
+        with:
+          version: latest
+          working-directory: v2
   go-test:
     runs-on: ubuntu-latest
     steps:
