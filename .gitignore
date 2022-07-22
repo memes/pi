@@ -6,6 +6,7 @@
 # Don't commit built packages
 dist/
 **/pi
+!**/pi/
 **/pi.exe
 
 # Don't commit testing TLS certificates, etc.
