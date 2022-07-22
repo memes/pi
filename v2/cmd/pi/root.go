@@ -53,31 +53,31 @@ func NewRootCmd() (*cobra.Command, error) {
 	rootCmd.PersistentFlags().String(TLSCertFlagName, "", "An optional TLS certificate to use")
 	rootCmd.PersistentFlags().String(TLSKeyFlagName, "", "An optional TLS private key to use")
 	if err := viper.BindPFlag(VerboseFlagName, rootCmd.PersistentFlags().Lookup(VerboseFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind verbose pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", VerboseFlagName, err)
 	}
 	if err := viper.BindPFlag(PrettyFlagName, rootCmd.PersistentFlags().Lookup(PrettyFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind pretty pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", PrettyFlagName, err)
 	}
 	if err := viper.BindPFlag(OpenTelemetryTargetFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryTargetFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind otlp-target pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", OpenTelemetryTargetFlagName, err)
 	}
 	if err := viper.BindPFlag(OpenTelemetryInsecureFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryInsecureFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind otlp-insecure pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", OpenTelemetryInsecureFlagName, err)
 	}
 	if err := viper.BindPFlag(OpenTelemetryAuthorityFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryAuthorityFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind otlp-authority pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", OpenTelemetryAuthorityFlagName, err)
 	}
 	if err := viper.BindPFlag(OpenTelemetrySamplingRatioFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetrySamplingRatioFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind otlp-sampling-ratio pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", OpenTelemetrySamplingRatioFlagName, err)
 	}
 	if err := viper.BindPFlag(CACertFlagName, rootCmd.PersistentFlags().Lookup(CACertFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind cacert pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", CACertFlagName, err)
 	}
 	if err := viper.BindPFlag(TLSCertFlagName, rootCmd.PersistentFlags().Lookup(TLSCertFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind cert pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", TLSCertFlagName, err)
 	}
 	if err := viper.BindPFlag(TLSKeyFlagName, rootCmd.PersistentFlags().Lookup(TLSKeyFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind key pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", TLSKeyFlagName, err)
 	}
 	serverCmd, err := NewServerCmd()
 	if err != nil {

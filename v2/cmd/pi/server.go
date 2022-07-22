@@ -58,25 +58,25 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	serverCmd.PersistentFlags().String(RESTAuthorityFlagName, "", "Set the Authority header for REST/gRPC gateway communication")
 	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for PiService; requires an xDS environment")
 	if err := viper.BindPFlag(RESTAddressFlagName, serverCmd.PersistentFlags().Lookup(RESTAddressFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind rest-address pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", RESTAddressFlagName, err)
 	}
 	if err := viper.BindPFlag(RedisTargetFlagName, serverCmd.PersistentFlags().Lookup(RedisTargetFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind redis-target pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", RedisTargetFlagName, err)
 	}
 	if err := viper.BindPFlag(TagFlagName, serverCmd.PersistentFlags().Lookup(TagFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind tag pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", TagFlagName, err)
 	}
 	if err := viper.BindPFlag(AnnotationFlagName, serverCmd.PersistentFlags().Lookup(AnnotationFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind annotation pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", AnnotationFlagName, err)
 	}
 	if err := viper.BindPFlag(MutualTLSFlagName, serverCmd.PersistentFlags().Lookup(MutualTLSFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind label pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", MutualTLSFlagName, err)
 	}
 	if err := viper.BindPFlag(RESTAuthorityFlagName, serverCmd.PersistentFlags().Lookup(RESTAuthorityFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind rest-authority pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", RESTAuthorityFlagName, err)
 	}
 	if err := viper.BindPFlag(XDSFlagName, serverCmd.PersistentFlags().Lookup(XDSFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind xds pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", XDSFlagName, err)
 	}
 	return serverCmd, nil
 }

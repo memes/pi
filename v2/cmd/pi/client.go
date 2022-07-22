@@ -53,16 +53,16 @@ func NewClientCmd() (*cobra.Command, error) {
 	clientCmd.PersistentFlags().Bool(InsecureFlagName, false, "Disable TLS for gRPC connection to Pi Service")
 	clientCmd.PersistentFlags().StringToString(HeaderFlagName, nil, "An optional header key=value to add to Pi Service request metadata; can be repeated")
 	if err := viper.BindPFlag(CountFlagName, clientCmd.PersistentFlags().Lookup(CountFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind count pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", CountFlagName, err)
 	}
 	if err := viper.BindPFlag(MaxTimeoutFlagName, clientCmd.PersistentFlags().Lookup(MaxTimeoutFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind max-timeout pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", MaxTimeoutFlagName, err)
 	}
 	if err := viper.BindPFlag(AuthorityFlagName, clientCmd.PersistentFlags().Lookup(AuthorityFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind authority pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", AuthorityFlagName, err)
 	}
 	if err := viper.BindPFlag(InsecureFlagName, clientCmd.PersistentFlags().Lookup(InsecureFlagName)); err != nil {
-		return nil, fmt.Errorf("failed to bind insecure pflag: %w", err)
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", InsecureFlagName, err)
 	}
 	if err := viper.BindPFlag(HeaderFlagName, clientCmd.PersistentFlags().Lookup(HeaderFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", HeaderFlagName, err)
