@@ -29,6 +29,7 @@ const (
 	MaxTimeoutFlagName = "max-timeout"
 	AuthorityFlagName  = "authority"
 	InsecureFlagName   = "insecure"
+	HeaderFlagName     = "header"
 	// A default round-robin configuration to use with client-side load balancer.
 	DefaultRoundRobinConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
 )
@@ -50,6 +51,7 @@ func NewClientCmd() (*cobra.Command, error) {
 	clientCmd.PersistentFlags().DurationP(MaxTimeoutFlagName, "m", DefaultMaxTimeout, "The maximum timeout for a Pi Service request")
 	clientCmd.PersistentFlags().String(AuthorityFlagName, "", "Set the authoritative name of the Pi Service target for TLS verification, overriding hostname")
 	clientCmd.PersistentFlags().Bool(InsecureFlagName, false, "Disable TLS for gRPC connection to Pi Service")
+	clientCmd.PersistentFlags().StringToString(HeaderFlagName, nil, "An optional header key=value to add to Pi Service request metadata; can be repeated")
 	if err := viper.BindPFlag(CountFlagName, clientCmd.PersistentFlags().Lookup(CountFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind count pflag: %w", err)
 	}
@@ -61,6 +63,9 @@ func NewClientCmd() (*cobra.Command, error) {
 	}
 	if err := viper.BindPFlag(InsecureFlagName, clientCmd.PersistentFlags().Lookup(InsecureFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind insecure pflag: %w", err)
+	}
+	if err := viper.BindPFlag(HeaderFlagName, clientCmd.PersistentFlags().Lookup(HeaderFlagName)); err != nil {
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", HeaderFlagName, err)
 	}
 	return clientCmd, nil
 }
@@ -103,6 +108,7 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		client.WithTracer(otel.Tracer(ClientServiceName)),
 		client.WithMeter(global.MeterProvider().Meter(ClientServiceName)),
 		client.WithPrefix(ClientServiceName),
+		client.WithHeaders(viper.GetStringMapString(HeaderFlagName)),
 	}
 	piClient, err := client.NewPiClient(piClientOptions...)
 	if err != nil {

@@ -18,6 +18,7 @@ import (
 	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/metadata"
 
 	"google.golang.org/grpc/status"
 	_ "google.golang.org/grpc/xds" // Importing this package injects xds://endpoint support into the client.
@@ -48,6 +49,8 @@ type PiClient struct {
 	serviceErrors syncint64.Counter
 	// A gauge for request durations.
 	durationMs syncint64.Histogram
+	// gRPC metadata to add to service requests.
+	metadata metadata.MD
 }
 
 // Defines a function signature for PiClient options.
@@ -126,6 +129,13 @@ func WithPrefix(prefix string) PiClientOption {
 	}
 }
 
+// Add the headers values to the PiService client gRPC metadata.
+func WithHeaders(headers map[string]string) PiClientOption {
+	return func(c *PiClient) {
+		c.metadata = metadata.New(headers)
+	}
+}
+
 // Generates a name for the metric or span.
 func (c *PiClient) telemetryName(name string) string {
 	if c.prefix == "" {
@@ -149,6 +159,7 @@ func (c *PiClient) FetchDigit(ctx context.Context, conn *grpc.ClientConn, index 
 	span.AddEvent("Building gRPC client")
 	client := api.NewPiServiceClient(conn)
 	span.AddEvent("Calling GetDigit")
+	ctx = metadata.NewOutgoingContext(ctx, c.metadata)
 	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
 		Index: index,
 	})
