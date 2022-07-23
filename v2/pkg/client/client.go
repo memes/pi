@@ -6,6 +6,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -51,6 +52,15 @@ type PiClient struct {
 	durationMs syncint64.Histogram
 	// gRPC metadata to add to service requests.
 	metadata metadata.MD
+	// gRPC endpoint; see https://github.com/grpc/grpc/blob/master/doc/naming.md
+	// for full details.
+	endpoint string
+	// A set of gRPC DialOptions to apply to client connection.
+	dialOptions []grpc.DialOption
+	// Mutex to ensure the shared client connection is created on first call only.
+	initConn sync.Once
+	// The shared gRPC client connection; will be reused by each request.
+	conn *grpc.ClientConn
 }
 
 // Defines a function signature for PiClient options.
@@ -59,11 +69,12 @@ type PiClientOption func(*PiClient)
 // Create a new PiClient with optional settings.
 func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 	client := &PiClient{
-		logger:     logr.Discard(),
-		maxTimeout: DefaultMaxTimeout,
-		tracer:     trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryClientName),
-		meter:      metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
-		prefix:     DefaultOpenTelemetryClientName,
+		logger:      logr.Discard(),
+		maxTimeout:  DefaultMaxTimeout,
+		tracer:      trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryClientName),
+		meter:       metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
+		prefix:      DefaultOpenTelemetryClientName,
+		dialOptions: make([]grpc.DialOption, 0),
 	}
 	for _, option := range options {
 		option(client)
@@ -132,7 +143,21 @@ func WithPrefix(prefix string) PiClientOption {
 // Add the headers values to the PiService client gRPC metadata.
 func WithHeaders(headers map[string]string) PiClientOption {
 	return func(c *PiClient) {
-		c.metadata = metadata.New(headers)
+		c.metadata = metadata.Join(c.metadata, metadata.New(headers))
+	}
+}
+
+// Set the endpoint to use for gRPC connections.
+func WithEndpoint(endpoint string) PiClientOption {
+	return func(c *PiClient) {
+		c.endpoint = endpoint
+	}
+}
+
+// Add the DialOption values to the PiService client options.
+func WithDialOptions(dialOptions []grpc.DialOption) PiClientOption {
+	return func(c *PiClient) {
+		c.dialOptions = append(c.dialOptions, dialOptions...)
 	}
 }
 
@@ -144,9 +169,9 @@ func (c *PiClient) telemetryName(name string) string {
 	return c.prefix + "." + name
 }
 
-// Initiate a gRPC connection to the endpoint and retrieve a single fractional
-// decimal digit of pi at the zero-based index.
-func (c *PiClient) FetchDigit(ctx context.Context, conn *grpc.ClientConn, index uint64) (uint32, error) {
+// Initiate a gRPC request to Pi Service and retrieve a single fractional decimal
+// digit of pi at the zero-based index.
+func (c *PiClient) FetchDigit(ctx context.Context, index uint64) (uint32, error) {
 	logger := c.logger.V(1).WithValues("index", index)
 	logger.Info("Starting connection to service")
 	attributes := []attribute.KeyValue{
@@ -155,12 +180,18 @@ func (c *PiClient) FetchDigit(ctx context.Context, conn *grpc.ClientConn, index 
 	ctx, span := c.tracer.Start(ctx, DefaultOpenTelemetryClientName+"/FetchDigit")
 	defer span.End()
 	span.SetAttributes(attributes...)
-	startTimestamp := time.Now()
-	span.AddEvent("Building gRPC client")
-	client := api.NewPiServiceClient(conn)
+	var err error
+	c.initConn.Do(func() {
+		span.AddEvent("Building PiService client")
+		c.conn, err = grpc.DialContext(ctx, c.endpoint, c.dialOptions...)
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failure establishing client dial context: %w", err)
+	}
+
 	span.AddEvent("Calling GetDigit")
-	ctx = metadata.NewOutgoingContext(ctx, c.metadata)
-	response, err := client.GetDigit(ctx, &api.GetDigitRequest{
+	startTimestamp := time.Now()
+	response, err := api.NewPiServiceClient(c.conn).GetDigit(metadata.NewOutgoingContext(ctx, c.metadata), &api.GetDigitRequest{
 		Index: index,
 	})
 	durationMs := time.Since(startTimestamp).Milliseconds()
@@ -184,4 +215,16 @@ func (c *PiClient) FetchDigit(ctx context.Context, conn *grpc.ClientConn, index 
 		c.connectionErrors.Add(ctx, 1, attributes...)
 	}
 	return 0, fmt.Errorf("failure calling GetDigit: %w", err)
+}
+
+// Shutdown the gRPC client connection that is used by this PiClient. After calling
+// this function FetchDigit will return an error on every call.
+func (c *PiClient) Shutdown(_ context.Context) error {
+	c.logger.V(1).Info("Shutting down PiClient gRPC connection")
+	if c.conn != nil {
+		if err := c.conn.Close(); err != nil {
+			return fmt.Errorf("error closing gRPC client connection: %w", err)
+		}
+	}
+	return nil
 }

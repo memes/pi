@@ -39,12 +39,12 @@ const (
 // requests.
 func NewClientCmd() (*cobra.Command, error) {
 	clientCmd := &cobra.Command{
-		Use:   "client target [target]",
+		Use:   "client target",
 		Short: "Run a gRPC Pi Service client to request fractional digits of pi",
 		Long: `Launches a gRPC client that will connect to Pi Service target(s) and request the fractional digits of pi.
 
 		At least one target endpoint must be provided. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
-		Args: cobra.MinimumNArgs(1),
+		Args: cobra.ExactArgs(1),
 		RunE: clientMain,
 	}
 	clientCmd.PersistentFlags().UintP(CountFlagName, "c", DefaultDigitCount, "The number of decimal digits of pi to request")
@@ -90,16 +90,11 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	}
 	shutdownFunctions.AppendFunctions(telemetryShutdownFuncs)
 
-	logger.V(0).Info("Preparing gRPC client connection")
-	dialOptions, err := buildDialOptions(ctx)
+	logger.V(0).Info("Preparing gRPC dial options")
+	dialOptions, err := buildDialOptions()
 	if err != nil {
 		return err
 	}
-	conn, err := grpc.DialContext(ctx, endpoints[0], dialOptions...)
-	if err != nil {
-		return fmt.Errorf("failure establishing client dial context: %w", err)
-	}
-	defer conn.Close()
 
 	logger.V(0).Info("Preparing PiService client")
 	piClientOptions := []client.PiClientOption{
@@ -109,11 +104,14 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 		client.WithMeter(global.MeterProvider().Meter(ClientServiceName)),
 		client.WithPrefix(ClientServiceName),
 		client.WithHeaders(viper.GetStringMapString(HeaderFlagName)),
+		client.WithEndpoint(endpoints[0]),
+		client.WithDialOptions(dialOptions),
 	}
 	piClient, err := client.NewPiClient(piClientOptions...)
 	if err != nil {
 		return fmt.Errorf("failed to create new PiService client: %w", err)
 	}
+	shutdownFunctions.AppendFunction(piClient.Shutdown)
 
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)
@@ -121,16 +119,16 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	var wg sync.WaitGroup
 	for _, index := range indices {
 		wg.Add(1)
-		go func(conn *grpc.ClientConn, index uint64) {
+		go func(idx uint64) {
 			defer wg.Done()
-			digit, err := piClient.FetchDigit(ctx, conn, index)
+			digit, err := piClient.FetchDigit(ctx, idx)
 			if err != nil {
-				logger.Error(err, "Error fetching digit", "index", index)
-				digits[index] = '-'
+				logger.Error(err, "Error fetching digit", "idx", idx)
+				digits[idx] = '-'
 			} else {
-				digits[index] = '0' + byte(digit)
+				digits[idx] = '0' + byte(digit)
 			}
-		}(conn, uint64(index))
+		}(uint64(index))
 	}
 	wg.Wait()
 	fmt.Print("Result is: 3.")
@@ -143,7 +141,7 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 
 // Creates a set of gRPC DialOptions that are appropriate for the PiService client
 // as determined by various command line flags.
-func buildDialOptions(_ context.Context) ([]grpc.DialOption, error) {
+func buildDialOptions() ([]grpc.DialOption, error) {
 	cacerts := viper.GetStringSlice(CACertFlagName)
 	cert := viper.GetString(TLSCertFlagName)
 	key := viper.GetString(TLSKeyFlagName)
