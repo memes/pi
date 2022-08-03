@@ -24,7 +24,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
 	"google.golang.org/grpc/credentials"
-	grpcinsecure "google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 )
 
@@ -225,17 +225,9 @@ func initTrace(ctx context.Context, target string, creds credentials.TransportCr
 func initTelemetry(ctx context.Context, name string, sampler trace.Sampler) (ShutdownFunctions, error) {
 	otel.SetLogger(logger)
 	target := viper.GetString(OpenTelemetryTargetFlagName)
-	cacerts := viper.GetStringSlice(CACertFlagName)
-	cert := viper.GetString(TLSCertFlagName)
-	key := viper.GetString(TLSKeyFlagName)
-	insecure := viper.GetBool(InsecureFlagName)
 	logger := logger.V(1).WithValues(
 		"name", name,
 		"target", target,
-		"cacerts", cacerts,
-		"cert", cert,
-		"key", key,
-		"insecure", insecure,
 		"sampler", sampler.Description(),
 	)
 	logger.Info("Initializing OpenTelemetry")
@@ -245,19 +237,9 @@ func initTelemetry(ctx context.Context, name string, sampler trace.Sampler) (Shu
 		return ShutdownFunctions{}, err
 	}
 
-	var creds credentials.TransportCredentials
-	if insecure {
-		creds = grpcinsecure.NewCredentials()
-	} else {
-		certPool, err := newCACertPool(cacerts)
-		if err != nil {
-			return ShutdownFunctions{}, err
-		}
-		tlsConfig, err := newTLSConfig(cert, key, nil, certPool)
-		if err != nil {
-			return ShutdownFunctions{}, err
-		}
-		creds = credentials.NewTLS(tlsConfig)
+	creds, err := buildOTELClientTransportCredentials()
+	if err != nil {
+		return ShutdownFunctions{}, err
 	}
 
 	shutdownFunctions, err := initMetrics(ctx, target, creds, res)
@@ -268,4 +250,21 @@ func initTelemetry(ctx context.Context, name string, sampler trace.Sampler) (Shu
 	shutdownFunctions.Merge(shutdownTraces)
 	logger.Info("OpenTelemetry initialization complete, returning shutdown functions")
 	return shutdownFunctions, err
+}
+
+// Creates the gRPC transport credentials that are appropriate for a remote OTEL
+// gRPC collector, based on command line flags.
+func buildOTELClientTransportCredentials() (credentials.TransportCredentials, error) {
+	if viper.GetBool(OpenTelemetryInsecureFlagName) {
+		return insecure.NewCredentials(), nil
+	}
+	certPool, err := newCACertPool(viper.GetStringSlice(CACertFlagName))
+	if err != nil {
+		return nil, err
+	}
+	tlsConfig, err := newTLSConfig(viper.GetString(OpenTelemetryTLSCertFlagName), viper.GetString(OpenTelemetryTLSKeyFlagName), nil, certPool)
+	if err != nil {
+		return nil, err
+	}
+	return credentials.NewTLS(tlsConfig), nil
 }

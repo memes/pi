@@ -13,19 +13,14 @@ import (
 	"github.com/spf13/viper"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
-	grpcinsecure "google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/credentials/insecure"
 	xdscreds "google.golang.org/grpc/credentials/xds"
 )
 
 const (
-	ClientServiceName  = "pi.client"
-	DefaultDigitCount  = 100
-	DefaultMaxTimeout  = 10 * time.Second
-	CountFlagName      = "count"
-	MaxTimeoutFlagName = "max-timeout"
-	AuthorityFlagName  = "authority"
-	InsecureFlagName   = "insecure"
-	HeaderFlagName     = "header"
+	ClientServiceName = "pi.client"
+	DefaultDigitCount = 100
+	DefaultMaxTimeout = 10 * time.Second
 )
 
 // Implements the client sub-command which attempts to connect to one or
@@ -41,11 +36,11 @@ Metrics and traces will be sent to an OpenTelemetry collection endpoint, if spec
 		Args: cobra.ExactArgs(1),
 		RunE: clientMain,
 	}
-	clientCmd.PersistentFlags().UintP(CountFlagName, "c", DefaultDigitCount, "The number of decimal digits of pi to accumulate")
-	clientCmd.PersistentFlags().DurationP(MaxTimeoutFlagName, "m", DefaultMaxTimeout, "The maximum timeout for a Pi Service request")
+	clientCmd.PersistentFlags().Uint(CountFlagName, DefaultDigitCount, "The number of decimal digits of pi to accumulate")
+	clientCmd.PersistentFlags().Duration(MaxTimeoutFlagName, DefaultMaxTimeout, "The maximum timeout for a Pi Service request")
 	clientCmd.PersistentFlags().String(AuthorityFlagName, "", "Set the authoritative name of the remote server. This will also be used as the server name when verifying the server's TLS certificate")
-	clientCmd.PersistentFlags().BoolP(InsecureFlagName, "k", false, "Disable TLS verification of gRPC connections to Pi Service")
-	clientCmd.PersistentFlags().StringToStringP(HeaderFlagName, "H", nil, "An optional header key=value to add to Pi Service request metadata; can be repeated")
+	clientCmd.PersistentFlags().Bool(InsecureFlagName, false, "Disable TLS verification of gRPC connections to Pi Service")
+	clientCmd.PersistentFlags().StringToString(HeaderFlagName, nil, "An optional header key=value to add to Pi Service request metadata; can be repeated")
 	if err := viper.BindPFlag(CountFlagName, clientCmd.PersistentFlags().Lookup(CountFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", CountFlagName, err)
 	}
@@ -85,7 +80,7 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	shutdownFunctions.Merge(telemetryShutdownFuncs)
 
 	logger.V(0).Info("Preparing gRPC transport credentials")
-	creds, err := buildTransportCredentials()
+	creds, err := buildPiClientTransportCredentials()
 	if err != nil {
 		return err
 	}
@@ -133,26 +128,23 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 
 // Creates the gRPC transport credentials that are appropriate for the PiService
 // client as determined by various command line flags.
-func buildTransportCredentials() (credentials.TransportCredentials, error) {
-	cacerts := viper.GetStringSlice(CACertFlagName)
-	cert := viper.GetString(TLSCertFlagName)
-	key := viper.GetString(TLSKeyFlagName)
-	insecure := viper.GetBool(InsecureFlagName)
-	certPool, err := newCACertPool(cacerts)
+func buildPiClientTransportCredentials() (credentials.TransportCredentials, error) {
+	if viper.GetBool(InsecureFlagName) {
+		creds, err := xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: insecure.NewCredentials()})
+		if err != nil {
+			return nil, fmt.Errorf("error generating xDS client credentials: %w", err)
+		}
+		return creds, nil
+	}
+	certPool, err := newCACertPool(viper.GetStringSlice(CACertFlagName))
 	if err != nil {
 		return nil, err
 	}
-	var clientCreds credentials.TransportCredentials
-	if insecure {
-		clientCreds = grpcinsecure.NewCredentials()
-	} else {
-		clientTLSConfig, err := newTLSConfig(cert, key, nil, certPool)
-		if err != nil {
-			return nil, err
-		}
-		clientCreds = credentials.NewTLS(clientTLSConfig)
+	tlsConfig, err := newTLSConfig(viper.GetString(TLSCertFlagName), viper.GetString(TLSKeyFlagName), nil, certPool)
+	if err != nil {
+		return nil, err
 	}
-	creds, err := xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: clientCreds})
+	creds, err := xdscreds.NewClientCredentials(xdscreds.ClientOptions{FallbackCreds: credentials.NewTLS(tlsConfig)})
 	if err != nil {
 		return nil, fmt.Errorf("error generating xDS client credentials: %w", err)
 	}

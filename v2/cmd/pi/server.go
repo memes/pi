@@ -26,13 +26,6 @@ import (
 const (
 	ServerServiceName        = "pi.server"
 	DefaultGRPCListenAddress = ":8443"
-	RESTAddressFlagName      = "rest-address"
-	RedisTargetFlagName      = "redis-target"
-	TagFlagName              = "tag"
-	AnnotationFlagName       = "annotation"
-	MutualTLSFlagName        = "mtls"
-	RESTAuthorityFlagName    = "rest-authority"
-	XDSFlagName              = "xds"
 	DefaultReadHeaderTimeout = 10 * time.Second
 )
 
@@ -53,7 +46,7 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 	serverCmd.PersistentFlags().StringToString(AnnotationFlagName, nil, "An optional key=value annotation to add to Pi Service response metadata; can be repeated")
 	serverCmd.PersistentFlags().Bool(MutualTLSFlagName, false, "Enforce mutual TLS authentication for Pi Service gRPC clients")
 	serverCmd.PersistentFlags().String(RESTAuthorityFlagName, "", "Set the Authority header for REST/gRPC gateway communication")
-	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for Pi Service; requires an xDS environment")
+	serverCmd.PersistentFlags().Bool(XDSFlagName, false, "Enable xDS for Pi Service; requires an xDS environment")
 	if err := viper.BindPFlag(RESTAddressFlagName, serverCmd.PersistentFlags().Lookup(RESTAddressFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", RESTAddressFlagName, err)
 	}

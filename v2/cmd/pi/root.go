@@ -16,23 +16,33 @@ import (
 const (
 	AppName                            = "pi"
 	DefaultOTLPTraceSamplingRatio      = 0.5
-	VerboseFlagName                    = "verbose"
-	StructuredLoggingFlagName          = "structured-logging"
-	OpenTelemetryTargetFlagName        = "otlp-target"
-	OpenTelemetryInsecureFlagName      = "otlp-insecure"
-	OpenTelemetryAuthorityFlagName     = "otlp-authority"
-	OpenTelemetrySamplingRatioFlagName = "otlp-sampling-ratio"
+	AnnotationFlagName                 = "annotation"
+	AuthorityFlagName                  = "authority"
 	CACertFlagName                     = "cacert"
+	CountFlagName                      = "count"
+	HeaderFlagName                     = "header"
+	InsecureFlagName                   = "insecure"
+	MaxTimeoutFlagName                 = "max-timeout"
+	MutualTLSFlagName                  = "mtls"
+	OpenTelemetryAuthorityFlagName     = "otlp-authority"
+	OpenTelemetryInsecureFlagName      = "otlp-insecure"
+	OpenTelemetrySamplingRatioFlagName = "otlp-sampling-ratio"
+	OpenTelemetryTargetFlagName        = "otlp-target"
+	OpenTelemetryTLSCertFlagName       = "otlp-cert"
+	OpenTelemetryTLSKeyFlagName        = "otlp-key"
+	RedisTargetFlagName                = "redis-target"
+	RESTAddressFlagName                = "rest-address"
+	RESTAuthorityFlagName              = "rest-authority"
+	StructuredLoggingFlagName          = "structured-logging"
+	TagFlagName                        = "tag"
 	TLSCertFlagName                    = "cert"
 	TLSKeyFlagName                     = "key"
+	VerboseFlagName                    = "verbose"
+	XDSFlagName                        = "xds"
 )
 
-var (
-	// Version is updated from git tags during build.
-	version = "v2-snapshot"
-	// Failed to load CA cert.
-	errFailedToAppendCACert = errors.New("failed to append CA cert to CA pool")
-)
+// Version is updated from git tags during build.
+var version = "v2-snapshot"
 
 func NewRootCmd() (*cobra.Command, error) {
 	cobra.OnInitialize(initConfig)
@@ -42,15 +52,17 @@ func NewRootCmd() (*cobra.Command, error) {
 		Short:   "Calculate and retrieve a fractional digit of pi at an arbitrary index",
 		Long:    `Provides a gRPC client/server demo for distributed calculation of fractional digits of pi.`,
 	}
-	rootCmd.PersistentFlags().CountP(VerboseFlagName, "v", "Enable verbose logging; can be repeated to increase verbosity")
+	rootCmd.PersistentFlags().Count(VerboseFlagName, "Enable verbose logging; can be repeated to increase verbosity")
 	rootCmd.PersistentFlags().Bool(StructuredLoggingFlagName, true, "Format logs as structured JSON records; set to false to output text logs")
 	rootCmd.PersistentFlags().String(OpenTelemetryTargetFlagName, "", "An optional OpenTelemetry collection target that will receive metrics and traces")
 	rootCmd.PersistentFlags().Bool(OpenTelemetryInsecureFlagName, false, "Disable remote TLS verification for OpenTelemetry target")
 	rootCmd.PersistentFlags().String(OpenTelemetryAuthorityFlagName, "", "Set the authoritative name of the OpenTelemetry target for TLS verification, overriding hostname")
 	rootCmd.PersistentFlags().Float64(OpenTelemetrySamplingRatioFlagName, DefaultOTLPTraceSamplingRatio, "Set the OpenTelemetry trace sampling ratio")
 	rootCmd.PersistentFlags().StringArray(CACertFlagName, nil, "An optional CA certificate to use for TLS certificate verification; can be repeated")
-	rootCmd.PersistentFlags().StringP(TLSCertFlagName, "E", "", "An optional TLS certificate to use")
-	rootCmd.PersistentFlags().String(TLSKeyFlagName, "", "An optional TLS private key to use")
+	rootCmd.PersistentFlags().String(TLSCertFlagName, "", "An optional TLS certificate to secure this communication")
+	rootCmd.PersistentFlags().String(TLSKeyFlagName, "", "An optional private key to use with TLS certificate")
+	rootCmd.PersistentFlags().String(OpenTelemetryTLSCertFlagName, "", "An optional TLS certificate to use with OpenTelemetry gRPC collector")
+	rootCmd.PersistentFlags().String(OpenTelemetryTLSKeyFlagName, "", "An optional private key to use with OpenTelemetry TLS certificate")
 	if err := viper.BindPFlag(VerboseFlagName, rootCmd.PersistentFlags().Lookup(VerboseFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", VerboseFlagName, err)
 	}
@@ -77,6 +89,12 @@ func NewRootCmd() (*cobra.Command, error) {
 	}
 	if err := viper.BindPFlag(TLSKeyFlagName, rootCmd.PersistentFlags().Lookup(TLSKeyFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", TLSKeyFlagName, err)
+	}
+	if err := viper.BindPFlag(OpenTelemetryTLSCertFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryTLSCertFlagName)); err != nil {
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", OpenTelemetryTLSCertFlagName, err)
+	}
+	if err := viper.BindPFlag(OpenTelemetryTLSKeyFlagName, rootCmd.PersistentFlags().Lookup(OpenTelemetryTLSKeyFlagName)); err != nil {
+		return nil, fmt.Errorf("failed to bind %s pflag: %w", OpenTelemetryTLSKeyFlagName, err)
 	}
 	serverCmd, err := NewServerCmd()
 	if err != nil {

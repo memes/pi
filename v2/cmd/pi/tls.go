@@ -3,9 +3,13 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io/ioutil"
 )
+
+// Failed to load CA cert.
+var errFailedToAppendCACert = errors.New("failed to append CA cert to CA pool")
 
 // Creates a new pool of x509 certificates from the list of file paths provided,
 // appended to any system installed certificates.
