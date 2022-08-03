@@ -9,7 +9,7 @@ require (
 	github.com/go-logr/zerologr v1.2.2
 	github.com/gomodule/redigo v1.8.9
 	github.com/google/uuid v1.3.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.11.1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/zerolog v1.27.0
 	github.com/spf13/cobra v1.5.0
@@ -30,7 +30,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.8.0
 	golang.org/x/net v0.0.0-20220708220712-1185a9018129
 	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f
-	google.golang.org/genproto v0.0.0-20220720214146-176da50484ac
+	google.golang.org/genproto v0.0.0-20220728213248-dd149ef739b9
 	google.golang.org/grpc v1.48.0
 	google.golang.org/protobuf v1.28.1
 )
@@ -72,7 +72,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.8.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.18.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20220718184931-c8730f7fcb92 // indirect
+	golang.org/x/oauth2 v0.0.0-20220722155238-128564f6959c // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
