@@ -51,7 +51,7 @@ fileignoreconfig:
 - filename: v2/pkg/server/server.go
   checksum: 5d6a44561c37ff9bd4b5263f5550b49082b12a7d9dda53bb0b9d9329ede0faf7
 - filename: v2/cmd/pi/otel.go
-  checksum: ccae110fe9dff7f4a08bc3becf4d92b434698cefa06fa241cc8a16d88a5f1f8d
+  checksum: d1f8dca16ab3a8e6c0c328a20665be5cea8ba81bc627ad648f59e287264d29f9
 - filename: v2/supporting/kustomization.yaml
   checksum: a73f1ae02cfc8349e15cbc29bbbb992925c5dda9be0f832765ddffdf4af7df1a
 - filename: v2/supporting/otel-all-in-one.yaml
