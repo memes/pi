@@ -11,14 +11,16 @@ import (
 
 	"github.com/go-logr/logr"
 	api "github.com/memes/pi/v2/internal/api/v2"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 	"go.opentelemetry.io/otel/metric/unit"
-	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 
 	"google.golang.org/grpc/status"
@@ -28,8 +30,10 @@ import (
 const (
 	// The default maximum timeout that will be applied to requests.
 	DefaultMaxTimeout = 10 * time.Second
-	// The default name to use when registering OpenTelemetry components.
-	DefaultOpenTelemetryClientName = "pkg.client"
+	// The default name to use when using OpenTelemetry components.
+	OpenTelemetryPackageIdentifier = "pkg.client"
+	// A default round-robin configuration to use with client-side load balancer.
+	DefaultRoundRobinConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
 )
 
 // Implements the PiServiceClient interface.
@@ -38,12 +42,6 @@ type PiClient struct {
 	logger logr.Logger
 	// The client maximum timeout/deadline to use when making requests to a PiService.
 	maxTimeout time.Duration
-	// The OpenTelemetry tracer to use for spans.
-	tracer trace.Tracer
-	// The OpenTelemetry meter to use for metrics.
-	meter metric.Meter
-	// The prefix to use for metrics.
-	prefix string
 	// A counter for the number of connection errors.
 	connectionErrors syncint64.Counter
 	// A counter for the number of errors returned by the service.
@@ -69,33 +67,33 @@ type PiClientOption func(*PiClient)
 // Create a new PiClient with optional settings.
 func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 	client := &PiClient{
-		logger:      logr.Discard(),
-		maxTimeout:  DefaultMaxTimeout,
-		tracer:      trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryClientName),
-		meter:       metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryClientName),
-		prefix:      DefaultOpenTelemetryClientName,
-		dialOptions: make([]grpc.DialOption, 0),
+		logger:     logr.Discard(),
+		maxTimeout: DefaultMaxTimeout,
+		dialOptions: []grpc.DialOption{
+			grpc.WithDefaultServiceConfig(DefaultRoundRobinConfig),
+			grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+		},
 	}
 	for _, option := range options {
 		option(client)
 	}
 	var err error
-	client.connectionErrors, err = client.meter.SyncInt64().Counter(
-		client.telemetryName("connection_errors"),
+	client.connectionErrors, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+		OpenTelemetryPackageIdentifier+".connection_errors",
 		instrument.WithDescription("The count of connection errors seen by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating connectionErrors Counter: %w", err)
 	}
-	client.serviceErrors, err = client.meter.SyncInt64().Counter(
-		client.telemetryName("service_errors"),
+	client.serviceErrors, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+		OpenTelemetryPackageIdentifier+".service_errors",
 		instrument.WithDescription("The count of service errors received by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating serviceErrors Counter: %w", err)
 	}
-	client.durationMs, err = client.meter.SyncInt64().Histogram(
-		client.telemetryName("request_duration_ms"),
+	client.durationMs, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Histogram(
+		OpenTelemetryPackageIdentifier+".request_duration_ms",
 		instrument.WithUnit(unit.Milliseconds),
 		instrument.WithDescription("The duration (ms) of requests"),
 	)
@@ -119,27 +117,6 @@ func WithMaxTimeout(maxTimeout time.Duration) PiClientOption {
 	}
 }
 
-// Add an OpenTelemetry tracer implementation to the PiService client.
-func WithTracer(tracer trace.Tracer) PiClientOption {
-	return func(c *PiClient) {
-		c.tracer = tracer
-	}
-}
-
-// Add an OpenTelemetry metric meter implementation to the PiService client.
-func WithMeter(meter metric.Meter) PiClientOption {
-	return func(c *PiClient) {
-		c.meter = meter
-	}
-}
-
-// Set the prefix to use for OpenTelemetry metrics.
-func WithPrefix(prefix string) PiClientOption {
-	return func(c *PiClient) {
-		c.prefix = prefix
-	}
-}
-
 // Add the headers values to the PiService client gRPC metadata.
 func WithHeaders(headers map[string]string) PiClientOption {
 	return func(c *PiClient) {
@@ -154,19 +131,31 @@ func WithEndpoint(endpoint string) PiClientOption {
 	}
 }
 
-// Add the DialOption values to the PiService client options.
-func WithDialOptions(dialOptions []grpc.DialOption) PiClientOption {
+// Set the transport credentials to use for PiService gRPC connection.
+func WithTransportCredentials(creds credentials.TransportCredentials) PiClientOption {
 	return func(c *PiClient) {
-		c.dialOptions = append(c.dialOptions, dialOptions...)
+		if creds != nil {
+			c.dialOptions = append(c.dialOptions, grpc.WithTransportCredentials(creds))
+		}
 	}
 }
 
-// Generates a name for the metric or span.
-func (c *PiClient) telemetryName(name string) string {
-	if c.prefix == "" {
-		return name
+// Set the authority string to use for gRPC connections.
+func WithAuthority(authority string) PiClientOption {
+	return func(c *PiClient) {
+		if authority != "" {
+			c.dialOptions = append(c.dialOptions, grpc.WithAuthority(authority))
+		}
 	}
-	return c.prefix + "." + name
+}
+
+// Set the user-agent string to use for gRPC connections.
+func WithUserAgent(userAgent string) PiClientOption {
+	return func(c *PiClient) {
+		if userAgent != "" {
+			c.dialOptions = append(c.dialOptions, grpc.WithUserAgent(userAgent))
+		}
+	}
 }
 
 // Initiate a gRPC request to Pi Service and retrieve a single fractional decimal
@@ -175,9 +164,9 @@ func (c *PiClient) FetchDigit(ctx context.Context, index uint64) (uint32, error)
 	logger := c.logger.V(1).WithValues("index", index)
 	logger.Info("Starting connection to service")
 	attributes := []attribute.KeyValue{
-		attribute.Int(c.telemetryName("index"), int(index)),
+		attribute.Int(OpenTelemetryPackageIdentifier+".index", int(index)),
 	}
-	ctx, span := c.tracer.Start(ctx, DefaultOpenTelemetryClientName+"/FetchDigit")
+	ctx, span := otel.Tracer(OpenTelemetryPackageIdentifier).Start(ctx, OpenTelemetryPackageIdentifier+"/FetchDigit")
 	defer span.End()
 	span.SetAttributes(attributes...)
 	var err error
@@ -196,14 +185,14 @@ func (c *PiClient) FetchDigit(ctx context.Context, index uint64) (uint32, error)
 	})
 	durationMs := time.Since(startTimestamp).Milliseconds()
 	if err == nil {
-		attributes = append(attributes, attribute.Bool(c.telemetryName("success"), true))
+		attributes = append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".success", true))
 		c.durationMs.Record(ctx, durationMs, attributes...)
 		logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
 		return response.Digit, nil
 	}
 	span.RecordError(err)
 	span.SetStatus(otelcodes.Error, err.Error())
-	attributes = append(attributes, attribute.Bool(c.telemetryName("success"), false))
+	attributes = append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".success", false))
 	c.durationMs.Record(ctx, durationMs, attributes...)
 	// Simple but dumb way to determine if the error is a connection error or
 	// service error; if the error can be marshaled to a gRPC status, then it

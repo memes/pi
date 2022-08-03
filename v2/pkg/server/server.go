@@ -6,6 +6,7 @@ package server
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -16,9 +17,10 @@ import (
 	cachepkg "github.com/memes/pi/v2/pkg/cache"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 	"go.opentelemetry.io/otel/metric/unit"
@@ -36,8 +38,8 @@ import (
 )
 
 const (
-	// The default name to use when registering OpenTelemetry components.
-	DefaultOpenTelemetryServerName = "pkg.server"
+	// The default name to use when using OpenTelemetry components.
+	OpenTelemetryPackageIdentifier = "pkg.server"
 )
 
 type PiServer struct {
@@ -48,12 +50,6 @@ type PiServer struct {
 	cache cachepkg.Cache
 	// Holds the instance specific metadata that will be returned in PiService responses
 	metadata *api.GetDigitMetadata
-	// The OpenTelemetry tracer to use for spans
-	tracer trace.Tracer
-	// The OpenTelemetry meter to use for metrics
-	meter metric.Meter
-	// The prefix to use for metrics and spans
-	prefix string
 	// A gauge for calculation durations
 	calculationMs syncint64.Histogram
 	// A counter for the number of errors returned by cache
@@ -62,12 +58,10 @@ type PiServer struct {
 	cacheHits syncint64.Counter
 	// A counter for cache misses
 	cacheMisses syncint64.Counter
-	// Transport credentials to use with gRPC PiService listener.
-	serverGRPCCredentials credentials.TransportCredentials
-	// Transport credentials to use with REST gateway gRPC client.
-	restClientGRPCCredentials credentials.TransportCredentials
-	// Allow overriding of gRPC authority header through REST gateway.
-	restClientAuthority string
+	// A set of gRPC ServerOptions to use
+	serverOptions []grpc.ServerOption
+	// A set of gRPC DialOptions to use with REST gateway gRPC client
+	dialOptions []grpc.DialOption
 }
 
 // Defines the function signature for PiServer options.
@@ -75,41 +69,56 @@ type PiServerOption func(*PiServer)
 
 // Create a new piServer and apply any options.
 func NewPiServer(options ...PiServerOption) (*PiServer, error) {
+	var hostname string
+	if host, err := os.Hostname(); err == nil {
+		hostname = host
+	} else {
+		hostname = "unknown"
+	}
 	server := &PiServer{
-		logger:                    logr.Discard(),
-		cache:                     cachepkg.NewNoopCache(),
-		tracer:                    trace.NewNoopTracerProvider().Tracer(DefaultOpenTelemetryServerName),
-		meter:                     metric.NewNoopMeterProvider().Meter(DefaultOpenTelemetryServerName),
-		restClientGRPCCredentials: insecure.NewCredentials(),
+		logger: logr.Discard(),
+		cache:  cachepkg.NewNoopCache(),
+		metadata: &api.GetDigitMetadata{
+			Identity:    hostname,
+			Tags:        []string{},
+			Annotations: map[string]string{},
+		},
+		serverOptions: []grpc.ServerOption{
+			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+		},
+		dialOptions: []grpc.DialOption{
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+		},
 	}
 	for _, option := range options {
 		option(server)
 	}
 	var err error
-	server.calculationMs, err = server.meter.SyncInt64().Histogram(
-		server.telemetryName("calc_duration_ms"),
+	server.calculationMs, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Histogram(
+		OpenTelemetryPackageIdentifier+".calc_duration_ms",
 		instrument.WithUnit(unit.Milliseconds),
 		instrument.WithDescription("The duration (ms) of calculations"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating calculationMs Histogram: %w", err)
 	}
-	server.cacheErrors, err = server.meter.SyncInt64().Counter(
-		server.telemetryName("cache_errors"),
+	server.cacheErrors, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+		OpenTelemetryPackageIdentifier+".cache_errors",
 		instrument.WithDescription("The count of error responses from digit cache"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheErrors Counter: %w", err)
 	}
-	server.cacheHits, err = server.meter.SyncInt64().Counter(
-		server.telemetryName("cache_hits"),
+	server.cacheHits, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+		OpenTelemetryPackageIdentifier+".cache_hits",
 		instrument.WithDescription("The count of cache hits"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheHits Counter: %w", err)
 	}
-	server.cacheMisses, err = server.meter.SyncInt64().Counter(
-		server.telemetryName("cache_misses"),
+	server.cacheMisses, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+		OpenTelemetryPackageIdentifier+".cache_misses",
 		instrument.WithDescription("The count of cache misses"),
 	)
 	if err != nil {
@@ -136,63 +145,47 @@ func WithCache(cache cachepkg.Cache) PiServerOption {
 	}
 }
 
-// Populate a metadata structure for this instance.
-func WithMetadata(metadata *api.GetDigitMetadata) PiServerOption {
+// Add the string tags to the server's metadata.
+func WithTags(tags []string) PiServerOption {
 	return func(s *PiServer) {
-		s.metadata = metadata
-	}
-}
-
-// Add an OpenTelemetry tracer implementation to the PiService server.
-func WithTracer(tracer trace.Tracer) PiServerOption {
-	return func(s *PiServer) {
-		if tracer != nil {
-			s.tracer = tracer
+		if tags != nil {
+			s.metadata.Tags = append(s.metadata.Tags, tags...)
 		}
 	}
 }
 
-// Add an OpenTelemetry metric meter implementation to the PiService server.
-func WithMeter(meter metric.Meter) PiServerOption {
+// Add the key-value annotations to the server's metadata.
+func WithAnnotations(annotations map[string]string) PiServerOption {
 	return func(s *PiServer) {
-		s.meter = meter
-	}
-}
-
-// Set the prefix to use for OpenTelemetry metrics.
-func WithPrefix(prefix string) PiServerOption {
-	return func(s *PiServer) {
-		s.prefix = prefix
+		for k, v := range annotations {
+			s.metadata.Annotations[k] = v
+		}
 	}
 }
 
 // Set the TransportCredentials to use for Pi Service gRPC listener.
 func WithGRPCServerTransportCredentials(serverCredentials credentials.TransportCredentials) PiServerOption {
 	return func(s *PiServer) {
-		s.serverGRPCCredentials = serverCredentials
+		s.serverOptions = append(s.serverOptions, grpc.Creds(serverCredentials))
 	}
 }
 
 // Set the TransportCredentials to use for Pi Service REST-to-gRPC client.
 func WithRestClientGRPCTransportCredentials(restClientGRPCCredentials credentials.TransportCredentials) PiServerOption {
 	return func(s *PiServer) {
-		s.restClientGRPCCredentials = restClientGRPCCredentials
+		if restClientGRPCCredentials != nil {
+			s.dialOptions = append(s.dialOptions, grpc.WithTransportCredentials(restClientGRPCCredentials))
+		}
 	}
 }
 
 // Set the authority string to use for REST-gRPC gateway calls.
 func WithRestClientAuthority(restClientAuthority string) PiServerOption {
 	return func(s *PiServer) {
-		s.restClientAuthority = restClientAuthority
+		if restClientAuthority != "" {
+			s.dialOptions = append(s.dialOptions, grpc.WithAuthority(restClientAuthority))
+		}
 	}
-}
-
-// Generates a name for the metric or span.
-func (s *PiServer) telemetryName(name string) string {
-	if s.prefix == "" {
-		return name
-	}
-	return s.prefix + "." + name
 }
 
 // Implement the PiService GetDigit RPC method.
@@ -202,10 +195,10 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 	cacheIndex := (in.Index / 9) * 9
 	key := strconv.FormatUint(cacheIndex, 16)
 	attributes := []attribute.KeyValue{
-		attribute.Int(s.telemetryName("index"), int(in.Index)),
-		attribute.String(s.telemetryName("cacheKey"), key),
+		attribute.Int(OpenTelemetryPackageIdentifier+".index", int(in.Index)),
+		attribute.String(OpenTelemetryPackageIdentifier+".cacheKey", key),
 	}
-	ctx, span := s.tracer.Start(ctx, DefaultOpenTelemetryServerName+"/GetDigit")
+	ctx, span := otel.Tracer(OpenTelemetryPackageIdentifier).Start(ctx, OpenTelemetryPackageIdentifier+"/GetDigit")
 	defer span.End()
 	span.SetAttributes(attributes...)
 	span.AddEvent("Checking cache")
@@ -217,7 +210,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		return nil, status.Error(codes.Internal, fmt.Sprintf("cache %T GetValue method returned an error: %v", s.cache, err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 	}
 	if digits == "" {
-		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), false))
+		attributes := append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".cache_hit", false))
 		span.SetAttributes(attributes...)
 		span.AddEvent("Calculating fractional digits")
 		s.cacheMisses.Add(ctx, 1, attributes...)
@@ -232,7 +225,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 			return nil, status.Error(codes.Internal, fmt.Sprintf("cache %T SetValue method returned an error: %v", s.cache, err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 		}
 	} else {
-		attributes := append(attributes, attribute.Bool(s.telemetryName("cache_hit"), true))
+		attributes := append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".cache_hit", true))
 		span.SetAttributes(attributes...)
 		s.cacheHits.Add(ctx, 1, attributes...)
 	}
@@ -261,22 +254,10 @@ func (s *PiServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1
 	return status.Error(codes.Unimplemented, "unimplemented") //nolint:wrapcheck // This error is not received by application code
 }
 
-// Return a set of gRPC options for this instance.
-func (s *PiServer) grpcOptions() []grpc.ServerOption {
-	options := []grpc.ServerOption{
-		grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
-	}
-	if s.serverGRPCCredentials != nil {
-		options = append(options, grpc.Creds(s.serverGRPCCredentials))
-	}
-	return options
-}
-
 // Create a new grpc.Server that is ready to be attached to a net.Listener.
 func (s *PiServer) NewGrpcServer() *grpc.Server {
 	s.logger.V(1).Info("Building a standard gRPC server")
-	options := s.grpcOptions()
-	grpcServer := grpc.NewServer(options...)
+	grpcServer := grpc.NewServer(s.serverOptions...)
 	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
 	api.RegisterPiServiceServer(grpcServer, s)
 	reflection.Register(grpcServer)
@@ -286,27 +267,18 @@ func (s *PiServer) NewGrpcServer() *grpc.Server {
 // Create a new xds.GRPCServer that is ready to be attached to a net.Listener.
 func (s *PiServer) NewXDSServer() *xds.GRPCServer {
 	s.logger.V(1).Info("xDS is enabled; building an xDS aware gRPC server")
-	options := s.grpcOptions()
-	xdsServer := xds.NewGRPCServer(options...)
+	xdsServer := xds.NewGRPCServer(s.serverOptions...)
 	grpc_health_v1.RegisterHealthServer(xdsServer, health.NewServer())
 	api.RegisterPiServiceServer(xdsServer, s)
 	reflection.Register(xdsServer)
 	return xdsServer
 }
 
-// Registers the gRPC services to the
 // Create a new REST gateway handler that translates and forwards incoming REST
 // requests to the specified gRPC endpoint address.
 func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string) (http.Handler, error) {
 	mux := runtime.NewServeMux()
-	options := []grpc.DialOption{
-		grpc.WithTransportCredentials(s.restClientGRPCCredentials),
-		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-	}
-	if s.restClientAuthority != "" {
-		options = append(options, grpc.WithAuthority(s.restClientAuthority))
-	}
-	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, options); err != nil {
+	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, s.dialOptions); err != nil {
 		return nil, fmt.Errorf("failed to register PiService handler for REST gateway: %w", err)
 	}
 	if err := mux.HandlePath("GET", "/api/v2/swagger.json",
@@ -322,7 +294,7 @@ func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string
 	if err := mux.HandlePath("GET", "/v1/digit/{index}",
 		func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
 			span := trace.SpanFromContext(r.Context())
-			span.SetAttributes(attribute.String(s.telemetryName("index"), pathParams["index"]))
+			span.SetAttributes(attribute.String(OpenTelemetryPackageIdentifier+".index", pathParams["index"]))
 			span.SetStatus(otelcodes.Error, "v1 API")
 			w.WriteHeader(http.StatusGone)
 		},
@@ -330,7 +302,7 @@ func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string
 		return nil, fmt.Errorf("failed to register /v1 handler for REST gateway: %w", err)
 	}
 	return otelhttp.NewHandler(mux,
-		s.telemetryName("REST-GRPC Gateway"),
+		OpenTelemetryPackageIdentifier+"/RestGatewayHandler",
 		otelhttp.WithMessageEvents(otelhttp.ReadEvents, otelhttp.WriteEvents),
 	), nil
 }

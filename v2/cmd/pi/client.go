@@ -11,11 +11,7 @@ import (
 	"github.com/memes/pi/v2/pkg/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/global"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	grpcinsecure "google.golang.org/grpc/credentials/insecure"
 	xdscreds "google.golang.org/grpc/credentials/xds"
@@ -30,8 +26,6 @@ const (
 	AuthorityFlagName  = "authority"
 	InsecureFlagName   = "insecure"
 	HeaderFlagName     = "header"
-	// A default round-robin configuration to use with client-side load balancer.
-	DefaultRoundRobinConfig = `{"loadBalancingConfig": [{"round_robin":{}}]}`
 )
 
 // Implements the client sub-command which attempts to connect to one or
@@ -90,24 +84,22 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	}
 	shutdownFunctions.Merge(telemetryShutdownFuncs)
 
-	logger.V(0).Info("Preparing gRPC dial options")
-	dialOptions, err := buildDialOptions()
+	logger.V(0).Info("Preparing gRPC transport credentials")
+	creds, err := buildTransportCredentials()
 	if err != nil {
 		return err
 	}
 
 	logger.V(0).Info("Preparing PiService client")
-	piClientOptions := []client.PiClientOption{
+	piClient, err := client.NewPiClient(
 		client.WithLogger(logger),
 		client.WithMaxTimeout(viper.GetDuration(MaxTimeoutFlagName)),
-		client.WithTracer(otel.Tracer(ClientServiceName)),
-		client.WithMeter(global.MeterProvider().Meter(ClientServiceName)),
-		client.WithPrefix(ClientServiceName),
 		client.WithHeaders(viper.GetStringMapString(HeaderFlagName)),
 		client.WithEndpoint(endpoints[0]),
-		client.WithDialOptions(dialOptions),
-	}
-	piClient, err := client.NewPiClient(piClientOptions...)
+		client.WithTransportCredentials(creds),
+		client.WithAuthority(viper.GetString(AuthorityFlagName)),
+		client.WithUserAgent(ClientServiceName+"/"+version),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to create new PiService client: %w", err)
 	}
@@ -139,27 +131,13 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	return nil
 }
 
-// Creates a set of gRPC DialOptions that are appropriate for the PiService client
-// as determined by various command line flags.
-func buildDialOptions() ([]grpc.DialOption, error) {
+// Creates the gRPC transport credentials that are appropriate for the PiService
+// client as determined by various command line flags.
+func buildTransportCredentials() (credentials.TransportCredentials, error) {
 	cacerts := viper.GetStringSlice(CACertFlagName)
 	cert := viper.GetString(TLSCertFlagName)
 	key := viper.GetString(TLSKeyFlagName)
-	authority := viper.GetString(AuthorityFlagName)
 	insecure := viper.GetBool(InsecureFlagName)
-	logger := logger.V(1).WithValues(
-		"cacerts", cacerts,
-		"cert", cert,
-		"key", key,
-		"authority", authority,
-		"insecure", insecure,
-	)
-	logger.V(0).Info("Preparing gRPC transport credentials")
-	options := []grpc.DialOption{
-		grpc.WithUserAgent(ClientServiceName + "/" + version),
-		grpc.WithDefaultServiceConfig(DefaultRoundRobinConfig),
-		grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
-	}
 	certPool, err := newCACertPool(cacerts)
 	if err != nil {
 		return nil, err
@@ -178,11 +156,5 @@ func buildDialOptions() ([]grpc.DialOption, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error generating xDS client credentials: %w", err)
 	}
-	options = append(options,
-		grpc.WithTransportCredentials(creds),
-	)
-	if authority != "" {
-		options = append(options, grpc.WithAuthority(authority))
-	}
-	return options, nil
+	return creds, nil
 }

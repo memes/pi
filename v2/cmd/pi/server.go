@@ -11,13 +11,10 @@ import (
 	"syscall"
 	"time"
 
-	api "github.com/memes/pi/v2/internal/api/v2"
 	"github.com/memes/pi/v2/pkg/cache"
 	"github.com/memes/pi/v2/pkg/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/global"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"golang.org/x/net/context"
 	"golang.org/x/sync/errgroup"
@@ -117,10 +114,8 @@ func serverMain(cmd *cobra.Command, args []string) error {
 
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
-		server.WithMetadata(newMetadata(tags, annotations)),
-		server.WithTracer(otel.Tracer(ServerServiceName)),
-		server.WithMeter(global.MeterProvider().Meter(ServerServiceName)),
-		server.WithPrefix(ServerServiceName),
+		server.WithTags(tags),
+		server.WithAnnotations(annotations),
 	}
 	if redisTarget != "" {
 		logger.V(0).Info("Adding Redis cache option to PiServer")
@@ -260,24 +255,4 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	shutdownFunctions.Execute(ctx, logger)
 	cancel()
 	return g.Wait() //nolint:wrapcheck // Errors returned from group are already wrapped
-}
-
-// Creates a new metadata struct populated from labels given.
-func newMetadata(tags []string, annotations map[string]string) *api.GetDigitMetadata {
-	logger := logger.V(1).WithValues("tags", tags, "annotations", annotations)
-	logger.V(0).Info("Preparing metadata")
-	var hostname string
-	if host, err := os.Hostname(); err == nil {
-		hostname = host
-	} else {
-		logger.Error(err, "Failed to get hostname; continuing")
-		hostname = "unknown"
-	}
-	metadata := &api.GetDigitMetadata{
-		Identity:    hostname,
-		Tags:        tags,
-		Annotations: annotations,
-	}
-	logger.V(1).Info("Metadata created", "metadata", metadata)
-	return metadata
 }

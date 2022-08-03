@@ -12,7 +12,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
 	gcpdetectors "go.opentelemetry.io/contrib/detectors/gcp"
-	hostinstrumentation "go.opentelemetry.io/contrib/instrumentation/host"
 	runtimeinstrumentation "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
@@ -33,7 +32,8 @@ import (
 )
 
 const (
-	otelMetricReportingPeriod = 30 * time.Second
+	OTELNamespace             = "github.com/memes/pi/v2"
+	OTELMetricReportingPeriod = 30 * time.Second
 )
 
 // Defines a function signature that can be added to ShutdownFunctions.
@@ -82,7 +82,7 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 	res, err := resource.New(ctx,
 		resource.WithSchemaURL(semconv.SchemaURL),
 		resource.WithAttributes(
-			semconv.ServiceNamespaceKey.String(PackageName),
+			semconv.ServiceNamespaceKey.String(OTELNamespace),
 			semconv.ServiceNameKey.String(name),
 			semconv.ServiceVersionKey.String(version),
 			semconv.ServiceInstanceIDKey.String(id.String()),
@@ -148,7 +148,7 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 		processor.NewFactory(simple.NewWithHistogramDistribution(), exporter),
 		controller.WithExporter(exporter),
 		controller.WithResource(res),
-		controller.WithCollectPeriod(otelMetricReportingPeriod),
+		controller.WithCollectPeriod(OTELMetricReportingPeriod),
 	)
 	if err = pusher.Start(ctx); err != nil {
 		return shutdownFunctions, fmt.Errorf("failed to start metric pusher: %w", err)
@@ -163,9 +163,6 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 	)
 	if err = runtimeinstrumentation.Start(runtimeinstrumentation.WithMeterProvider(pusher)); err != nil {
 		return shutdownFunctions, fmt.Errorf("failed to start runtime metrics: %w", err)
-	}
-	if err = hostinstrumentation.Start(hostinstrumentation.WithMeterProvider(pusher)); err != nil {
-		return shutdownFunctions, fmt.Errorf("failed to start host metrics: %w", err)
 	}
 
 	global.SetMeterProvider(pusher)
