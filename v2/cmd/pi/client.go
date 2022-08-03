@@ -88,7 +88,7 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 	if err != nil {
 		return err
 	}
-	shutdownFunctions.AppendFunctions(telemetryShutdownFuncs)
+	shutdownFunctions.Merge(telemetryShutdownFuncs)
 
 	logger.V(0).Info("Preparing gRPC dial options")
 	dialOptions, err := buildDialOptions()

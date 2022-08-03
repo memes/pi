@@ -15,7 +15,6 @@ import (
 
 const (
 	AppName                            = "pi"
-	PackageName                        = "github.com/memes/pi/v2/cmd/pi"
 	DefaultOTLPTraceSamplingRatio      = 0.5
 	VerboseFlagName                    = "verbose"
 	StructuredLoggingFlagName          = "structured-logging"

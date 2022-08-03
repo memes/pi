@@ -113,7 +113,7 @@ func serverMain(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	shutdownFunctions.AppendFunctions(telemetryShutdownFuncs)
+	shutdownFunctions.Merge(telemetryShutdownFuncs)
 
 	options := []server.PiServerOption{
 		server.WithLogger(logger),
