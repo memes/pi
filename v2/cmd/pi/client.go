@@ -41,17 +41,17 @@ func NewClientCmd() (*cobra.Command, error) {
 	clientCmd := &cobra.Command{
 		Use:   "client target",
 		Short: "Run a gRPC Pi Service client to request fractional digits of pi",
-		Long: `Launches a gRPC client that will connect to Pi Service target(s) and request the fractional digits of pi.
+		Long: `Launches a gRPC client that will connect to Pi Service target and request the fractional digits of pi.
 
-		At least one target endpoint must be provided. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
+Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
 		Args: cobra.ExactArgs(1),
 		RunE: clientMain,
 	}
-	clientCmd.PersistentFlags().UintP(CountFlagName, "c", DefaultDigitCount, "The number of decimal digits of pi to request")
+	clientCmd.PersistentFlags().UintP(CountFlagName, "c", DefaultDigitCount, "The number of decimal digits of pi to accumulate")
 	clientCmd.PersistentFlags().DurationP(MaxTimeoutFlagName, "m", DefaultMaxTimeout, "The maximum timeout for a Pi Service request")
-	clientCmd.PersistentFlags().String(AuthorityFlagName, "", "Set the authoritative name of the Pi Service target for TLS verification, overriding hostname")
-	clientCmd.PersistentFlags().Bool(InsecureFlagName, false, "Disable TLS for gRPC connection to Pi Service")
-	clientCmd.PersistentFlags().StringToString(HeaderFlagName, nil, "An optional header key=value to add to Pi Service request metadata; can be repeated")
+	clientCmd.PersistentFlags().String(AuthorityFlagName, "", "Set the authoritative name of the remote server. This will also be used as the server name when verifying the server's TLS certificate")
+	clientCmd.PersistentFlags().BoolP(InsecureFlagName, "k", false, "Disable TLS verification of gRPC connections to Pi Service")
+	clientCmd.PersistentFlags().StringToStringP(HeaderFlagName, "H", nil, "An optional header key=value to add to Pi Service request metadata; can be repeated")
 	if err := viper.BindPFlag(CountFlagName, clientCmd.PersistentFlags().Lookup(CountFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", CountFlagName, err)
 	}

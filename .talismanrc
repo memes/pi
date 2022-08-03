@@ -19,7 +19,7 @@ fileignoreconfig:
 - filename: v2/cache_test.go
   checksum: 476d8cfd7d7d3a76b06a0854418d40f03d044bd6703e942fbd7b29edae823e4e
 - filename: v2/cmd/pi/server.go
-  checksum: 0b2019be047878fb850aab3d253cbbd8f48866d21ed333ff12757bab739b4455
+  checksum: 66189cbd427282852cfedb852ea263b28ea35adc654cf2c991758c640710be1e
 - filename: v2/README.md
   checksum: a1797d7e26b9e954da8e35198451942ba7739ad6b392c05e326613721b9c64ff
 - filename: v2/redis_cache.go
@@ -41,7 +41,7 @@ fileignoreconfig:
 - filename: v2/pi_test.go
   checksum: 3144875c2c11798a4a8e32a0137a0c9214eee21df7756abe0fb2698159a7e9fc
 - filename: v2/cmd/pi/client.go
-  checksum: 7e3e0c03e156da722f9a44c3a47705b003f000b90315ccadaba64a88454aa24d
+  checksum: d8a8cefbb888efb48cf2a70277ebf0f4ab0f745bdffb9c9f0422e17896f65431
 - filename: v2/pkg/server/server_test.go
   checksum: 95eaa87189253aede3177008d4f73fe927fe62fe267e0529a9795e9ff0d8ad87
 - filename: v2/supporting/Makefile
@@ -60,3 +60,5 @@ fileignoreconfig:
   checksum: a8a95736a8e5a63a754bb7c2a6055375777f5445d00559f4ba344964ea73cc0c
 - filename: .github/workflows/pre-commit.yml
   checksum: fd775abf705cfa74ab16bb6807fe36cbaa9950758a79ce3017752eb708d46588
+- filename: README.md
+  checksum: 58798450b4a85e10822b92d5ce34c56ec44ff29e4b3169b8f130d1b3b8765f8f

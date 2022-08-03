@@ -51,12 +51,12 @@ A single decimal digit of pi will be returned per request. An optional Redis DB 
 		RunE: serverMain,
 	}
 	serverCmd.PersistentFlags().String(RESTAddressFlagName, "", "An optional listen address to launch a REST/gRPC gateway process")
-	serverCmd.PersistentFlags().String(RedisTargetFlagName, "", "An optional Redis endpoint to use as a PiService cache")
-	serverCmd.PersistentFlags().StringArray(TagFlagName, nil, "An optional string tag to add to PiService response metadata; can be repeated")
-	serverCmd.PersistentFlags().StringToString(AnnotationFlagName, nil, "An optional key=value annotation to add to PiService response metadata; can be repeated")
-	serverCmd.PersistentFlags().Bool(MutualTLSFlagName, false, "Require PiService clients to provide a valid TLS client certificate")
+	serverCmd.PersistentFlags().String(RedisTargetFlagName, "", "An optional Redis endpoint to use as a Pi Service cache")
+	serverCmd.PersistentFlags().StringArray(TagFlagName, nil, "An optional string tag to add to Pi Service response metadata; can be repeated")
+	serverCmd.PersistentFlags().StringToString(AnnotationFlagName, nil, "An optional key=value annotation to add to Pi Service response metadata; can be repeated")
+	serverCmd.PersistentFlags().Bool(MutualTLSFlagName, false, "Enforce mutual TLS authentication for Pi Service gRPC clients")
 	serverCmd.PersistentFlags().String(RESTAuthorityFlagName, "", "Set the Authority header for REST/gRPC gateway communication")
-	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for PiService; requires an xDS environment")
+	serverCmd.PersistentFlags().Bool("xds", false, "Enable xDS for Pi Service; requires an xDS environment")
 	if err := viper.BindPFlag(RESTAddressFlagName, serverCmd.PersistentFlags().Lookup(RESTAddressFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", RESTAddressFlagName, err)
 	}
