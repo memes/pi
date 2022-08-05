@@ -9,7 +9,7 @@
     },
     "license": {
       "name": "MIT",
-      "url": "github.com/memes/pi/blob/main/LICENSE"
+      "url": "https://github.com/memes/pi/blob/main/LICENSE"
     }
   },
   "tags": [
@@ -134,6 +134,6 @@
   },
   "externalDocs": {
     "description": "GitHub repo",
-    "url": "https://github.com/memes/pi/blob/main/v2/"
+    "url": "https://github.com/memes/pi/"
   }
 }

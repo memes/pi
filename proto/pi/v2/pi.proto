@@ -16,12 +16,12 @@ option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
     };
     license: {
       name: "MIT";
-      url: "github.com/memes/pi/blob/main/LICENSE";
+      url: "https://github.com/memes/pi/blob/main/LICENSE";
     };
   };
   external_docs: {
     description: "GitHub repo";
-    url: "https://github.com/memes/pi/blob/main/v2/";
+    url: "https://github.com/memes/pi/";
   };
   schemes: HTTP;
   schemes: HTTPS;
