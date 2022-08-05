@@ -13,8 +13,8 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	pi "github.com/memes/pi/v2"
-	api "github.com/memes/pi/v2/internal/api/v2"
 	cachepkg "github.com/memes/pi/v2/pkg/cache"
+	"github.com/memes/pi/v2/pkg/generated"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -43,13 +43,13 @@ const (
 )
 
 type PiServer struct {
-	api.UnimplementedPiServiceServer
+	generated.UnimplementedPiServiceServer
 	// The logr.Logger implementation to use
 	logger logr.Logger
 	// An optional cache implementation
 	cache cachepkg.Cache
 	// Holds the instance specific metadata that will be returned in PiService responses
-	metadata *api.GetDigitMetadata
+	metadata *generated.GetDigitMetadata
 	// A gauge for calculation durations
 	calculationMs syncint64.Histogram
 	// A counter for the number of errors returned by cache
@@ -78,7 +78,7 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 	server := &PiServer{
 		logger: logr.Discard(),
 		cache:  cachepkg.NewNoopCache(),
-		metadata: &api.GetDigitMetadata{
+		metadata: &generated.GetDigitMetadata{
 			Identity:    hostname,
 			Tags:        []string{},
 			Annotations: map[string]string{},
@@ -189,7 +189,7 @@ func WithRestClientAuthority(restClientAuthority string) PiServerOption {
 }
 
 // Implement the PiService GetDigit RPC method.
-func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.GetDigitResponse, error) {
+func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) (*generated.GetDigitResponse, error) {
 	logger := s.logger.WithValues("index", in.Index)
 	logger.Info("GetDigit: enter")
 	cacheIndex := (in.Index / 9) * 9
@@ -237,7 +237,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *api.GetDigitRequest) (*api.
 		return nil, status.Error(codes.Internal, fmt.Sprintf("method GetDigit failed to parse as uint: %v", err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 	}
 	logger.Info("GetDigit: exit", "digit", digit)
-	return &api.GetDigitResponse{
+	return &generated.GetDigitResponse{
 		Index:    in.Index,
 		Digit:    uint32(digit),
 		Metadata: s.metadata,
@@ -259,7 +259,7 @@ func (s *PiServer) NewGrpcServer() *grpc.Server {
 	s.logger.V(1).Info("Building a standard gRPC server")
 	grpcServer := grpc.NewServer(s.serverOptions...)
 	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
-	api.RegisterPiServiceServer(grpcServer, s)
+	generated.RegisterPiServiceServer(grpcServer, s)
 	reflection.Register(grpcServer)
 	return grpcServer
 }
@@ -269,7 +269,7 @@ func (s *PiServer) NewXDSServer() *xds.GRPCServer {
 	s.logger.V(1).Info("xDS is enabled; building an xDS aware gRPC server")
 	xdsServer := xds.NewGRPCServer(s.serverOptions...)
 	grpc_health_v1.RegisterHealthServer(xdsServer, health.NewServer())
-	api.RegisterPiServiceServer(xdsServer, s)
+	generated.RegisterPiServiceServer(xdsServer, s)
 	reflection.Register(xdsServer)
 	return xdsServer
 }
@@ -278,13 +278,13 @@ func (s *PiServer) NewXDSServer() *xds.GRPCServer {
 // requests to the specified gRPC endpoint address.
 func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string) (http.Handler, error) {
 	mux := runtime.NewServeMux()
-	if err := api.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, s.dialOptions); err != nil {
+	if err := generated.RegisterPiServiceHandlerFromEndpoint(ctx, mux, grpcAddress, s.dialOptions); err != nil {
 		return nil, fmt.Errorf("failed to register PiService handler for REST gateway: %w", err)
 	}
 	if err := mux.HandlePath("GET", "/api/v2/swagger.json",
 		func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
 			w.Header().Add("Content-Type", "application/json")
-			if _, err := w.Write(api.SwaggerJSON); err != nil {
+			if _, err := w.Write(generated.SwaggerJSON); err != nil {
 				s.logger.Error(err, "Writing swagger JSON to response raised an error; continuing")
 			}
 		},

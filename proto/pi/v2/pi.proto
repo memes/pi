@@ -1,11 +1,11 @@
 syntax = "proto3";
 
-package api.v2;
+package pi.v2;
 
 import "google/api/annotations.proto";
 import "protoc-gen-openapiv2/options/annotations.proto";
 
-option go_package = "github.com/memes/pi/v2/internal/api/v2;v2";
+option go_package = "github.com/memes/pi/v2/pkg/generated";
 option (grpc.gateway.protoc_gen_openapiv2.options.openapiv2_swagger) = {
   info: {
     title: "pi";

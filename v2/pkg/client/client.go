@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	api "github.com/memes/pi/v2/internal/api/v2"
+	"github.com/memes/pi/v2/pkg/generated"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -180,7 +180,7 @@ func (c *PiClient) FetchDigit(ctx context.Context, index uint64) (uint32, error)
 
 	span.AddEvent("Calling GetDigit")
 	startTimestamp := time.Now()
-	response, err := api.NewPiServiceClient(c.conn).GetDigit(metadata.NewOutgoingContext(ctx, c.metadata), &api.GetDigitRequest{
+	response, err := generated.NewPiServiceClient(c.conn).GetDigit(metadata.NewOutgoingContext(ctx, c.metadata), &generated.GetDigitRequest{
 		Index: index,
 	})
 	durationMs := time.Since(startTimestamp).Milliseconds()

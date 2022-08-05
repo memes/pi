@@ -64,3 +64,5 @@ fileignoreconfig:
   checksum: 58798450b4a85e10822b92d5ce34c56ec44ff29e4b3169b8f130d1b3b8765f8f
 - filename: v2/cmd/pi/root.go
   checksum: af0822d5e64fb120e68e476bce899b27f680da48275c1e40f0b6d1134e978f92
+- filename: v2/pkg/generated/pi.pb.go
+  checksum: b274174cb27f64309ed6f5eae00fdb4be7ca4f744c52022b32abb4cbec79edb0

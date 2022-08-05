@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/alicebob/miniredis"
-	api "github.com/memes/pi/v2/internal/api/v2"
 	"github.com/memes/pi/v2/pkg/cache"
+	"github.com/memes/pi/v2/pkg/generated"
 	"github.com/memes/pi/v2/pkg/server"
 )
 
@@ -17,7 +17,7 @@ const (
 	PiDigits = "1415926535897932384626433832795028841971693993751058209749445923078164062862089986280348253421170679"
 )
 
-func testGetDigit(ctx context.Context, t *testing.T, request *api.GetDigitRequest, piServer *server.PiServer) {
+func testGetDigit(ctx context.Context, t *testing.T, request *generated.GetDigitRequest, piServer *server.PiServer) {
 	t.Helper()
 	expected, err := strconv.ParseUint(PiDigits[request.Index:request.Index+1], 10, 32)
 	if err != nil {
@@ -45,7 +45,7 @@ func TestGetDigit_WithNoopCache(t *testing.T) {
 	}
 	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
-			testGetDigit(ctx, t, &api.GetDigitRequest{
+			testGetDigit(ctx, t, &generated.GetDigitRequest{
 				Index: uint64(index),
 			}, piServer)
 		})
@@ -69,7 +69,7 @@ func TestFractionalDigit_WithRedisCache(t *testing.T) {
 	}
 	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
-			testGetDigit(ctx, t, &api.GetDigitRequest{
+			testGetDigit(ctx, t, &generated.GetDigitRequest{
 				Index: uint64(index),
 			}, piServer)
 		})

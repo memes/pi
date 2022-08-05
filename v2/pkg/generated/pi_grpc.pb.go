@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             (unknown)
-// source: api/v2/pi.proto
+// source: pi/v2/pi.proto
 
-package v2
+package generated
 
 import (
 	context "context"
@@ -35,7 +35,7 @@ func NewPiServiceClient(cc grpc.ClientConnInterface) PiServiceClient {
 
 func (c *piServiceClient) GetDigit(ctx context.Context, in *GetDigitRequest, opts ...grpc.CallOption) (*GetDigitResponse, error) {
 	out := new(GetDigitResponse)
-	err := c.cc.Invoke(ctx, "/api.v2.PiService/GetDigit", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/pi.v2.PiService/GetDigit", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func _PiService_GetDigit_Handler(srv interface{}, ctx context.Context, dec func(
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/api.v2.PiService/GetDigit",
+		FullMethod: "/pi.v2.PiService/GetDigit",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PiServiceServer).GetDigit(ctx, req.(*GetDigitRequest))
@@ -92,7 +92,7 @@ func _PiService_GetDigit_Handler(srv interface{}, ctx context.Context, dec func(
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PiService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "api.v2.PiService",
+	ServiceName: "pi.v2.PiService",
 	HandlerType: (*PiServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
@@ -101,5 +101,5 @@ var PiService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "api/v2/pi.proto",
+	Metadata: "pi/v2/pi.proto",
 }
