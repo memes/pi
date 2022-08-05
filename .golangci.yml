@@ -5,6 +5,8 @@ run:
   deadline: 5m
   max-issues-per-linter: 0
   max-same-issues: 0
+  skip-dirs:
+    - pkg/generated
 linters:
   disable-all: true
   enable:
