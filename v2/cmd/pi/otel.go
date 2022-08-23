@@ -8,7 +8,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
-	gcpdetectors "go.opentelemetry.io/contrib/detectors/gcp"
+	"go.opentelemetry.io/contrib/detectors/gcp"
 	runtimeinstrumentation "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
@@ -77,13 +77,8 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 		return nil, fmt.Errorf("failed to generate UUID for telemetry resource: %w", err)
 	}
 	res, err := resource.New(ctx,
+		resource.WithDetectors(gcp.NewDetector()),
 		resource.WithSchemaURL(semconv.SchemaURL),
-		resource.WithAttributes(
-			semconv.ServiceNamespaceKey.String(OTELNamespace),
-			semconv.ServiceNameKey.String(name),
-			semconv.ServiceVersionKey.String(version),
-			semconv.ServiceInstanceIDKey.String(id.String()),
-		),
 		resource.WithTelemetrySDK(),
 		resource.WithHost(),
 		resource.WithOS(),
@@ -96,11 +91,11 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 		resource.WithProcessRuntimeName(),
 		resource.WithProcessRuntimeVersion(),
 		resource.WithProcessRuntimeDescription(),
-		// These detectors place last to override the base service attributes with specifiers from GCP
-		resource.WithDetectors(
-			&gcpdetectors.GCE{},
-			&gcpdetectors.GKE{},
-			gcpdetectors.NewCloudRun(),
+		resource.WithAttributes(
+			semconv.ServiceNamespaceKey.String(OTELNamespace),
+			semconv.ServiceNameKey.String(name),
+			semconv.ServiceVersionKey.String(version),
+			semconv.ServiceInstanceIDKey.String(id.String()),
 		),
 	)
 	if err != nil {
