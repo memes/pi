@@ -9,8 +9,7 @@ import (
 )
 
 // The default logr sink; this will be changed as command options are processed.
-//nolint: gochecknoglobals // Global to package to avoid storing in context, etc.
-var logger = logr.Discard()
+var logger = logr.Discard() //nolint: gochecknoglobals // Global to package to avoid storing in context, etc.
 
 func main() {
 	rootCmd, err := NewRootCmd()

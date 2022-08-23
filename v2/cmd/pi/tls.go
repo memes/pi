@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"os"
 )
 
 // Failed to load CA cert.
@@ -25,7 +25,7 @@ func newCACertPool(cacerts []string) (*x509.CertPool, error) {
 		return nil, fmt.Errorf("failed to build new CA cert pool from SystemCertPool: %w", err)
 	}
 	for _, cacert := range cacerts {
-		ca, err := ioutil.ReadFile(cacert)
+		ca, err := os.ReadFile(cacert)
 		if err != nil {
 			return nil, fmt.Errorf("failed to read from certificate file %s: %w", cacert, err)
 		}

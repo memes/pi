@@ -6,5 +6,6 @@ import _ "embed"
 
 // SwaggerJSON contains the generated OpenAPIv2 (swagger) declaration exposed
 // by REST endpoint.
+//
 //go:embed pi.swagger.json
 var SwaggerJSON []byte
