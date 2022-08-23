@@ -30,7 +30,7 @@ jobs:
         uses: sigstore/cosign-installer@v2.5.1
       - name: Install syft
         if: ${{ success() }}
-        uses: anchore/sbom-action/download-syft@v0.11.0
+        uses: anchore/sbom-action/download-syft@v0.12.0
       - id: docker-login
         name: Login to Docker hub
         if: ${{ success() }}
