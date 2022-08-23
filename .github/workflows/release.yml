@@ -27,7 +27,7 @@ jobs:
           go-version: 1.18
       - name: Install cosign
         if: ${{ success() }}
-        uses: sigstore/cosign-installer@v2.5.0
+        uses: sigstore/cosign-installer@v2.5.1
       - name: Install syft
         if: ${{ success() }}
         uses: anchore/sbom-action/download-syft@v0.11.0
