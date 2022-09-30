@@ -13,20 +13,20 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.5.0
-	github.com/spf13/viper v1.12.0
+	github.com/spf13/viper v1.13.0
 	go.opentelemetry.io/contrib/detectors/gcp v1.9.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.34.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.34.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.34.0
-	go.opentelemetry.io/otel v1.9.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.36.1
+	go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.31.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.31.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.9.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.9.0
-	go.opentelemetry.io/otel/metric v0.31.0
+	go.opentelemetry.io/otel/metric v0.32.1
 	go.opentelemetry.io/otel/sdk v1.9.0
 	go.opentelemetry.io/otel/sdk/metric v0.31.0
-	go.opentelemetry.io/otel/trace v1.9.0
+	go.opentelemetry.io/otel/trace v1.10.0
 	golang.org/x/net v0.0.0-20220802222814-0bcc04d9c69b
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc
@@ -55,12 +55,12 @@ require (
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.2 // indirect
+	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
 	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/subosito/gotenv v1.4.0 // indirect
+	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/yuin/gopher-lua v0.0.0-20220504180219-658193537a64 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.9.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.18.0 // indirect
@@ -69,7 +69,7 @@ require (
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15 // indirect
-	gopkg.in/ini.v1 v1.66.6 // indirect
+	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
