@@ -50,6 +50,7 @@
         "sdktrace",
         "semconv",
         "stdr",
+        "syft",
         "syncint",
         "tsdb",
         "wrapcheck",

@@ -129,31 +129,72 @@ connection without further configuration. There are flags that can change the
 behavior of the application; see `pi help client` and/or `pi help server` for
 all the configuration options.
 
-## Installation
+## Binaries
 
-If you have go installed, the command line application can be built directly from
-the v2 repository source.
+Binaries are published on the [Releases] page for Linux, macOS, and Windows. If
+you have Go installed locally, `go install github.com/memes/pi/v2/cmd/pi@latest`
+will download and install to *$GOBIN*.
 
-```shell
-go install github.com/memes/pi/v2/cmd/pi@latest
-```
-
-The `pi` binary will be added to your `$GOBIN` directory.
-
-Tagged binaries are also published and can be downloaded from
-[GitHub Releases](https://github.com/memes/pi/releases).
-
-### Pre-built container
-
-In addition, tagged releases are published to public [GitHub Container] and
-[Docker hub] repos. The container executes `pi server` without any options. To
-change the behavior add the arguments to `docker run` or `podman run` command.
+A container image is also published to Docker Hub and GitHub Container Registries
+that can be used in place of the binary; just append the arguments to the
+`docker run` or `podman run` command.
 
 E.g. to run the latest v2 `pi server` with verbose logging, and with metrics and
 traces published to an OpenTelemetry gRPC collector at `collector:4317`:
 
-```shell
+```sh
 podman run --rm ghcr.io/memes/pi:2 server --verbose --verbose --otlp-target collector:4317
+```
+
+## Verifying releases
+
+For each tagged release, an tarball of the source and a [syft] SBOM is created,
+along with SHA256 checksums for all files. [cosign] is used to automatically generate
+a signing certificate for download and verification of container images.
+
+### Verify release files
+
+1. Download the checksum, signature, and signing certificate file from GitHub
+
+   ```shell
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_SHA256SUMS
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_SHA256SUMS.sig
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_SHA256SUMS.pem
+   ```
+
+2. Verify the SHA256SUMS have been signed with [cosign]
+
+   ```shell
+   cosign verify-blob --cert pi_2.0.0-rc7_SHA256SUMS.pem --signature pi_2.0.0-rc7_SHA256SUMS.sig pi_2.0.0-rc7_SHA256SUMS
+   ```
+
+   ```text
+   verified OK
+   ```
+
+3. Download and verify files
+
+   Now that the checksum file has been verified, any other file can be verified using `sha256sum`.
+
+   For example
+
+   ```shell
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi-2.0.0-rc7.tar.gz.sbom
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_linux_amd64
+   sha256sum --ignore-missing -c pi_2.0.0-rc7_SHA256SUMS
+   ```
+
+   ```text
+   pi-2.0.0-rc7.tar.gz.sbom: OK
+   pi_2.0.0-rc7_linux_amd64: OK
+   ```
+
+### Verify container image
+
+Use [cosign]s experimental OCI signature support to validate the container.
+
+```shell
+COSIGN_EXPERIMENTAL=1 cosign verify ghcr.io/memes/pi:v2.0.0-rc7
 ```
 
 ## Background
@@ -197,7 +238,7 @@ print digits
 
 [Bailey-Borwein-Plouffe]: https://en.wikipedia.org/wiki/Bailey%E2%80%93Borwein%E2%80%93Plouffe_formula
 [embarrassingly parallel]: https://en.wikipedia.org/wiki/Embarrassingly_parallel
-[docs]: https://pkg.go.dev/github.com/memes/pi/v2
 [httpie]: https://github.com/httpie/httpie
-[GitHub Container]: https://github.com/memes/pi/pkgs/container/pi
-[Docker hub]: https://hub.docker.com/r/memes/pi/
+[Releases]: https://github.com/memes/pi/releases
+[cosign]: https://github.com/SigStore/cosign
+[syft]: https://github.com/anchore/syft
