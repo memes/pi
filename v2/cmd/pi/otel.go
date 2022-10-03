@@ -11,15 +11,12 @@ import (
 	"go.opentelemetry.io/contrib/detectors/gcp"
 	runtimeinstrumentation "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	"go.opentelemetry.io/otel/sdk/metric/selector/simple"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.12.0"
@@ -121,43 +118,30 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 	if creds != nil {
 		options = append(options, otlpmetricgrpc.WithTLSCredentials(creds))
 	}
-	client := otlpmetricgrpc.NewClient(options...)
-	exporter, err := otlpmetric.New(ctx, client)
+	exporter, err := otlpmetricgrpc.New(ctx, options...)
 	if err != nil {
 		return ShutdownFunctions{}, fmt.Errorf("failed to create new metric exporter: %w", err)
 	}
+	provider := metric.NewMeterProvider(
+		metric.WithResource(res),
+		metric.WithReader(metric.NewPeriodicReader(exporter, metric.WithInterval(OTELMetricReportingPeriod))),
+	)
+
 	shutdownFunctions := ShutdownFunctions{
 		functions: []ShutdownFunction{
 			func(ctx context.Context) error {
-				if err := exporter.Shutdown(ctx); err != nil {
-					return fmt.Errorf("error during OpenTelemetry metric exporter shutdown: %w", err)
+				if err := provider.Shutdown(ctx); err != nil {
+					return fmt.Errorf("error during OpenTelemetry metric provider shutdown: %w", err)
 				}
 				return nil
 			},
 		},
 	}
-	pusher := controller.New(
-		processor.NewFactory(simple.NewWithHistogramDistribution(), exporter),
-		controller.WithExporter(exporter),
-		controller.WithResource(res),
-		controller.WithCollectPeriod(OTELMetricReportingPeriod),
-	)
-	if err = pusher.Start(ctx); err != nil {
-		return shutdownFunctions, fmt.Errorf("failed to start metric pusher: %w", err)
-	}
-	shutdownFunctions.AppendFunction(
-		func(ctx context.Context) error {
-			if err := pusher.Stop(ctx); err != nil {
-				return fmt.Errorf("error during OpenTelemetry metric pusher shutdown: %w", err)
-			}
-			return nil
-		},
-	)
-	if err = runtimeinstrumentation.Start(runtimeinstrumentation.WithMeterProvider(pusher)); err != nil {
+	if err = runtimeinstrumentation.Start(runtimeinstrumentation.WithMeterProvider(provider)); err != nil {
 		return shutdownFunctions, fmt.Errorf("failed to start runtime metrics: %w", err)
 	}
 
-	global.SetMeterProvider(pusher)
+	global.SetMeterProvider(provider)
 	logger.V(1).Info("OpenTelemetry metric handlers created and started")
 	return shutdownFunctions, nil
 }
