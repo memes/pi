@@ -115,7 +115,7 @@ collector where span and metric data will be sent, annotated with any `tags` or
 E.g.
 
 ```shell
-pi server --otlp-target collector:4137 --otlp-insecure
+pi server --otlp-target collector:4317 --otlp-insecure
 ```
 
 ### TLS, mutual TLS, and gRPC authorities
