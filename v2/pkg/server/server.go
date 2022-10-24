@@ -244,21 +244,13 @@ func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) 
 	}, nil
 }
 
-// Implement the gRPC health service Check method.
-func (s *PiServer) Check(ctx context.Context, in *grpc_health_v1.HealthCheckRequest) (*grpc_health_v1.HealthCheckResponse, error) {
-	return &grpc_health_v1.HealthCheckResponse{Status: grpc_health_v1.HealthCheckResponse_SERVING}, nil
-}
-
-// Satisfy the gRPC health service Watch method - always returns an Unimplemented error.
-func (s *PiServer) Watch(in *grpc_health_v1.HealthCheckRequest, _ grpc_health_v1.Health_WatchServer) error {
-	return status.Error(codes.Unimplemented, "unimplemented") //nolint:wrapcheck // This error is not received by application code
-}
-
 // Create a new grpc.Server that is ready to be attached to a net.Listener.
 func (s *PiServer) NewGrpcServer() *grpc.Server {
 	s.logger.V(1).Info("Building a standard gRPC server")
 	grpcServer := grpc.NewServer(s.serverOptions...)
-	grpc_health_v1.RegisterHealthServer(grpcServer, health.NewServer())
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	grpc_health_v1.RegisterHealthServer(grpcServer, healthServer)
 	generated.RegisterPiServiceServer(grpcServer, s)
 	reflection.Register(grpcServer)
 	return grpcServer
@@ -268,8 +260,9 @@ func (s *PiServer) NewGrpcServer() *grpc.Server {
 func (s *PiServer) NewXDSServer() *xds.GRPCServer {
 	s.logger.V(1).Info("xDS is enabled; building an xDS aware gRPC server")
 	xdsServer := xds.NewGRPCServer(s.serverOptions...)
-	grpc_health_v1.RegisterHealthServer(xdsServer, health.NewServer())
-	generated.RegisterPiServiceServer(xdsServer, s)
+	healthServer := health.NewServer()
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
+	grpc_health_v1.RegisterHealthServer(xdsServer, healthServer)
 	reflection.Register(xdsServer)
 	return xdsServer
 }
