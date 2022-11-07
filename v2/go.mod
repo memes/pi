@@ -13,7 +13,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cobra v1.6.0
-	github.com/spf13/viper v1.13.0
+	github.com/spf13/viper v1.14.0
 	go.opentelemetry.io/contrib/detectors/gcp v1.11.1
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.36.4
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.36.4
@@ -28,13 +28,14 @@ require (
 	go.opentelemetry.io/otel/trace v1.11.1
 	golang.org/x/net v0.1.0
 	golang.org/x/sync v0.1.0
-	google.golang.org/genproto v0.0.0-20221024153911-1573dae28c9c
+	google.golang.org/genproto v0.0.0-20221024183307-1bc688fe9f3e
 	google.golang.org/grpc v1.50.1
 	google.golang.org/protobuf v1.28.1
 )
 
 require (
-	cloud.google.com/go/compute v1.10.0 // indirect
+	cloud.google.com/go/compute v1.12.1 // indirect
+	cloud.google.com/go/compute/metadata v0.2.1 // indirect
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v0.34.1 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
