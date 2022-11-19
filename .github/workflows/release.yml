@@ -58,9 +58,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Trigger Go Report update
         if: ${{ success() }}
-        uses: fjogeleit/http-request-action@v1.11.1
+        uses: fjogeleit/http-request-action@v1.12.0
         with:
           url: 'https://goreportcard.com/checks'
           method: 'POST'
           contentType: 'application/x-www-form-urlencoded'
           data: 'repo=github.com/${{ github.repository }}/v2'
+          preventFailureOnNoResponse: 'true'
