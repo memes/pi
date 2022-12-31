@@ -28,11 +28,11 @@
                 "server",
                 "--verbose",
                 "--cacert",
-                "${workspaceFolder}/supporting/ca.pem",
+                "${workspaceFolder}/scripts/ca.pem",
                 "--cert",
-                "${workspaceFolder}/supporting/service.pi.example.com.pem",
+                "${workspaceFolder}/scripts/service.pi.example.com.pem",
                 "--key",
-                "${workspaceFolder}/supporting/service.pi.example.com-key.pem",
+                "${workspaceFolder}/scripts/service.pi.example.com-key.pem",
                 "--rest-address",
                 ":8080",
                 ":8443"
@@ -63,7 +63,7 @@
                 "client",
                 "--verbose",
                 "--cacert",
-                "${workspaceFolder}/supporting/ca.pem",
+                "${workspaceFolder}/scripts/ca.pem",
                 "--count",
                 "10",
                 ":8443"

@@ -10,7 +10,7 @@ dist/
 **/pi.exe
 
 # Don't commit testing TLS certificates, etc.
-supporting/*.csr
-supporting/*.json
-supporting/*.pem
-supporting/otel-all-in-one-tls.yaml
+scripts/*.csr
+scripts/*.json
+scripts/*.pem
+scripts/otel-all-in-one-tls.yaml
