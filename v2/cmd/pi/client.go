@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 	"sync"
 	"time"
 
@@ -22,6 +21,13 @@ const (
 	DefaultDigitCount = 100
 	DefaultMaxTimeout = 10 * time.Second
 )
+
+// Defines a function that will be called for each resulting.
+type CollatorFunction func(index uint64, value uint32) error
+
+// Contains a reference to the CollatorFunction that will be called for every
+// result returned by a Pi service.
+var collator CollatorFunction = noopCollator //nolint:gochecknoglobals // Global so that subcommands can set the CollatorFunction
 
 // Implements the client sub-command which attempts to connect to one or
 // more pi server instances and build up the digits of pi through multiple
@@ -56,11 +62,13 @@ Metrics and traces will be sent to an OpenTelemetry collection endpoint, if spec
 	if err := viper.BindPFlag(HeaderFlagName, clientCmd.PersistentFlags().Lookup(HeaderFlagName)); err != nil {
 		return nil, fmt.Errorf("failed to bind %s pflag: %w", HeaderFlagName, err)
 	}
+	clientCmd.AddCommand(NewCollateCmd())
 	return clientCmd, nil
 }
 
 // Client sub-command entrypoint. This function will launch gRPC requests for
-// each of the fractional digits requested.
+// each of the fractional digits requested and pass the results into a collation
+// function.
 func clientMain(cmd *cobra.Command, endpoints []string) error {
 	count := viper.GetInt(CountFlagName)
 	logger := logger.V(1).WithValues(CountFlagName, count, "endpoints", endpoints)
@@ -102,7 +110,6 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 
 	// Randomize the retrieval of numbers
 	indices := rand.Perm(count)
-	digits := make([]byte, count)
 	var wg sync.WaitGroup
 	for _, index := range indices {
 		wg.Add(1)
@@ -111,18 +118,14 @@ func clientMain(cmd *cobra.Command, endpoints []string) error {
 			digit, err := piClient.FetchDigit(ctx, idx)
 			if err != nil {
 				logger.Error(err, "Error fetching digit", "idx", idx)
-				digits[idx] = '-'
-			} else {
-				digits[idx] = '0' + byte(digit)
+				return
+			}
+			if err = collator(idx, digit); err != nil {
+				logger.Error(err, "Error calling collator", "idx", idx, "digit", digit)
 			}
 		}(uint64(index))
 	}
 	wg.Wait()
-	fmt.Print("Result is: 3.")
-	if _, err := os.Stdout.Write(digits); err != nil {
-		return fmt.Errorf("failure writing result: %w", err)
-	}
-	fmt.Println()
 	return nil
 }
 
@@ -149,4 +152,9 @@ func buildPiClientTransportCredentials() (credentials.TransportCredentials, erro
 		return nil, fmt.Errorf("error generating xDS client credentials: %w", err)
 	}
 	return creds, nil
+}
+
+// Do nothing CollatorFunction that ignores the results.
+func noopCollator(_ uint64, _ uint32) error {
+	return nil
 }

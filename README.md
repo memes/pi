@@ -40,7 +40,7 @@ E.g. to request the first 250 fractional digits of pi from an [insecure](#tls-mu
 running at `localhost:8443`:
 
 ```shell
-pi client --count 250 --max-timeout 25s --insecure localhost:8443
+pi client collate --count 250 --max-timeout 25s --insecure localhost:8443
 ```
 
 ```text
