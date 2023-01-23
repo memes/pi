@@ -27,7 +27,7 @@ type CollatorFunction func(index uint64, value uint32) error
 
 // Contains a reference to the CollatorFunction that will be called for every
 // result returned by a Pi service.
-var collator CollatorFunction = noopCollator //nolint gochecknoglobals
+var collator CollatorFunction = noopCollator //nolint:gochecknoglobals // Global so that subcommands can set the CollatorFunction
 
 // Implements the client sub-command which attempts to connect to one or
 // more pi server instances and build up the digits of pi through multiple
