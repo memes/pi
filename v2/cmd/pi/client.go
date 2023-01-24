@@ -36,11 +36,9 @@ func NewClientCmd() (*cobra.Command, error) {
 	clientCmd := &cobra.Command{
 		Use:   "client target",
 		Short: "Run a gRPC Pi Service client to request fractional digits of pi",
-		Long: `Launches a gRPC client that will connect to Pi Service target and request the fractional digits of pi.
-
-Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
-		Args: cobra.ExactArgs(1),
-		RunE: clientMain,
+		Long:  "Launches a gRPC client that will connect to Pi Service target and request the fractional digits of pi.",
+		Args:  cobra.ExactArgs(1),
+		RunE:  clientMain,
 	}
 	clientCmd.PersistentFlags().Uint(CountFlagName, DefaultDigitCount, "The number of decimal digits of pi to accumulate")
 	clientCmd.PersistentFlags().Duration(MaxTimeoutFlagName, DefaultMaxTimeout, "The maximum timeout for a Pi Service request")

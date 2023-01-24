@@ -33,12 +33,10 @@ const (
 func NewServerCmd() (*cobra.Command, error) {
 	serverCmd := &cobra.Command{
 		Use:   "server",
-		Short: "Run gRPC service to return fractional digits of pi",
-		Long: `Launches a gRPC Pi Service server that can calculate the decimal digits of pi.
-
-A single decimal digit of pi will be returned per request. An optional Redis DB can be used to cache the calculated digits. Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
-		Args: cobra.MaximumNArgs(1),
-		RunE: serverMain,
+		Short: "Run Pi Service to return fractional digits of pi",
+		Long:  "Launches a gRPC Pi Service server that can calculate the decimal digits of pi.",
+		Args:  cobra.MaximumNArgs(1),
+		RunE:  serverMain,
 	}
 	serverCmd.PersistentFlags().String(RESTAddressFlagName, "", "An optional listen address to launch a REST/gRPC gateway process")
 	serverCmd.PersistentFlags().String(RedisTargetFlagName, "", "An optional Redis endpoint to use as a Pi Service cache")

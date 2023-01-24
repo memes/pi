@@ -13,12 +13,10 @@ import (
 func NewCollateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "collate target",
-		Short: "Run a gRPC Pi Service client to request and collate fractional digits of pi",
-		Long: `Launches a gRPC client that will connect to Pi Service target and request the fractional digits of pi.
-
-Metrics and traces will be sent to an OpenTelemetry collection endpoint, if specified.`,
-		Args: cobra.ExactArgs(1),
-		RunE: collateMain,
+		Short: "Run a gRPC Pi Service client to request, collate, and print digits of pi",
+		Long:  "Launches a gRPC client that will connect to Pi Service target and request the fractional digits of pi.",
+		Args:  cobra.ExactArgs(1),
+		RunE:  collateMain,
 	}
 }
 
