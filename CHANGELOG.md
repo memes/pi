@@ -7,21 +7,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [v2.0.0-rc6] - 2022-07-20
-
-### Added
-
-### Changed
-
-- release GitHub action modified to use keyless cosign
-
-### Removed
-
-## [v2.0.0-rc5] - 2022-07-20
+## [v2.0.0] - 2023-01-23
 
 > NOTE: Entries for -rc1 through -rc4 have been removed as the tags and builds
 > for those have been removed. These notes include all changes from the `1.0.4`
-> tag to `v2.0.0-rc5`.
+> tag to `v2.0.0`.
 
 Refactored Pi code as [v2](/v2) to support use as a library and application.
 When used as a server the primary transport is through gRPC, with an optional
@@ -37,6 +27,7 @@ REST gateway for compatibility. The client app always uses gRPC transport.
   - SBOM generation through [syft](https://github.com/anchore/syft)
   - [cosign](https://github.com/sigstore/cosign) keyless signed containers
   on tag
+- please-release GitHub action to drive release process
 
 ### Changed
 
@@ -90,8 +81,7 @@ REST gateway for compatibility. The client app always uses gRPC transport.
 
 ### Removed
 
-[v2.0.0-rc6]: https://github.com/memes/pi/compare/v2.0.0-rc5...v2.0.0-rc6
-[v2.0.0-rc5]: https://github.com/memes/pi/compare/1.0.4...v2.0.0-rc5
+[v2.0.0]: https://github.com/memes/pi/compare/1.0.4...v2.0.0
 [1.0.4]: https://github.com/memes/pi/compare/1.0.3...1.0.4
 [1.0.3]: https://github.com/memes/pi/compare/1.0.2...1.0.3
 [1.0.2]: https://github.com/memes/pi/compare/1.0.1...1.0.2
