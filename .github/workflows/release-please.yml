@@ -1,0 +1,24 @@
+# spell-checker: disable
+---
+name: release-please
+
+# yamllint disable-line rule:truthy
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Release Please
+        uses: GoogleCloudPlatform/release-please-action@v3.7.5
+        with:
+          release-type: go
+          package-name: pi
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
