@@ -22,12 +22,12 @@ jobs:
         with:
           fetch-depth: 0
       - name: Setup Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
           go-version: 1.19
       - name: Install cosign
         if: ${{ success() }}
-        uses: sigstore/cosign-installer@v2.8.1
+        uses: sigstore/cosign-installer@v3.0.1
       - name: Install syft
         if: ${{ success() }}
         uses: anchore/sbom-action/download-syft@v0.13.3
@@ -58,7 +58,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Trigger Go Report update
         if: ${{ success() }}
-        uses: fjogeleit/http-request-action@v1.12.0
+        uses: fjogeleit/http-request-action@v1.14.0
         with:
           url: 'https://goreportcard.com/checks'
           method: 'POST'
