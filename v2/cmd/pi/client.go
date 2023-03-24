@@ -67,7 +67,7 @@ func NewClientCmd() (*cobra.Command, error) {
 // Client sub-command entrypoint. This function will launch gRPC requests for
 // each of the fractional digits requested and pass the results into a collation
 // function.
-func clientMain(cmd *cobra.Command, endpoints []string) error {
+func clientMain(_ *cobra.Command, endpoints []string) error {
 	count := viper.GetInt(CountFlagName)
 	logger := logger.V(1).WithValues(CountFlagName, count, "endpoints", endpoints)
 	ctx, cancel := context.WithCancel(context.Background())

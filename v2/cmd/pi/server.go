@@ -71,7 +71,7 @@ func NewServerCmd() (*cobra.Command, error) {
 
 // Server sub-command entrypoint. This function will launch the gRPC PiService
 // and an optional REST gateway.
-func serverMain(cmd *cobra.Command, args []string) error {
+func serverMain(_ *cobra.Command, args []string) error {
 	address := DefaultGRPCListenAddress
 	if len(args) > 0 {
 		address = args[0]

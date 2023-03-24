@@ -68,3 +68,5 @@ fileignoreconfig:
   checksum: b274174cb27f64309ed6f5eae00fdb4be7ca4f744c52022b32abb4cbec79edb0
 - filename: proto/buf.lock
   checksum: bea9d0b1a6cee51ac3f7b0409f4ddeb633dda48c8f14d15c69c9ac26716c0086
+- filename: v2/pkg/cache/cache.go
+  checksum: 434d09cbb2b44f0b1c708c7d01c8e2c20b3cf39f5985d3c2b08b5e65f55bad81

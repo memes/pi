@@ -26,12 +26,12 @@ type Cache interface {
 type NoopCache struct{}
 
 // Always returns an empty string and no error for every key.
-func (n *NoopCache) GetValue(ctx context.Context, key string) (string, error) {
+func (n *NoopCache) GetValue(_ context.Context, _ string) (string, error) {
 	return "", nil
 }
 
 // Ignores the value and returns nil error.
-func (n *NoopCache) SetValue(ctx context.Context, key, value string) error {
+func (n *NoopCache) SetValue(_ context.Context, _, _ string) error {
 	return nil
 }
 
@@ -50,7 +50,7 @@ type RedisCache struct {
 type RedisCacheOption func(*RedisCache)
 
 // Return a new Cache implementation using Redis as a backend.
-func NewRedisCache(ctx context.Context, endpoint string, options ...RedisCacheOption) *RedisCache {
+func NewRedisCache(_ context.Context, endpoint string, options ...RedisCacheOption) *RedisCache {
 	cache := &RedisCache{
 		&redis.Pool{
 			DialContext: func(ctx context.Context) (redis.Conn, error) {
@@ -69,7 +69,7 @@ func NewRedisCache(ctx context.Context, endpoint string, options ...RedisCacheOp
 }
 
 // Returns the string value stored in Redis under key, if present, or an empty string.
-func (r *RedisCache) GetValue(ctx context.Context, key string) (string, error) {
+func (r *RedisCache) GetValue(_ context.Context, key string) (string, error) {
 	conn := r.Get()
 	defer conn.Close()
 
@@ -85,7 +85,7 @@ func (r *RedisCache) GetValue(ctx context.Context, key string) (string, error) {
 }
 
 // Store the string key:value pair in Redis.
-func (r *RedisCache) SetValue(ctx context.Context, key, value string) error {
+func (r *RedisCache) SetValue(_ context.Context, key, value string) error {
 	conn := r.Get()
 	defer conn.Close()
 	_, err := conn.Do("SET", key, value)

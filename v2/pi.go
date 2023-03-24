@@ -94,6 +94,7 @@ func FindNextPrime(n int64) int64 {
 		} else {
 			next = big.NewInt(n + 2)
 		}
+		//nolint: revive // In lieu of a while loop
 		for ; !next.ProbablyPrime(MillerRabinRounds); next = next.Add(next, two) {
 		}
 		result = next.Int64()
