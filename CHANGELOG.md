@@ -7,6 +7,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1](https://github.com/memes/pi/compare/v2.0.0...v2.0.1) (2023-03-25)
+
+
+### Bug Fixes
+
+* Bump to go 1.20 ([6d7dd73](https://github.com/memes/pi/commit/6d7dd73976d25d53156057385ab35770ce2f1c6c))
+* Lint fixes ([192a782](https://github.com/memes/pi/commit/192a782579b6617cab9e15023e6ab30766bfafe3))
+* Remove pi v1 code ([2b2d51c](https://github.com/memes/pi/commit/2b2d51c992d86b1761f71477657a9f036061689d))
+* Resolve failing example ([fa007b7](https://github.com/memes/pi/commit/fa007b7c8451a64828db43ed39367264f5526b89))
+* Update pi v2 for otel v1.14.0/v0.37.0 ([5afba4a](https://github.com/memes/pi/commit/5afba4a58adeafdfd1edddc10c1f2f1af62c522c))
+
 ## [v2.0.0] - 2023-01-23
 
 > NOTE: Entries for -rc1 through -rc4 have been removed as the tags and builds
