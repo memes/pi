@@ -10,9 +10,6 @@ This library and sample application demonstrates one way the problem of calculat
 the subset N fractional decimal digits of pi could be distributed amongst workers
 calculating sections of pi independently, and in parallel.
 
-> NOTE: Development of v1 package `github.com/memes/pi` has been suspended and all
-> updates will be to [github.com/memes/pi/v2](v2/) only.
-
 Contributions are welcome! Please review [Contributions](CONTRIBUTING.md) for
 more information.
 
@@ -157,15 +154,15 @@ a signing certificate for download and verification of container images.
 1. Download the checksum, signature, and signing certificate file from GitHub
 
    ```shell
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_SHA256SUMS
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_SHA256SUMS.sig
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_SHA256SUMS.pem
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi_2.0.1_SHA256SUMS
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.01/pi_2.0.1_SHA256SUMS.sig
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi_2.0.1_SHA256SUMS.pem
    ```
 
 2. Verify the SHA256SUMS have been signed with [cosign]
 
    ```shell
-   cosign verify-blob --cert pi_2.0.0-rc7_SHA256SUMS.pem --signature pi_2.0.0-rc7_SHA256SUMS.sig pi_2.0.0-rc7_SHA256SUMS
+   cosign verify-blob --cert pi_2.0.1_SHA256SUMS.pem --signature pi_2.0.1_SHA256SUMS.sig pi_2.0.1_SHA256SUMS
    ```
 
    ```text
@@ -179,14 +176,14 @@ a signing certificate for download and verification of container images.
    For example
 
    ```shell
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi-2.0.0-rc7.tar.gz.sbom
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.0-rc7/pi_2.0.0-rc7_linux_amd64
-   sha256sum --ignore-missing -c pi_2.0.0-rc7_SHA256SUMS
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi-2.0.1.tar.gz.sbom
+   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi_2.0.1_linux_amd64
+   sha256sum --ignore-missing -c pi_2.0.1_SHA256SUMS
    ```
 
    ```text
-   pi-2.0.0-rc7.tar.gz.sbom: OK
-   pi_2.0.0-rc7_linux_amd64: OK
+   pi-2.0.1.tar.gz.sbom: OK
+   pi_2.0.1_linux_amd64: OK
    ```
 
 ### Verify container image
@@ -194,7 +191,7 @@ a signing certificate for download and verification of container images.
 Use [cosign]s experimental OCI signature support to validate the container.
 
 ```shell
-COSIGN_EXPERIMENTAL=1 cosign verify ghcr.io/memes/pi:v2.0.0-rc7
+COSIGN_EXPERIMENTAL=1 cosign verify ghcr.io/memes/pi:v2.0.1
 ```
 
 ## Background
