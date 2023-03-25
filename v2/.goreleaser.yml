@@ -3,8 +3,7 @@
 ---
 project_name: pi
 builds:
-  - dir: v2
-    env:
+  - env:
       - CGO_ENABLED=0
     flags:
       - -trimpath
@@ -71,7 +70,7 @@ dockers:
       - ghcr.io/memes/{{ .ProjectName }}:latest
       - ghcr.io/memes/{{ .ProjectName }}:{{ .Tag }}
       - ghcr.io/memes/{{ .ProjectName }}:{{ .Major }}
-    dockerfile: Dockerfile
+    dockerfile: ../Dockerfile
     use: docker
     build_flag_templates:
       # yamllint disable rule:line-length

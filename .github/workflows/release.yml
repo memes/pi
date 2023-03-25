@@ -54,6 +54,7 @@ jobs:
           distribution: goreleaser
           version: latest
           args: release --clean
+          workdir: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Trigger Go Report update
