@@ -17,8 +17,6 @@ import (
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
-	"go.opentelemetry.io/otel/metric/unit"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -43,11 +41,11 @@ type PiClient struct {
 	// The client maximum timeout/deadline to use when making requests to a PiService.
 	maxTimeout time.Duration
 	// A counter for the number of connection errors.
-	connectionErrors syncint64.Counter
+	connectionErrors instrument.Int64Counter
 	// A counter for the number of errors returned by the service.
-	serviceErrors syncint64.Counter
+	serviceErrors instrument.Int64Counter
 	// A gauge for request durations.
-	durationMs syncint64.Histogram
+	durationMs instrument.Int64Histogram
 	// gRPC metadata to add to service requests.
 	metadata metadata.MD
 	// gRPC endpoint; see https://github.com/grpc/grpc/blob/master/doc/naming.md
@@ -78,23 +76,23 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 		option(client)
 	}
 	var err error
-	client.connectionErrors, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+	client.connectionErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".connection_errors",
 		instrument.WithDescription("The count of connection errors seen by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating connectionErrors Counter: %w", err)
 	}
-	client.serviceErrors, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+	client.serviceErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".service_errors",
 		instrument.WithDescription("The count of service errors received by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating serviceErrors Counter: %w", err)
 	}
-	client.durationMs, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Histogram(
+	client.durationMs, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
 		OpenTelemetryPackageIdentifier+".request_duration_ms",
-		instrument.WithUnit(unit.Milliseconds),
+		instrument.WithUnit("ms"),
 		instrument.WithDescription("The duration (ms) of requests"),
 	)
 	if err != nil {

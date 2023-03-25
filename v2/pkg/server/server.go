@@ -22,8 +22,6 @@ import (
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
-	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -51,13 +49,13 @@ type PiServer struct {
 	// Holds the instance specific metadata that will be returned in PiService responses
 	metadata *generated.GetDigitMetadata
 	// A gauge for calculation durations
-	calculationMs syncint64.Histogram
+	calculationMs instrument.Int64Histogram
 	// A counter for the number of errors returned by cache
-	cacheErrors syncint64.Counter
+	cacheErrors instrument.Int64Counter
 	// A counter for cache hits
-	cacheHits syncint64.Counter
+	cacheHits instrument.Int64Counter
 	// A counter for cache misses
-	cacheMisses syncint64.Counter
+	cacheMisses instrument.Int64Counter
 	// A set of gRPC ServerOptions to use
 	serverOptions []grpc.ServerOption
 	// A set of gRPC DialOptions to use with REST gateway gRPC client
@@ -95,29 +93,29 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 		option(server)
 	}
 	var err error
-	server.calculationMs, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Histogram(
+	server.calculationMs, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
 		OpenTelemetryPackageIdentifier+".calc_duration_ms",
-		instrument.WithUnit(unit.Milliseconds),
+		instrument.WithUnit("ms"),
 		instrument.WithDescription("The duration (ms) of calculations"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating calculationMs Histogram: %w", err)
 	}
-	server.cacheErrors, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+	server.cacheErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_errors",
 		instrument.WithDescription("The count of error responses from digit cache"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheErrors Counter: %w", err)
 	}
-	server.cacheHits, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+	server.cacheHits, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_hits",
 		instrument.WithDescription("The count of cache hits"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheHits Counter: %w", err)
 	}
-	server.cacheMisses, err = global.Meter(OpenTelemetryPackageIdentifier).SyncInt64().Counter(
+	server.cacheMisses, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_misses",
 		instrument.WithDescription("The count of cache misses"),
 	)
