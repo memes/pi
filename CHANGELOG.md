@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2](https://github.com/memes/pi/compare/v2.0.1...v2.0.2) (2023-03-25)
+
+
+### Bug Fixes
+
+* Execute goreleaser action in v2 folder ([e65fe4c](https://github.com/memes/pi/commit/e65fe4cc2c9639f66d96257c817ec9b3a51e6e13))
+
 ## [2.0.1](https://github.com/memes/pi/compare/v2.0.0...v2.0.1) (2023-03-25)
 
 
