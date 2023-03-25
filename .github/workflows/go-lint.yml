@@ -40,7 +40,7 @@ jobs:
         uses: golangci/golangci-lint-action@v3.4.0
         with:
           version: latest
-          working_directory: v2
+          working-directory: v2
   go-test:
     runs-on: ubuntu-latest
     steps:
