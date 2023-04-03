@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/alicebob/miniredis v2.5.0+incompatible
-	github.com/go-logr/logr v1.2.3
+	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/stdr v1.2.2
 	github.com/go-logr/zerologr v1.2.3
 	github.com/gomodule/redigo v1.8.9
