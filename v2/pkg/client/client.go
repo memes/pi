@@ -15,8 +15,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -41,11 +41,11 @@ type PiClient struct {
 	// The client maximum timeout/deadline to use when making requests to a PiService.
 	maxTimeout time.Duration
 	// A counter for the number of connection errors.
-	connectionErrors instrument.Int64Counter
+	connectionErrors metric.Int64Counter
 	// A counter for the number of errors returned by the service.
-	serviceErrors instrument.Int64Counter
+	serviceErrors metric.Int64Counter
 	// A gauge for request durations.
-	durationMs instrument.Int64Histogram
+	durationMs metric.Int64Histogram
 	// gRPC metadata to add to service requests.
 	metadata metadata.MD
 	// gRPC endpoint; see https://github.com/grpc/grpc/blob/master/doc/naming.md
@@ -78,22 +78,22 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 	var err error
 	client.connectionErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".connection_errors",
-		instrument.WithDescription("The count of connection errors seen by client"),
+		metric.WithDescription("The count of connection errors seen by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating connectionErrors Counter: %w", err)
 	}
 	client.serviceErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".service_errors",
-		instrument.WithDescription("The count of service errors received by client"),
+		metric.WithDescription("The count of service errors received by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating serviceErrors Counter: %w", err)
 	}
 	client.durationMs, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
 		OpenTelemetryPackageIdentifier+".request_duration_ms",
-		instrument.WithUnit("ms"),
-		instrument.WithDescription("The duration (ms) of requests"),
+		metric.WithUnit("ms"),
+		metric.WithDescription("The duration (ms) of requests"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating durationMs Histogram: %w", err)
@@ -184,22 +184,22 @@ func (c *PiClient) FetchDigit(ctx context.Context, index uint64) (uint32, error)
 	durationMs := time.Since(startTimestamp).Milliseconds()
 	if err == nil {
 		attributes = append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".success", true))
-		c.durationMs.Record(ctx, durationMs, attributes...)
+		c.durationMs.Record(ctx, durationMs, metric.WithAttributes(attributes...))
 		logger.Info("Response from remote", "result", response.Digit, "metadata", response.Metadata)
 		return response.Digit, nil
 	}
 	span.RecordError(err)
 	span.SetStatus(otelcodes.Error, err.Error())
 	attributes = append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".success", false))
-	c.durationMs.Record(ctx, durationMs, attributes...)
+	c.durationMs.Record(ctx, durationMs, metric.WithAttributes(attributes...))
 	// Simple but dumb way to determine if the error is a connection error or
 	// service error; if the error can be marshaled to a gRPC status, then it
 	// is an error raised by the service implementation, not related to
 	// connectivity.
 	if _, ok := status.FromError(err); ok {
-		c.serviceErrors.Add(ctx, 1, attributes...)
+		c.serviceErrors.Add(ctx, 1, metric.WithAttributes(attributes...))
 	} else {
-		c.connectionErrors.Add(ctx, 1, attributes...)
+		c.connectionErrors.Add(ctx, 1, metric.WithAttributes(attributes...))
 	}
 	return 0, fmt.Errorf("failure calling GetDigit: %w", err)
 }

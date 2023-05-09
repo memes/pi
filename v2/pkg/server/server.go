@@ -20,8 +20,8 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -49,13 +49,13 @@ type PiServer struct {
 	// Holds the instance specific metadata that will be returned in PiService responses
 	metadata *generated.GetDigitMetadata
 	// A gauge for calculation durations
-	calculationMs instrument.Int64Histogram
+	calculationMs metric.Int64Histogram
 	// A counter for the number of errors returned by cache
-	cacheErrors instrument.Int64Counter
+	cacheErrors metric.Int64Counter
 	// A counter for cache hits
-	cacheHits instrument.Int64Counter
+	cacheHits metric.Int64Counter
 	// A counter for cache misses
-	cacheMisses instrument.Int64Counter
+	cacheMisses metric.Int64Counter
 	// A set of gRPC ServerOptions to use
 	serverOptions []grpc.ServerOption
 	// A set of gRPC DialOptions to use with REST gateway gRPC client
@@ -95,29 +95,29 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 	var err error
 	server.calculationMs, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
 		OpenTelemetryPackageIdentifier+".calc_duration_ms",
-		instrument.WithUnit("ms"),
-		instrument.WithDescription("The duration (ms) of calculations"),
+		metric.WithUnit("ms"),
+		metric.WithDescription("The duration (ms) of calculations"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating calculationMs Histogram: %w", err)
 	}
 	server.cacheErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_errors",
-		instrument.WithDescription("The count of error responses from digit cache"),
+		metric.WithDescription("The count of error responses from digit cache"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheErrors Counter: %w", err)
 	}
 	server.cacheHits, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_hits",
-		instrument.WithDescription("The count of cache hits"),
+		metric.WithDescription("The count of cache hits"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheHits Counter: %w", err)
 	}
 	server.cacheMisses, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_misses",
-		instrument.WithDescription("The count of cache misses"),
+		metric.WithDescription("The count of cache misses"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheMisses Counter: %w", err)
@@ -204,28 +204,28 @@ func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) 
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(otelcodes.Error, err.Error())
-		s.cacheErrors.Add(ctx, 1, attributes...)
+		s.cacheErrors.Add(ctx, 1, metric.WithAttributes(attributes...))
 		return nil, status.Error(codes.Internal, fmt.Sprintf("cache %T GetValue method returned an error: %v", s.cache, err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 	}
 	if digits == "" {
 		attributes := append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".cache_hit", false))
 		span.SetAttributes(attributes...)
 		span.AddEvent("Calculating fractional digits")
-		s.cacheMisses.Add(ctx, 1, attributes...)
+		s.cacheMisses.Add(ctx, 1, metric.WithAttributes(attributes...))
 		ts := time.Now()
 		digits = pi.BBPDigits(cacheIndex)
-		s.calculationMs.Record(ctx, time.Since(ts).Milliseconds(), attributes...)
+		s.calculationMs.Record(ctx, time.Since(ts).Milliseconds(), metric.WithAttributes(attributes...))
 		err = s.cache.SetValue(ctx, key, digits)
 		if err != nil {
 			span.RecordError(err)
 			span.SetStatus(otelcodes.Error, err.Error())
-			s.cacheErrors.Add(ctx, 1, attributes...)
+			s.cacheErrors.Add(ctx, 1, metric.WithAttributes(attributes...))
 			return nil, status.Error(codes.Internal, fmt.Sprintf("cache %T SetValue method returned an error: %v", s.cache, err)) //nolint:wrapcheck // Errors returned should be gRPC statuses
 		}
 	} else {
 		attributes := append(attributes, attribute.Bool(OpenTelemetryPackageIdentifier+".cache_hit", true))
 		span.SetAttributes(attributes...)
-		s.cacheHits.Add(ctx, 1, attributes...)
+		s.cacheHits.Add(ctx, 1, metric.WithAttributes(attributes...))
 	}
 	offset := in.Index % 9
 	digit, err := strconv.ParseUint(digits[offset:offset+1], 10, 32)
