@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Release Please
-        uses: GoogleCloudPlatform/release-please-action@v3.7.8
+        uses: GoogleCloudPlatform/release-please-action@v3.7.9
         with:
           release-type: go
           package-name: pi
