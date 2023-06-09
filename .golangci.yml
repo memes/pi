@@ -63,6 +63,32 @@ linters:
     - whitespace
     - wrapcheck
 linters-settings:
+  depguard:
+    rules:
+      main:
+        files:
+          - $all
+          - "!$test"
+        allow:
+          - $gostd
+          - github.com/memes
+          - github.com/go-logr
+          - github.com/gomodule/redigo/redis
+          - github.com/google/uuid
+          - github.com/grpc-ecosystem/grpc-gateway/v2/runtime
+          - github.com/mitchellh/go-homedir
+          - github.com/spf13/cobra
+          - github.com/spf13/viper
+          - github.com/rs/zerolog
+      test:
+        files:
+          - $test
+        allow:
+          - $gostd
+          - github.com/memes
+          - github.com/alicebob/miniredis
+          - github.com/go-logr
+          - github.com/google/uuid
   errcheck:
     check-type-assertions: true
     check-blank: true
