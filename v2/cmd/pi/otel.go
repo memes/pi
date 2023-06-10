@@ -14,12 +14,11 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.17.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.20.0"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
@@ -75,7 +74,6 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 	}
 	res, err := resource.New(ctx,
 		resource.WithDetectors(gcp.NewDetector()),
-		resource.WithSchemaURL(semconv.SchemaURL),
 		resource.WithTelemetrySDK(),
 		resource.WithHost(),
 		resource.WithOS(),
@@ -89,10 +87,10 @@ func newTelemetryResource(ctx context.Context, name string) (*resource.Resource,
 		resource.WithProcessRuntimeVersion(),
 		resource.WithProcessRuntimeDescription(),
 		resource.WithAttributes(
-			semconv.ServiceNamespaceKey.String(OTELNamespace),
-			semconv.ServiceNameKey.String(name),
-			semconv.ServiceVersionKey.String(version),
-			semconv.ServiceInstanceIDKey.String(id.String()),
+			semconv.ServiceNamespace(OTELNamespace),
+			semconv.ServiceName(name),
+			semconv.ServiceVersion(version),
+			semconv.ServiceInstanceID(id.String()),
 		),
 	)
 	if err != nil {
@@ -141,7 +139,7 @@ func initMetrics(ctx context.Context, target string, creds credentials.Transport
 		return shutdownFunctions, fmt.Errorf("failed to start runtime metrics: %w", err)
 	}
 
-	global.SetMeterProvider(provider)
+	otel.SetMeterProvider(provider)
 	logger.V(1).Info("OpenTelemetry metric handlers created and started")
 	return shutdownFunctions, nil
 }

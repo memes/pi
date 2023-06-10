@@ -16,7 +16,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
@@ -76,21 +75,21 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 		option(client)
 	}
 	var err error
-	client.connectionErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
+	client.connectionErrors, err = otel.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".connection_errors",
 		metric.WithDescription("The count of connection errors seen by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating connectionErrors Counter: %w", err)
 	}
-	client.serviceErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
+	client.serviceErrors, err = otel.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".service_errors",
 		metric.WithDescription("The count of service errors received by client"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating serviceErrors Counter: %w", err)
 	}
-	client.durationMs, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
+	client.durationMs, err = otel.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
 		OpenTelemetryPackageIdentifier+".request_duration_ms",
 		metric.WithUnit("ms"),
 		metric.WithDescription("The duration (ms) of requests"),

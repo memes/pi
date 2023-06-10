@@ -21,7 +21,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -93,7 +92,7 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 		option(server)
 	}
 	var err error
-	server.calculationMs, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
+	server.calculationMs, err = otel.Meter(OpenTelemetryPackageIdentifier).Int64Histogram(
 		OpenTelemetryPackageIdentifier+".calc_duration_ms",
 		metric.WithUnit("ms"),
 		metric.WithDescription("The duration (ms) of calculations"),
@@ -101,21 +100,21 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating calculationMs Histogram: %w", err)
 	}
-	server.cacheErrors, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
+	server.cacheErrors, err = otel.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_errors",
 		metric.WithDescription("The count of error responses from digit cache"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheErrors Counter: %w", err)
 	}
-	server.cacheHits, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
+	server.cacheHits, err = otel.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_hits",
 		metric.WithDescription("The count of cache hits"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error returned while creating cacheHits Counter: %w", err)
 	}
-	server.cacheMisses, err = global.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
+	server.cacheMisses, err = otel.Meter(OpenTelemetryPackageIdentifier).Int64Counter(
 		OpenTelemetryPackageIdentifier+".cache_misses",
 		metric.WithDescription("The count of cache misses"),
 	)
