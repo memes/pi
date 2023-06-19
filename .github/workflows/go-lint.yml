@@ -39,7 +39,7 @@ jobs:
           cache: true
           cache-dependency-path: v2/go.sum
       - name: Execute linter
-        uses: golangci/golangci-lint-action@v3.5.0
+        uses: golangci/golangci-lint-action@v3.6.0
         with:
           version: latest
           working-directory: v2
