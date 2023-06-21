@@ -1,25 +1,41 @@
 # spell-checker: disable
 ---
 run:
+  allow-parallel-runners: false
   concurrency: 6
   deadline: 5m
+  issue-exit-code: 1
   max-issues-per-linter: 0
   max-same-issues: 0
+  modules-download-mode: readonly
   skip-dirs:
     - pkg/generated
+  tests: true
 linters:
   disable-all: true
   enable:
+    - asasalint
     - asciicheck
+    - bidichk
     - bodyclose
-    - deadcode
+    - contextcheck
+    - decorder
     - depguard
     - dogsled
     - dupl
     - durationcheck
     - errcheck
+    - errchkjson
     - errorlint
+    - errname
+    - exhaustive
+    # NOTE: Too noisy in this repo
+    # - exhaustruct
     - exportloopref
+    - forbidigo
+    - forcetypeassert
+    - funlen
+    - gocheckcompilerdirectives
     - gochecknoglobals
     - gochecknoinits
     - goconst
@@ -38,28 +54,46 @@ linters:
     - gosec
     - gosimple
     - govet
+    - grouper
     - importas
     - ineffassign
+    - interfacebloat
+    - interfacer
+    - ireturn
+    - loggercheck
+    - maintidx
     - makezero
     - misspell
+    - musttag
     - nakedret
+    - nestif
+    - nilerr
+    - nilnil
+    - noctx
     - nolintlint
+    - nonamedreturns
     - paralleltest
     - prealloc
     - predeclared
     - promlinter
+    - reassign
     - revive
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - structcheck
     - stylecheck
+    - tagliatelle
+    - tenv
+    - testableexamples
+    - testpackage
     - thelper
+    - tparallel
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
+    - usestdlibvars
+    - wastedassign
     - whitespace
     - wrapcheck
 linters-settings:
@@ -93,78 +127,46 @@ linters-settings:
     check-type-assertions: true
     check-blank: true
   gocritic:
-    enabled-checks:
-      # Diagnostic
-      - appendAssign
-      - argOrder
-      - badCond
-      - caseOrder
-      - codegenComment
-      - commentedOutCode
-      - deprecatedComment
-      - dupArg
-      - dupBranchBody
-      - dupCase
-      - dupSubExpr
-      - exitAfterDefer
-      - flagDeref
-      - flagName
-      - nilValReturn
-      - offBy1
-      - sloppyReassign
-      - weakCond
-      - octalLiteral
-
-      # Performance
-      - appendCombine
-      - equalFold
-      - hugeParam
-      - indexAlloc
-      - rangeExprCopy
-      - rangeValCopy
-
-      # Style
-      - assignOp
-      - boolExprSimplify
-      - captLocal
-      - commentFormatting
-      - commentedOutImport
-      - defaultCaseOrder
-      - docStub
-      - elseif
-      - emptyFallthrough
-      - emptyStringTest
-      - hexLiteral
-      - methodExprCall
-      - regexpMust
-      - singleCaseSwitch
-      - sloppyLen
-      - stringXbytes
-      - switchTrue
-      - typeAssertChain
-      - typeSwitchVar
-      - underef
-      - unlabelStmt
-      - unlambda
-      - unslice
-      - valSwap
-      - wrapperFunc
-      - yodaStyleExpr
-      - ifElseChain
-
-      # Opinionated
-      - builtinShadow
-      - importShadow
-      - initClause
-      - nestingReduce
-      - paramTypeCombine
-      - ptrToRefParam
-      - typeUnparen
-      - unnamedResult
-      - unnecessaryBlock
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+  ireturn:
+    allow:
+      - anon
+      - error
+      - empty
+      - stdlib
+      # gRPC/XDS credentials are returned as interfaces by those libraries
+      - google.golang.org\/grpc\/credentials.TransportCredentials
+  nakedret:
+    max-func-lines: 1
   nolintlint:
     allow-unused: false
     allow-leading-space: false
     allow-no-explanation: []
     require-explanation: true
     require-specific: true
+  tagliatelle:
+    case:
+      rules:
+        json: snake
+        yaml: snake
+        xml: camel
+        bson: camel
+        avro: camel
+        mapstructure: kebab
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+  fix: false
+output:
+  format: tab
+  print-issued-lines: false
+  print-linter-name: true
+  uniq-by-line: false
+  path-prefix: "v2"
+  sort-results: true
