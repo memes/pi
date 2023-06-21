@@ -17,7 +17,7 @@ func newCACertPool(cacerts []string) (*x509.CertPool, error) {
 	logger := logger.V(1).WithValues("cacerts", cacerts)
 	if len(cacerts) == 0 {
 		logger.V(0).Info("No CA certificate paths provided; returning nil for CA cert pool")
-		return nil, nil
+		return nil, nil //nolint:nilnil // Returning nil is the correct choice here as it will trigger use of system CA pool
 	}
 	logger.V(0).Info("Building certificate pool from file(s)")
 	pool, err := x509.SystemCertPool()

@@ -39,10 +39,10 @@ func collateMain(cmd *cobra.Command, endpoints []string) error {
 	if err := clientMain(cmd, endpoints); err != nil {
 		return err
 	}
-	fmt.Print("Result is: 3.")
+	fmt.Print("Result is: 3.") //nolint:forbidigo // This is a deliberate choice
 	if _, err := os.Stdout.Write(digits); err != nil {
 		return fmt.Errorf("failure writing result: %w", err)
 	}
-	fmt.Println()
+	fmt.Println() //nolint:forbidigo // This is a deliberate choice
 	return nil
 }

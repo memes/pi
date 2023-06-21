@@ -71,6 +71,8 @@ func NewServerCmd() (*cobra.Command, error) {
 
 // Server sub-command entrypoint. This function will launch the gRPC PiService
 // and an optional REST gateway.
+//
+//nolint:funlen // Setting up the server depends on command options and so is long
 func serverMain(_ *cobra.Command, args []string) error {
 	address := DefaultGRPCListenAddress
 	if len(args) > 0 {
@@ -119,6 +121,7 @@ func serverMain(_ *cobra.Command, args []string) error {
 		return err
 	}
 	var serverTLSConfig *tls.Config
+	//nolint:nestif // Setup of TLS is dependent on many command options
 	if cert != "" && key != "" {
 		serverTLSConfig, err = newTLSConfig(cert, key, certPool, nil)
 		if err != nil {
@@ -198,6 +201,7 @@ func serverMain(_ *cobra.Command, args []string) error {
 			return nil
 		})
 	}
+	//nolint:nestif // Launching REST gateway with or without TLS enabled
 	if restAddress != "" {
 		logger.V(0).Info("Preparing REST/gRPC gateway")
 		restHandler, err := piServer.NewRestGatewayHandler(ctx, address)

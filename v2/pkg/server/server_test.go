@@ -27,7 +27,7 @@ func testGetDigit(ctx context.Context, t *testing.T, request *generated.GetDigit
 	if err != nil {
 		t.Errorf("Error calling FractionalDigit: %v", err)
 	}
-	if actual.Digit != uint32(expected) {
+	if uint64(actual.Digit) != expected {
 		t.Errorf("Checking index: %d: expected %d got %d", request.Index, expected, actual.Digit)
 	}
 }

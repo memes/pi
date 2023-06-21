@@ -24,15 +24,15 @@ import (
 
 var (
 	// The package logr.Logger instance to use.
-	//nolint: gochecknoglobals // Allow package consumers to set the logger
+	//nolint:gochecknoglobals // Allow package consumers to set the logger
 	Logger = logr.Discard()
 	// The number of Miller-Rabin rounds to use in FindNextPrime when
 	// determining if an integer is probabilistically a prime. A value of
 	// zero will apply a Baillie-PSW only test and requires Go 1.8+.
-	//nolint: gochecknoglobals // Allow package consumers to override
+	//nolint:gochecknoglobals // Allow package consumers to override
 	MillerRabinRounds = 0
 	// The constant 2; declared to avoid repeated allocation in FindNextPrime.
-	//nolint: gochecknoglobals // Avoid repeated allocation
+	//nolint:gochecknoglobals // Avoid repeated allocation
 	two = big.NewInt(2)
 )
 
@@ -94,7 +94,7 @@ func FindNextPrime(n int64) int64 {
 		} else {
 			next = big.NewInt(n + 2)
 		}
-		//nolint: revive // In lieu of a while loop
+		//nolint:revive // In lieu of a while loop
 		for ; !next.ProbablyPrime(MillerRabinRounds); next = next.Add(next, two) {
 		}
 		result = next.Int64()
@@ -105,6 +105,8 @@ func FindNextPrime(n int64) int64 {
 
 // Implements a BBP spigot algorithm to determine the nth and 8 following
 // fractional decimal digits of pi at the specified zero-based offset.
+//
+//nolint:funlen // The algorithm is what it is
 func BBPDigits(n uint64) string {
 	logger := Logger.V(1).WithValues("n", n)
 	logger.Info("BBPDigits: enter")
