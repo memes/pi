@@ -254,14 +254,17 @@ func (s *PiServer) NewGrpcServer() *grpc.Server {
 }
 
 // Create a new xds.GRPCServer that is ready to be attached to a net.Listener.
-func (s *PiServer) NewXDSServer() *xds.GRPCServer {
+func (s *PiServer) NewXDSServer() (*xds.GRPCServer, error) {
 	s.logger.V(1).Info("xDS is enabled; building an xDS aware gRPC server")
-	xdsServer := xds.NewGRPCServer(s.serverOptions...)
+	xdsServer, err := xds.NewGRPCServer(s.serverOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create new xDS gRPC server: %w", err)
+	}
 	healthServer := health.NewServer()
 	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
 	grpc_health_v1.RegisterHealthServer(xdsServer, healthServer)
 	reflection.Register(xdsServer)
-	return xdsServer
+	return xdsServer, nil
 }
 
 // Create a new REST gateway handler that translates and forwards incoming REST
