@@ -175,7 +175,10 @@ func serverMain(_ *cobra.Command, args []string) error {
 	}
 	g, ctx := errgroup.WithContext(ctx)
 	if xds {
-		xdsServer := piServer.NewXDSServer()
+		xdsServer, err := piServer.NewXDSServer()
+		if err != nil {
+			return fmt.Errorf("failed to create new xDS gRPC server: %w", err)
+		}
 		shutdownFunctions.AppendFunction(func(_ context.Context) error {
 			xdsServer.GracefulStop()
 			return nil
