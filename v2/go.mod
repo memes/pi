@@ -14,18 +14,18 @@ require (
 	github.com/rs/zerolog v1.30.0
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.16.0
-	go.opentelemetry.io/contrib/detectors/gcp v1.18.0
+	go.opentelemetry.io/contrib/detectors/gcp v1.19.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.43.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.43.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.43.0
-	go.opentelemetry.io/otel v1.17.0
+	go.opentelemetry.io/otel v1.18.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.17.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.17.0
-	go.opentelemetry.io/otel/metric v1.17.0
-	go.opentelemetry.io/otel/sdk v1.17.0
+	go.opentelemetry.io/otel/metric v1.18.0
+	go.opentelemetry.io/otel/sdk v1.18.0
 	go.opentelemetry.io/otel/sdk/metric v0.40.0
-	go.opentelemetry.io/otel/trace v1.17.0
+	go.opentelemetry.io/otel/trace v1.18.0
 	golang.org/x/net v0.15.0
 	golang.org/x/sync v0.3.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d
@@ -36,7 +36,7 @@ require (
 require (
 	cloud.google.com/go/compute v1.23.0 // indirect
 	cloud.google.com/go/compute/metadata v0.2.3 // indirect
-	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.18.0 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/detectors/gcp v1.19.1 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20230218143504-906a9b012302 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/census-instrumentation/opencensus-proto v0.4.1 // indirect
