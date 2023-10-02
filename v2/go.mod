@@ -16,16 +16,16 @@ require (
 	github.com/spf13/viper v1.16.0
 	go.opentelemetry.io/contrib/detectors/gcp v1.19.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.44.0
-	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.43.0
+	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.43.0
-	go.opentelemetry.io/otel v1.18.0
+	go.opentelemetry.io/otel v1.19.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.40.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.18.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.17.0
-	go.opentelemetry.io/otel/metric v1.18.0
+	go.opentelemetry.io/otel/metric v1.19.0
 	go.opentelemetry.io/otel/sdk v1.18.0
 	go.opentelemetry.io/otel/sdk/metric v0.41.0
-	go.opentelemetry.io/otel/trace v1.18.0
+	go.opentelemetry.io/otel/trace v1.19.0
 	golang.org/x/net v0.15.0
 	golang.org/x/sync v0.3.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d
