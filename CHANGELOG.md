@@ -7,6 +7,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3](https://github.com/memes/pi/compare/v2.0.2...v2.0.3) (2023-11-13)
+
+
+### Bug Fixes
+
+* gRPC 1.58.0 adds error to xds.NewGRPCServer ([541d07a](https://github.com/memes/pi/commit/541d07a3e9e8e9bb9a32f1c0d9200fcc4103203e))
+* Make Go 1.21 the base version ([8445a7b](https://github.com/memes/pi/commit/8445a7b0a2c2a62606d0b51ef6a5327d01ecb239))
+* Update OTEL dependencies to 0.16 ([799dd30](https://github.com/memes/pi/commit/799dd303f23f0bcc5a6c8d9e951cf969fad417c8))
+* Update OTEL libraries ([d8960b9](https://github.com/memes/pi/commit/d8960b95eee29d6ec89578e4b9a30a4eb98c3fff))
+* Update OTEL packages to 1.15.1/0.38.1 ([cc8b4d5](https://github.com/memes/pi/commit/cc8b4d55154887bf32ef3e2d448e23681b51b58b))
+
 ## [2.0.2](https://github.com/memes/pi/compare/v2.0.1...v2.0.2) (2023-03-25)
 
 
