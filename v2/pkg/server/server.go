@@ -81,11 +81,11 @@ func NewPiServer(options ...PiServerOption) (*PiServer, error) {
 			Annotations: map[string]string{},
 		},
 		serverOptions: []grpc.ServerOption{
-			grpc.UnaryInterceptor(otelgrpc.UnaryServerInterceptor()),
+			grpc.StatsHandler(otelgrpc.NewServerHandler()),
 		},
 		dialOptions: []grpc.DialOption{
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
-			grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		},
 	}
 	for _, option := range options {

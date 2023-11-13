@@ -68,7 +68,7 @@ func NewPiClient(options ...PiClientOption) (*PiClient, error) {
 		maxTimeout: DefaultMaxTimeout,
 		dialOptions: []grpc.DialOption{
 			grpc.WithDefaultServiceConfig(DefaultRoundRobinConfig),
-			grpc.WithUnaryInterceptor(otelgrpc.UnaryClientInterceptor()),
+			grpc.WithStatsHandler(otelgrpc.NewClientHandler()),
 		},
 	}
 	for _, option := range options {
