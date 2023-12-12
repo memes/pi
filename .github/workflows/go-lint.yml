@@ -20,7 +20,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
       - name: Setup go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: v2/go.mod
           cache: true
@@ -33,7 +33,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
       - name: Setup go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: v2/go.mod
           cache: true
@@ -49,7 +49,7 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
       - name: Setup go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version-file: v2/go.mod
           cache: true
