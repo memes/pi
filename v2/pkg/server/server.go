@@ -275,7 +275,7 @@ func (s *PiServer) NewRestGatewayHandler(ctx context.Context, grpcAddress string
 		return nil, fmt.Errorf("failed to register PiService handler for REST gateway: %w", err)
 	}
 	if err := mux.HandlePath("GET", "/api/v2/swagger.json",
-		func(w http.ResponseWriter, r *http.Request, _ map[string]string) {
+		func(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 			w.Header().Add("Content-Type", "application/json")
 			if _, err := w.Write(generated.SwaggerJSON); err != nil {
 				s.logger.Error(err, "Writing swagger JSON to response raised an error; continuing")
