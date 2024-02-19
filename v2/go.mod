@@ -17,7 +17,7 @@ require (
 	go.opentelemetry.io/contrib/detectors/gcp v1.22.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.47.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.48.0
 	go.opentelemetry.io/otel v1.23.1
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.45.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.23.1
