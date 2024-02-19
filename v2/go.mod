@@ -14,7 +14,7 @@ require (
 	github.com/rs/zerolog v1.32.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
-	go.opentelemetry.io/contrib/detectors/gcp v1.22.0
+	go.opentelemetry.io/contrib/detectors/gcp v1.23.0
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.48.0

@@ -129,8 +129,8 @@ github.com/subosito/gotenv v1.6.0/go.mod h1:Dk4QP5c2W3ibzajGcXpNraDfq2IrhjMIvMSW
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/yuin/gopher-lua v1.1.0 h1:BojcDhfyDWgU2f2TOzYK/g5p2gxMrku8oupLDqlnSqE=
 github.com/yuin/gopher-lua v1.1.0/go.mod h1:GBR0iDaNXjAgGg9zfCvksxSRnQx76gclCIb7kdAd1Pw=
-go.opentelemetry.io/contrib/detectors/gcp v1.22.0 h1:V/Wk7MofWKuX2zIA+xIx2M9/NDTDNCoIfPWZ0vm/pGQ=
-go.opentelemetry.io/contrib/detectors/gcp v1.22.0/go.mod h1:MiK4JblrPbDE6sDVZgP6WrcF+ARzSN1cIlvYCusAwyc=
+go.opentelemetry.io/contrib/detectors/gcp v1.23.0 h1:Hok18CXcaoO/eulR4QkPe5RSNakqQP1lxUkm8ZA0ECI=
+go.opentelemetry.io/contrib/detectors/gcp v1.23.0/go.mod h1:DGFXmptiNVEKe1yfyznSv0ytW9tJocvSUvxXQFULSNA=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0 h1:P+/g8GpuJGYbOp2tAdKrIPUX9JO02q8Q0YNlHolpibA=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.48.0/go.mod h1:tIKj3DbO8N9Y2xo52og3irLsPI4GW02DSMtrVgNMgxg=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.48.0 h1:doUP+ExOpH3spVTLS0FcWGLnQrPct/hD/bCPbDRUEAU=
