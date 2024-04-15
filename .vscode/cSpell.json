@@ -18,6 +18,7 @@
         "GOBIN",
         "gochecknoglobals",
         "Godocs",
+        "gomod",
         "gomodule",
         "goreleaser",
         "grpcinsecure",

@@ -57,7 +57,7 @@ fileignoreconfig:
 - filename: v2/supporting/otel-all-in-one.yaml
   checksum: 897e58b3dc0459284fab25c88eb458455f9cad54d571f7ffcc2ebd7851ac8e5a
 - filename: go.work.sum
-  checksum: 7943c903174ba0e00c87808c3459adbbbe5540c2dc3d7360151f2e893762f5fb
+  checksum: 37d47dba183d4a140a24b836c970dabde4521c85c3ee786fd127803ea9a25a50
 - filename: .github/workflows/pre-commit.yml
   checksum: fd775abf705cfa74ab16bb6807fe36cbaa9950758a79ce3017752eb708d46588
 - filename: README.md
