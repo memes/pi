@@ -1,16 +1,15 @@
 # spell-checker: disable
 ---
 run:
-  allow-parallel-runners: false
   concurrency: 6
-  deadline: 5m
-  issue-exit-code: 1
+  timeout: 5m
+issues:
   max-issues-per-linter: 0
   max-same-issues: 0
-  modules-download-mode: readonly
-  skip-dirs:
+  new: false
+  fix: false
+  exclude-dirs:
     - pkg/generated
-  tests: true
 linters:
   disable-all: true
   enable:
@@ -58,7 +57,6 @@ linters:
     - importas
     - ineffassign
     - interfacebloat
-    - interfacer
     - ireturn
     - loggercheck
     - maintidx
@@ -145,7 +143,6 @@ linters-settings:
     max-func-lines: 1
   nolintlint:
     allow-unused: false
-    allow-leading-space: false
     allow-no-explanation: []
     require-explanation: true
     require-specific: true
@@ -158,13 +155,7 @@ linters-settings:
         bson: camel
         avro: camel
         mapstructure: kebab
-issues:
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  new: false
-  fix: false
 output:
-  format: tab
   print-issued-lines: false
   print-linter-name: true
   uniq-by-line: false
