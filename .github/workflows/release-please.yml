@@ -20,5 +20,4 @@ jobs:
         uses: GoogleCloudPlatform/release-please-action@v4.1.0
         with:
           release-type: go
-          package-name: pi
           token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
