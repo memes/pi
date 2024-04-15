@@ -8,7 +8,8 @@ name: pre-commit
 on:
   pull_request:
   push:
-    branches: [main]
+    branches-ignore:
+      - main
 
 permissions:
   contents: read
