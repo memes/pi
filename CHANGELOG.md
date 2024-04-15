@@ -7,6 +7,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 2.0.3 (2024-04-15)
+
+
+### Features
+
+* **collate:** Add a client command to print pi ([f8b2888](https://github.com/memes/pi/commit/f8b288831ef348ad9e5f0440dabcd5abd591b0b8))
+
+
+### Bug Fixes
+
+* Bump to go 1.20 ([6d7dd73](https://github.com/memes/pi/commit/6d7dd73976d25d53156057385ab35770ce2f1c6c))
+* Execute goreleaser action in v2 folder ([e65fe4c](https://github.com/memes/pi/commit/e65fe4cc2c9639f66d96257c817ec9b3a51e6e13))
+* gRPC 1.58.0 adds error to xds.NewGRPCServer ([541d07a](https://github.com/memes/pi/commit/541d07a3e9e8e9bb9a32f1c0d9200fcc4103203e))
+* Lint fixes ([192a782](https://github.com/memes/pi/commit/192a782579b6617cab9e15023e6ab30766bfafe3))
+* Make Go 1.21 the base version ([8445a7b](https://github.com/memes/pi/commit/8445a7b0a2c2a62606d0b51ef6a5327d01ecb239))
+* Remove pi v1 code ([2b2d51c](https://github.com/memes/pi/commit/2b2d51c992d86b1761f71477657a9f036061689d))
+* Remove unused request variable ([4b3d650](https://github.com/memes/pi/commit/4b3d650ecbab8fbada1c41fca9f5e785d73426cc))
+* Resolve failing example ([fa007b7](https://github.com/memes/pi/commit/fa007b7c8451a64828db43ed39367264f5526b89))
+* Update go toolchain to 1.22 ([4d4e7f7](https://github.com/memes/pi/commit/4d4e7f7289064856d9f2dd108fdea3299475e960))
+* Update OTEL dependencies to 0.16 ([799dd30](https://github.com/memes/pi/commit/799dd303f23f0bcc5a6c8d9e951cf969fad417c8))
+* Update OTEL libraries ([d8960b9](https://github.com/memes/pi/commit/d8960b95eee29d6ec89578e4b9a30a4eb98c3fff))
+* Update OTEL packages to 1.15.1/0.38.1 ([cc8b4d5](https://github.com/memes/pi/commit/cc8b4d55154887bf32ef3e2d448e23681b51b58b))
+* Update pi v2 for otel v1.14.0/v0.37.0 ([5afba4a](https://github.com/memes/pi/commit/5afba4a58adeafdfd1edddc10c1f2f1af62c522c))
+
 ## [2.0.2](https://github.com/memes/pi/compare/v2.0.1...v2.0.2) (2023-03-25)
 
 
