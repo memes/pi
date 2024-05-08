@@ -1257,12 +1257,12 @@ func testBBPDigits(t *testing.T, index uint64) {
 // Verify that the calculated digits match expectation. If the -short flag is
 // provided, only verify the first 2000 digits.
 func TestBBPDigits(t *testing.T) {
-	max := VerifyPiDigitsLimit
+	maxDigits := VerifyPiDigitsLimit
 	if testing.Short() {
-		max = VerifyPiDigitsLimitShort
+		maxDigits = VerifyPiDigitsLimitShort
 	}
 	t.Parallel()
-	for i := 0; i < max; i += 9 {
+	for i := 0; i < maxDigits; i += 9 {
 		index := uint64(i)
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
 			testBBPDigits(t, index)
@@ -1299,12 +1299,12 @@ func testFindNextPrime(t *testing.T, start, expected int64) {
 // Verify that the calculator prime solver gives the correct next greater prime
 // number for the set of integers [0, largest prime in table).
 func TestFindNextPrime(t *testing.T) {
-	max := primeVerifyLimit
+	maxPrimeLimit := primeVerifyLimit
 	if testing.Short() {
-		max = VerifyPrimeLimitShort
+		maxPrimeLimit = VerifyPrimeLimitShort
 	}
 	t.Parallel()
-	for i := int64(0); i < max; i++ {
+	for i := int64(0); i < maxPrimeLimit; i++ {
 		start := i
 		expected := verificationPrimes[sort.Search(primeTableSize, func(idx int) bool { return verificationPrimes[idx] > start })]
 		t.Run(fmt.Sprintf("start=%d", start), func(t *testing.T) {
