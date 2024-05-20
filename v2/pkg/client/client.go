@@ -169,7 +169,7 @@ func (c *PiClient) FetchDigit(ctx context.Context, index uint64) (uint32, error)
 	var err error
 	c.initConn.Do(func() {
 		span.AddEvent("Building PiService client")
-		c.conn, err = grpc.DialContext(ctx, c.endpoint, c.dialOptions...)
+		c.conn, err = grpc.NewClient(c.endpoint, c.dialOptions...)
 	})
 	if err != nil {
 		return 0, fmt.Errorf("failure establishing client dial context: %w", err)
