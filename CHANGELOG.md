@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.4](https://github.com/memes/pi/compare/v2.0.3...v2.0.4) (2024-05-20)
+
+
+### Bug Fixes
+
+* Remove deprecated call to grpc.DialContext ([43432c7](https://github.com/memes/pi/commit/43432c7fd205900b5c7a47e515e41378c759eafe))
+
 ## 2.0.3 (2024-04-15)
 
 
