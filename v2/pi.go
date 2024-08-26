@@ -107,7 +107,7 @@ func FindNextPrime(n int64) int64 {
 // fractional decimal digits of pi at the specified zero-based offset.
 //
 //nolint:funlen // The algorithm is what it is
-func BBPDigits(n uint64) string {
+func BBPDigits(n int64) string {
 	logger := Logger.V(1).WithValues("n", n)
 	logger.Info("BBPDigits: enter")
 	N := int64(float64(n+21) * math.Log(10) / math.Log(2))
@@ -166,7 +166,7 @@ func BBPDigits(n uint64) string {
 			}
 		}
 
-		t = powMod(10, int64(n), av)
+		t = powMod(10, n, av)
 		s = (s * t) % av
 		sum = math.Mod(sum+float64(s)/float64(av), 1.0)
 	}

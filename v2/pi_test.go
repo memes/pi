@@ -1246,7 +1246,7 @@ var (
 )
 
 // Helper to verify that BBPDigits returns digits that meet the expected digits of pi.
-func testBBPDigits(t *testing.T, index uint64) {
+func testBBPDigits(t *testing.T, index int64) {
 	t.Helper()
 	expected := PiDigits[index : index+9]
 	if actual := pi.BBPDigits(index); actual != expected {
@@ -1263,7 +1263,7 @@ func TestBBPDigits(t *testing.T) {
 	}
 	t.Parallel()
 	for i := 0; i < maxDigits; i += 9 {
-		index := uint64(i)
+		index := int64(i)
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
 			testBBPDigits(t, index)
 		})
@@ -1271,7 +1271,7 @@ func TestBBPDigits(t *testing.T) {
 }
 
 // Helper to benchmark calculation of pi digits index through index+8, inclusive.
-func benchmarkBBPDigits(b *testing.B, index uint64) {
+func benchmarkBBPDigits(b *testing.B, index int64) {
 	b.Helper()
 	for i := 0; i < b.N; i++ {
 		_ = pi.BBPDigits(index)
@@ -1281,7 +1281,7 @@ func benchmarkBBPDigits(b *testing.B, index uint64) {
 // Benchmark calculating pi digits.
 func BenchmarkBBPDigits(b *testing.B) {
 	for exp := 0; exp <= BenchmarkPiDigitExponentLimit; exp++ {
-		index := uint64(math.Pow10(exp))
+		index := int64(math.Pow10(exp))
 		b.Run(fmt.Sprintf("index=%d", index), func(b *testing.B) {
 			benchmarkBBPDigits(b, index)
 		})
@@ -1346,7 +1346,7 @@ func Example() {
 func ExampleBBPDigits() {
 	// Print the first 100 digits of pi using a default calculator
 	fmt.Printf("The first 100 digits of pi are: 3.")
-	for n := uint64(0); n < 99; n += 9 {
+	for n := int64(0); n < 99; n += 9 {
 		fmt.Print(pi.BBPDigits(n))
 	}
 	fmt.Println()

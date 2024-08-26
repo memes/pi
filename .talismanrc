@@ -49,7 +49,7 @@ fileignoreconfig:
 - filename: v2/supporting/otel-collector-config.yaml
   checksum: 9afb13648fe8cfa21e60bfba80cb4ca1afb2b9350eac74009e4770adf9a55ae9
 - filename: v2/pkg/server/server.go
-  checksum: 5d6a44561c37ff9bd4b5263f5550b49082b12a7d9dda53bb0b9d9329ede0faf7
+  checksum: 2559611e457e20b52ab944d93fc61f263aada7db860e05831c43c3e866afe19c
 - filename: v2/cmd/pi/otel.go
   checksum: d1f8dca16ab3a8e6c0c328a20665be5cea8ba81bc627ad648f59e287264d29f9
 - filename: v2/supporting/kustomization.yaml

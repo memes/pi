@@ -161,7 +161,7 @@ func (c *PiClient) FetchDigit(ctx context.Context, index uint64) (uint32, error)
 	logger := c.logger.V(1).WithValues("index", index)
 	logger.Info("Starting connection to service")
 	attributes := []attribute.KeyValue{
-		attribute.Int(OpenTelemetryPackageIdentifier+".index", int(index)),
+		attribute.Int64(OpenTelemetryPackageIdentifier+".index", int64(index)), //nolint:gosec // Don't care if there is an overflow here
 	}
 	ctx, span := otel.Tracer(OpenTelemetryPackageIdentifier).Start(ctx, OpenTelemetryPackageIdentifier+"/FetchDigit")
 	defer span.End()

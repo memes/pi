@@ -5,6 +5,7 @@ package server
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
@@ -38,6 +39,8 @@ const (
 	// The default name to use when using OpenTelemetry components.
 	OpenTelemetryPackageIdentifier = "pkg.server"
 )
+
+var ErrIndexTooLarge = fmt.Errorf("index is too large, must be <= %d", math.MaxInt64)
 
 type PiServer struct {
 	generated.UnimplementedPiServiceServer
@@ -186,18 +189,26 @@ func WithRestClientAuthority(restClientAuthority string) PiServerOption {
 }
 
 // Implement the PiService GetDigit RPC method.
+//
+//nolint:funlen // OTEL options make this function appear longer than expected.
 func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) (*generated.GetDigitResponse, error) {
 	logger := s.logger.WithValues("index", in.Index)
 	logger.Info("GetDigit: enter")
-	cacheIndex := (in.Index / 9) * 9
-	key := strconv.FormatUint(cacheIndex, 16)
+	index := int64(in.Index) //nolint:gosec // Check for potential overflow happens later in function
+	cacheIndex := (index / 9) * 9
+	key := strconv.FormatInt(cacheIndex, 16)
 	attributes := []attribute.KeyValue{
-		attribute.Int(OpenTelemetryPackageIdentifier+".index", int(in.Index)),
+		attribute.Int64(OpenTelemetryPackageIdentifier+".index", index),
 		attribute.String(OpenTelemetryPackageIdentifier+".cacheKey", key),
 	}
 	ctx, span := otel.Tracer(OpenTelemetryPackageIdentifier).Start(ctx, OpenTelemetryPackageIdentifier+"/GetDigit")
 	defer span.End()
 	span.SetAttributes(attributes...)
+	if in.Index > math.MaxInt64 {
+		span.RecordError(ErrIndexTooLarge)
+		span.SetStatus(otelcodes.Error, ErrIndexTooLarge.Error())
+		return nil, status.Error(codes.Internal, fmt.Sprintf("Index is too large: %v", ErrIndexTooLarge)) //nolint:wrapcheck // Errors returned should be gRPC statuses
+	}
 	span.AddEvent("Checking cache")
 	digits, err := s.cache.GetValue(ctx, key)
 	if err != nil {
@@ -226,7 +237,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) 
 		span.SetAttributes(attributes...)
 		s.cacheHits.Add(ctx, 1, metric.WithAttributes(attributes...))
 	}
-	offset := in.Index % 9
+	offset := index % 9
 	digit, err := strconv.ParseUint(digits[offset:offset+1], 10, 32)
 	if err != nil {
 		span.RecordError(err)
@@ -236,7 +247,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) 
 	logger.Info("GetDigit: exit", "digit", digit)
 	return &generated.GetDigitResponse{
 		Index:    in.Index,
-		Digit:    uint32(digit),
+		Digit:    uint32(digit), //nolint:gosec // digit will always be between 0 and 9 inclusive, no risk of overflow
 		Metadata: s.metadata,
 	}, nil
 }
