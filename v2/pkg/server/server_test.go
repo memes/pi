@@ -3,6 +3,7 @@ package server_test
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"testing"
 
@@ -52,7 +53,7 @@ func TestGetDigit_WithNoopCache(t *testing.T) {
 	}
 }
 
-func TestFractionalDigit_WithRedisCache(t *testing.T) {
+func TestGetDigit_WithRedisCache(t *testing.T) {
 	ctx := context.Background()
 	mock, err := miniredis.Run()
 	if err != nil {
@@ -73,5 +74,21 @@ func TestFractionalDigit_WithRedisCache(t *testing.T) {
 				Index: uint64(index),
 			}, piServer)
 		})
+	}
+}
+
+// Verify that setting uint index to a number larger than supported by int64 will return an error.
+func TestGetDigit_Overflow(t *testing.T) {
+	ctx := context.Background()
+	t.Parallel()
+	piServer, err := server.NewPiServer()
+	if err != nil {
+		t.Errorf("Error calling NewPiServer: %v", err)
+	}
+	_, err = piServer.GetDigit(ctx, &generated.GetDigitRequest{
+		Index: uint64(math.MaxInt64) + 1,
+	})
+	if err == nil {
+		t.Error("expected GetDigit to return an error, but didn't")
 	}
 }
