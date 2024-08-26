@@ -18,6 +18,7 @@ linters:
     - bidichk
     - bodyclose
     - contextcheck
+    - copyloopvar
     - decorder
     - depguard
     - dogsled
@@ -31,7 +32,6 @@ linters:
     - exhaustive
     # NOTE: Too noisy in this repo
     # - exhaustruct
-    - exportloopref
     - forbidigo
     - forcetypeassert
     - funlen
