@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5](https://github.com/memes/pi/compare/v2.0.4...v2.0.5) (2024-08-26)
+
+
+### Bug Fixes
+
+* Prefer int64 over uint64 to reduce casting ([7533613](https://github.com/memes/pi/commit/75336134ba82ff812d1fb2d848539596e8a3c838))
+
 ## [2.0.4](https://github.com/memes/pi/compare/v2.0.3...v2.0.4) (2024-05-20)
 
 
