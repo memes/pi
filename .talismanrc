@@ -72,3 +72,6 @@ fileignoreconfig:
   checksum: bea9d0b1a6cee51ac3f7b0409f4ddeb633dda48c8f14d15c69c9ac26716c0086
 - filename: v2/pkg/cache/cache.go
   checksum: 434d09cbb2b44f0b1c708c7d01c8e2c20b3cf39f5985d3c2b08b5e65f55bad81
+- filename: buf.lock
+  checksum: 7434d9b63952d36b39b9cc63010b24ca1be9925c8948fbebeb6ec9197a550dc7
+  ignore_detectors: []
