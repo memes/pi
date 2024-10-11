@@ -39,9 +39,8 @@ data:
     exporters:
       prometheus:
         endpoint: :8889
-      logging:
-      jaeger:
-        endpoint: :14250
+      otlp/jaeger:
+        endpoint: :14317
         tls:
           insecure: true
     processors:
@@ -64,15 +63,13 @@ data:
           processors:
             - batch
           exporters:
-            - logging
-            - jaeger
+            - otlp/jaeger
         metrics:
           receivers:
             - otlp
           processors:
             - batch
           exporters:
-            - logging
             - prometheus
 ---
 apiVersion: v1
@@ -82,7 +79,7 @@ metadata:
 spec:
   containers:
     - name: otel-collector
-      image: otel/opentelemetry-collector:0.79.0
+      image: otel/opentelemetry-collector:0.111.0
       resources:
         limits:
           cpu: 500m
@@ -101,7 +98,7 @@ spec:
           hostPort: 4317
           protocol: TCP
     - name: jaeger
-      image: jaegertracing/all-in-one:1.46.0
+      image: jaegertracing/all-in-one:1.62.0
       resources:
         limits:
           cpu: 500m
@@ -109,12 +106,18 @@ spec:
         requests:
           cpu: 100m
           memory: 100Mi
+      args:
+        - --collector.otlp.grpc.host-port=14317
+        - --collector.otlp.http.host-port=14318
       ports:
+        - containerPort: 14317
+          hostPort: 14317
+          protocol: TCP
         - containerPort: 16686
           hostPort: 16686
           protocol: TCP
     - name: prometheus
-      image: prom/prometheus:v2.44.0
+      image: prom/prometheus:v2.54.1
       resources:
         limits:
           cpu: 500m
