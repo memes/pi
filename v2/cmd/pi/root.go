@@ -44,7 +44,7 @@ const (
 // Version is updated from git tags during build.
 var version = "v2-snapshot"
 
-//nolint:funlen // Initialisation common to all sub-commands makes this function long
+//nolint:funlen // Initialization common to all sub-commands makes this function long
 func NewRootCmd() (*cobra.Command, error) {
 	cobra.OnInitialize(initConfig)
 	rootCmd := &cobra.Command{
