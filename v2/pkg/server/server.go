@@ -247,7 +247,7 @@ func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) 
 	logger.Info("GetDigit: exit", "digit", digit)
 	return &generated.GetDigitResponse{
 		Index:    in.Index,
-		Digit:    uint32(digit), //nolint:gosec // digit will always be between 0 and 9 inclusive, no risk of overflow
+		Digit:    uint32(digit),
 		Metadata: s.metadata,
 	}, nil
 }

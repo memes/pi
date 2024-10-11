@@ -47,7 +47,7 @@ func TestGetDigit_WithNoopCache(t *testing.T) {
 	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
 			testGetDigit(ctx, t, &generated.GetDigitRequest{
-				Index: uint64(index),
+				Index: uint64(index), //nolint:gosec // Risk of overflow is low
 			}, piServer)
 		})
 	}
@@ -71,7 +71,7 @@ func TestGetDigit_WithRedisCache(t *testing.T) {
 	for index := 0; index < len(PiDigits); index++ {
 		t.Run(fmt.Sprintf("index=%d", index), func(t *testing.T) {
 			testGetDigit(ctx, t, &generated.GetDigitRequest{
-				Index: uint64(index),
+				Index: uint64(index), //nolint:gosec // Risk of overflow is low
 			}, piServer)
 		})
 	}
