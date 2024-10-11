@@ -121,7 +121,7 @@ func clientMain(_ *cobra.Command, endpoints []string) error {
 			if err = collator(idx, digit); err != nil {
 				logger.Error(err, "Error calling collator", "idx", idx, "digit", digit)
 			}
-		}(uint64(index))
+		}(uint64(index)) //nolint:gosec // Risk of overflow is low
 	}
 	wg.Wait()
 	return nil
