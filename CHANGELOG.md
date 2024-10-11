@@ -7,6 +7,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.5](https://github.com/memes/pi/compare/v2.0.4...v2.0.5) (2024-10-11)
+
+
+### Bug Fixes
+
+* Prefer int64 over uint64 to reduce casting ([7533613](https://github.com/memes/pi/commit/75336134ba82ff812d1fb2d848539596e8a3c838))
+* suppress int/uint64/uint32 gosec warnings ([00e2285](https://github.com/memes/pi/commit/00e22851df282fc8abe4390cc127e44a00eb8725))
+* Update buf config to v2, regenerate code ([49cace1](https://github.com/memes/pi/commit/49cace19b660abd9106f485f59d7578f28c69a3a))
+* Update goreleaser to v2 ([d4dddf0](https://github.com/memes/pi/commit/d4dddf029a2d340bd49cfba2f09981ad14d82c0b))
+
 ## [2.0.4](https://github.com/memes/pi/compare/v2.0.3...v2.0.4) (2024-05-20)
 
 
