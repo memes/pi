@@ -1,6 +1,7 @@
 # use goreleaser for v2 builds and containers
 # spell-checker: disable
 ---
+version: 2
 project_name: pi
 builds:
   - env:
@@ -29,10 +30,8 @@ gomod:
 archives:
   - format: binary
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
-    rlcp: true
 source:
   enabled: true
-  rlcp: true
 checksum:
   name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
   algorithm: sha256
@@ -57,9 +56,9 @@ signs:
       - '--yes'
     output: true
 snapshot:
-  name_template: "{{ incpatch .Tag }}-next"
+  version_template: "{{ incpatch .Tag }}-next"
 changelog:
-  skip: true
+  disable: true
 dockers:
   - goos: linux
     goarch: amd64
