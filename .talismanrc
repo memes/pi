@@ -11,7 +11,8 @@ fileignoreconfig:
 - filename: v2/pi_solver_test.go
   checksum: 101b821c5c203672dd8ac97413d211525da85c2fb5820af344791ded01bbb547
 - filename: v2/go.sum
-  checksum: 8047477bd7181d9e3a65506e192144375798d30f32a5196eb3c5429a7a2f1647
+  checksum: 6e0820c44dfcdae68aa82c6b5d4f8a95b026e1c4b37d29cd02925aa3263d5487
+  ignore_detectors: []
 - filename: v2/redis_cache_test.go
   checksum: 354c292e9693e3efff25ccff74f5a6fadf1592c112fc7acb3f5fdd801326029e
 - filename: v2/pi.go
@@ -57,7 +58,8 @@ fileignoreconfig:
 - filename: v2/supporting/otel-all-in-one.yaml
   checksum: 897e58b3dc0459284fab25c88eb458455f9cad54d571f7ffcc2ebd7851ac8e5a
 - filename: go.work.sum
-  checksum: f9252e1f2bf81c7e3d7f2c05a7c4c064eb8972489506ad8ecddcf6ccb6b1fd0b
+  checksum: 8bad366077b357dd89055c5b96b32509f292d851b4bd5675eb2d897da60ea0f4
+  ignore_detectors: []
 - filename: .github/workflows/pre-commit.yml
   checksum: fd775abf705cfa74ab16bb6807fe36cbaa9950758a79ce3017752eb708d46588
 - filename: README.md
