@@ -194,7 +194,7 @@ func WithRestClientAuthority(restClientAuthority string) PiServerOption {
 func (s *PiServer) GetDigit(ctx context.Context, in *generated.GetDigitRequest) (*generated.GetDigitResponse, error) {
 	logger := s.logger.WithValues("index", in.Index)
 	logger.Info("GetDigit: enter")
-	index := int64(in.Index) //nolint:gosec // Check for potential overflow happens later in function
+	index := int64(in.Index)
 	cacheIndex := (index / 9) * 9
 	key := strconv.FormatInt(cacheIndex, 16)
 	attributes := []attribute.KeyValue{
