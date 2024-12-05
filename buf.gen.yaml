@@ -15,14 +15,14 @@ plugins:
     opt:
       - paths=import
       - module=github.com/memes/pi
-  - remote: buf.build/grpc-ecosystem/gateway:v2.22.0
+  - remote: buf.build/grpc-ecosystem/gateway:v2.23.0
     out: .
     opt:
       - paths=import
       - module=github.com/memes/pi
       - logtostderr=true
       - omit_package_doc=true
-  - remote: buf.build/grpc-ecosystem/openapiv2:v2.22.0
+  - remote: buf.build/grpc-ecosystem/openapiv2:v2.23.0
     out: v2/pkg/generated
     opt:
       - allow_merge=true
