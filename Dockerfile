@@ -1,5 +1,5 @@
-FROM alpine:3.20.3 as ca
-RUN apk --no-cache add ca-certificates-bundle=20240705-r0
+FROM alpine:3.21.0 as ca
+RUN apk --no-cache add ca-certificates-bundle=20241010-r0
 
 FROM scratch
 COPY --from=ca /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
