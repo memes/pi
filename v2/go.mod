@@ -1,7 +1,6 @@
 module github.com/memes/pi/v2
 
 go 1.22.0
-
 toolchain go1.23.2
 
 require (
@@ -11,7 +10,7 @@ require (
 	github.com/go-logr/zerologr v1.2.3
 	github.com/gomodule/redigo v1.9.2
 	github.com/google/uuid v1.6.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.23.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/zerolog v1.33.0
 	github.com/spf13/cobra v1.8.1
@@ -30,8 +29,8 @@ require (
 	go.opentelemetry.io/otel/trace v1.32.0
 	golang.org/x/net v0.32.0
 	golang.org/x/sync v0.10.0
-	google.golang.org/genproto/googleapis/api v0.0.0-20241104194629-dd2ea8efbc28
-	google.golang.org/grpc v1.67.1
+	google.golang.org/genproto/googleapis/api v0.0.0-20241118233622-e639e219e697
+	google.golang.org/grpc v1.68.0
 	google.golang.org/protobuf v1.35.2
 )
 
@@ -67,10 +66,10 @@ require (
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c // indirect
-	golang.org/x/oauth2 v0.23.0 // indirect
+	golang.org/x/oauth2 v0.24.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241104194629-dd2ea8efbc28 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20241118233622-e639e219e697 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
