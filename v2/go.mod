@@ -1,7 +1,8 @@
 module github.com/memes/pi/v2
 
-go 1.22.0
-toolchain go1.23.2
+go 1.23.4
+
+toolchain go1.23.4
 
 require (
 	github.com/alicebob/miniredis v2.5.0+incompatible
