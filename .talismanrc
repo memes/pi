@@ -30,7 +30,7 @@ fileignoreconfig:
 - filename: v2/api/v2/pi.proto
   checksum: 48177e84402ed9a8cc05afab092a88d19f44283c61bb4a9a00392949711f3307
 - filename: v2/api/v2/pi.pb.go
-  checksum: b10c407796d9ba69fb6dcf5a7d2dd4a852abb873830d213154955ee77c95830e
+  checksum: 474eecccc710966cb01048d412c5c58609efdb42fd2925999e0dc48e3b41ea2a
 - filename: v2/cache.go
   checksum: 1a8759660a4d0d653079453dfcb1125c92ea0d0cee57f6fc38109cc1e23d70ee
 - filename: v2/bpp_spigot_test.go
