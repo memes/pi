@@ -2,8 +2,6 @@ module github.com/memes/pi/v2
 
 go 1.23.4
 
-toolchain go1.23.4
-
 require (
 	github.com/alicebob/miniredis v2.5.0+incompatible
 	github.com/go-logr/logr v1.4.2
