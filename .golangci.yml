@@ -10,6 +10,7 @@ issues:
   fix: false
   exclude-dirs:
     - pkg/generated
+  uniq-by-line: false
 linters:
   disable-all: true
   enable:
@@ -158,6 +159,5 @@ linters-settings:
 output:
   print-issued-lines: false
   print-linter-name: true
-  uniq-by-line: false
   path-prefix: "v2"
   sort-results: true
