@@ -82,7 +82,6 @@ linters:
     - staticcheck
     - stylecheck
     - tagliatelle
-    - tenv
     - testableexamples
     - testpackage
     - thelper
@@ -92,6 +91,7 @@ linters:
     - unparam
     - unused
     - usestdlibvars
+    - usetesting
     - wastedassign
     - whitespace
     - wrapcheck
@@ -113,6 +113,14 @@ linters-settings:
           - github.com/spf13/cobra
           - github.com/spf13/viper
           - github.com/rs/zerolog
+          - go.opentelemetry.io/contrib/detectors/gcp
+          - go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
+          - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+          - go.opentelemetry.io/contrib/instrumentation/runtime
+          - go.opentelemetry.io/otel
+          - google.golang.org/grpc
+          - golang.org/x/net/context
+          - golang.org/x/sync/errgroup
       test:
         files:
           - $test
