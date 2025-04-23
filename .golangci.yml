@@ -1,18 +1,12 @@
 # spell-checker: disable
 ---
+version: "2"
 run:
   concurrency: 6
-  timeout: 5m
-issues:
-  max-issues-per-linter: 0
-  max-same-issues: 0
-  new: false
-  fix: false
-  exclude-dirs:
-    - pkg/generated
-  uniq-by-line: false
+output:
+  path-prefix: v2
 linters:
-  disable-all: true
+  default: none
   enable:
     - asasalint
     - asciicheck
@@ -28,8 +22,8 @@ linters:
     - err113
     - errcheck
     - errchkjson
-    - errorlint
     - errname
+    - errorlint
     - exhaustive
     # NOTE: Too noisy in this repo
     # - exhaustruct
@@ -44,15 +38,11 @@ linters:
     - gocyclo
     - godot
     - godox
-    - gofmt
-    - gofumpt
     - goheader
-    - goimports
     - gomoddirectives
     - gomodguard
     - goprintffuncname
     - gosec
-    - gosimple
     - govet
     - grouper
     - importas
@@ -80,13 +70,11 @@ linters:
     - rowserrcheck
     - sqlclosecheck
     - staticcheck
-    - stylecheck
     - tagliatelle
     - testableexamples
     - testpackage
     - thelper
     - tparallel
-    - typecheck
     - unconvert
     - unparam
     - unused
@@ -95,77 +83,101 @@ linters:
     - wastedassign
     - whitespace
     - wrapcheck
-linters-settings:
-  depguard:
-    rules:
-      main:
-        files:
-          - $all
-          - "!$test"
-        allow:
-          - $gostd
-          - github.com/memes
-          - github.com/go-logr
-          - github.com/gomodule/redigo/redis
-          - github.com/google/uuid
-          - github.com/grpc-ecosystem/grpc-gateway/v2/runtime
-          - github.com/mitchellh/go-homedir
-          - github.com/spf13/cobra
-          - github.com/spf13/viper
-          - github.com/rs/zerolog
-          - go.opentelemetry.io/contrib/detectors/gcp
-          - go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
-          - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
-          - go.opentelemetry.io/contrib/instrumentation/runtime
-          - go.opentelemetry.io/otel
-          - google.golang.org/grpc
-          - golang.org/x/net/context
-          - golang.org/x/sync/errgroup
-      test:
-        files:
-          - $test
-        allow:
-          - $gostd
-          - github.com/memes
-          - github.com/alicebob/miniredis
-          - github.com/go-logr
-          - github.com/google/uuid
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-  gocritic:
-    enabled-tags:
-      - diagnostic
-      - experimental
-      - opinionated
-      - performance
-      - style
-  ireturn:
-    allow:
-      - anon
-      - error
-      - empty
-      - stdlib
-      # gRPC/XDS credentials are returned as interfaces by those libraries
-      - google.golang.org\/grpc\/credentials.TransportCredentials
-  nakedret:
-    max-func-lines: 1
-  nolintlint:
-    allow-unused: false
-    allow-no-explanation: []
-    require-explanation: true
-    require-specific: true
-  tagliatelle:
-    case:
+  settings:
+    depguard:
       rules:
-        json: snake
-        yaml: snake
-        xml: camel
-        bson: camel
-        avro: camel
-        mapstructure: kebab
-output:
-  print-issued-lines: false
-  print-linter-name: true
-  path-prefix: "v2"
-  sort-results: true
+        main:
+          files:
+            - $all
+            - '!$test'
+          allow:
+            - $gostd
+            - github.com/memes
+            - github.com/go-logr
+            - github.com/gomodule/redigo/redis
+            - github.com/google/uuid
+            - github.com/grpc-ecosystem/grpc-gateway/v2/runtime
+            - github.com/mitchellh/go-homedir
+            - github.com/spf13/cobra
+            - github.com/spf13/viper
+            - github.com/rs/zerolog
+            - go.opentelemetry.io/contrib/detectors/gcp
+            - go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc
+            - go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp
+            - go.opentelemetry.io/contrib/instrumentation/runtime
+            - go.opentelemetry.io/otel
+            - google.golang.org/grpc
+            - golang.org/x/net/context
+            - golang.org/x/sync/errgroup
+        test:
+          files:
+            - $test
+          allow:
+            - $gostd
+            - github.com/memes
+            - github.com/alicebob/miniredis
+            - github.com/go-logr
+            - github.com/google/uuid
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - experimental
+        - opinionated
+        - performance
+        - style
+    ireturn:
+      allow:
+        - anon
+        - error
+        - empty
+        - stdlib
+        # gRPC/XDS credentials are returned as interfaces by those libraries
+        - google.golang.org\/grpc\/credentials.TransportCredentials
+    nakedret:
+      max-func-lines: 1
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-unused: false
+    tagliatelle:
+      case:
+        rules:
+          avro: camel
+          bson: camel
+          json: snake
+          mapstructure: kebab
+          xml: camel
+          yaml: snake
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - pkg/generated
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  uniq-by-line: false
+  new: false
+  fix: false
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - pkg/generated
+      - third_party$
+      - builtin$
+      - examples$
