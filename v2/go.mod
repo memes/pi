@@ -1,6 +1,7 @@
 module github.com/memes/pi/v2
 
 go 1.23.4
+
 toolchain go1.24.1
 
 require (
