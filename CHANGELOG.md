@@ -7,6 +7,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.9](https://github.com/memes/pi/compare/v2.0.8...v2.0.9) (2025-07-16)
+
+
+### Bug Fixes
+
+* Reformat go.mod to pass linting ([97b9933](https://github.com/memes/pi/commit/97b993396d10587542a97247fe19971a0088ccc1))
+* Update buf plugins and regenerate files ([9d7f2f2](https://github.com/memes/pi/commit/9d7f2f21aa805877bb23c0809255c0fa803244a5))
+* Update CA Certificates Bundle in Alpine ([3be454d](https://github.com/memes/pi/commit/3be454df8114f74a318d8553d5ad8cc8a74cf637))
+
 ## [2.0.8](https://github.com/memes/pi/compare/v2.0.7...v2.0.8) (2025-03-11)
 
 
