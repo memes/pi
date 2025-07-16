@@ -3,7 +3,7 @@
 ---
 repos:
   - repo: https://github.com/adrienverge/yamllint
-    rev: v1.37.0
+    rev: v1.37.1
     hooks:
       - id: yamllint
         files: \.(yml|yaml|talismanrc)$
@@ -12,7 +12,7 @@ repos:
           - yaml
         entry: yamllint --strict
   - repo: https://github.com/compilerla/conventional-pre-commit
-    rev: v4.0.0
+    rev: v4.2.0
     hooks:
       - id: conventional-pre-commit
         stages:
@@ -30,6 +30,6 @@ repos:
           - main
       - id: trailing-whitespace
   - repo: https://github.com/thoughtworks/talisman
-    rev: v1.33.0
+    rev: v1.37.0
     hooks:
       - id: talisman-commit
