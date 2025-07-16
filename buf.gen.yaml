@@ -5,7 +5,7 @@ version: v2
 managed:
   enabled: false
 plugins:
-  - remote: buf.build/protocolbuffers/go:v1.36.5
+  - remote: buf.build/protocolbuffers/go:v1.36.6
     out: .
     opt:
       - paths=import
@@ -15,14 +15,14 @@ plugins:
     opt:
       - paths=import
       - module=github.com/memes/pi
-  - remote: buf.build/grpc-ecosystem/gateway:v2.26.3
+  - remote: buf.build/grpc-ecosystem/gateway:v2.27.1
     out: .
     opt:
       - paths=import
       - module=github.com/memes/pi
       - logtostderr=true
       - omit_package_doc=true
-  - remote: buf.build/grpc-ecosystem/openapiv2:v2.26.3
+  - remote: buf.build/grpc-ecosystem/openapiv2:v2.27.1
     out: v2/pkg/generated
     opt:
       - allow_merge=true
