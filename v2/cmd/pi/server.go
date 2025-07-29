@@ -169,7 +169,8 @@ func serverMain(_ *cobra.Command, args []string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create new PiService server: %w", err)
 	}
-	listener, err := net.Listen("tcp", address)
+	listenerConfig := &net.ListenConfig{}
+	listener, err := listenerConfig.Listen(ctx, "tcp", address)
 	if err != nil {
 		return fmt.Errorf("failed to start gRPC listener: %w", err)
 	}
