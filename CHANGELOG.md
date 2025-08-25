@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.10](https://github.com/memes/pi/compare/v2.0.9...v2.0.10) (2025-08-25)
+
+
+### Bug Fixes
+
+* Use net.ListenerConfig to specify context ([64f0b9a](https://github.com/memes/pi/commit/64f0b9a4149612f2077c6a0f05099d4214f26362))
+
 ## [2.0.9](https://github.com/memes/pi/compare/v2.0.8...v2.0.9) (2025-07-16)
 
 
