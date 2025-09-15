@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.11](https://github.com/memes/pi/compare/v2.0.10...v2.0.11) (2025-09-15)
+
+
+### Bug Fixes
+
+* Update to go1.25 ([debb46c](https://github.com/memes/pi/commit/debb46c8f462bab1ff037154d1a371e4455b00d5))
+* Update to go1.25 ([a2c7122](https://github.com/memes/pi/commit/a2c71221ec220098bff4010eb6ac0aeefca47a59))
+
 ## [2.0.10](https://github.com/memes/pi/compare/v2.0.9...v2.0.10) (2025-08-25)
 
 
