@@ -4,6 +4,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"net/http"
@@ -23,7 +24,6 @@ import (
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
