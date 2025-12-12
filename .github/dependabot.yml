@@ -1,15 +1,19 @@
 ---
 version: 2
 updates:
-  - package-ecosystem: "docker"
-    directory: "/"
+  - package-ecosystem: devcontainers
+    directory: /
     schedule:
-      interval: "weekly"
-  - package-ecosystem: "gomod"
-    directory: "/v2"
+      interval: weekly
+  - package-ecosystem: docker
+    directory: /
     schedule:
-      interval: "weekly"
-  - package-ecosystem: "github-actions"
-    directory: "/"
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /v2
     schedule:
-      interval: "weekly"
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
