@@ -29,7 +29,7 @@ jobs:
           cache-dependency-path: v2/go.sum
       - name: Install cosign
         if: ${{ success() }}
-        uses: sigstore/cosign-installer@v4.0.0
+        uses: sigstore/cosign-installer@v4.1.0
       - name: Install syft
         if: ${{ success() }}
         uses: anchore/sbom-action/download-syft@v0.22.0
@@ -51,7 +51,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Run GoReleaser
         if: ${{ success() }}
-        uses: goreleaser/goreleaser-action@v6
+        uses: goreleaser/goreleaser-action@v7
         with:
           distribution: goreleaser
           version: latest
@@ -61,7 +61,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Trigger Go Report update
         if: ${{ success() }}
-        uses: fjogeleit/http-request-action@v1.16.6
+        uses: fjogeleit/http-request-action@v2.0.0
         with:
           url: 'https://goreportcard.com/checks'
           method: 'POST'
