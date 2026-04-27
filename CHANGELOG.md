@@ -7,6 +7,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.13](https://github.com/memes/pi/compare/v2.0.12...v2.0.13) (2026-04-27)
+
+
+### Bug Fixes
+
+* Dockerfile ([ef8c05c](https://github.com/memes/pi/commit/ef8c05cd69fb56f7d133f30d8fb16a88c72eaf62))
+
 ## [2.0.12](https://github.com/memes/pi/compare/v2.0.11...v2.0.12) (2026-04-27)
 
 
