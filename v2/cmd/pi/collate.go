@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -33,7 +34,7 @@ func collateMain(cmd *cobra.Command, endpoints []string) error {
 	}
 	// Set the global collator function to add digits to the array
 	collator = func(index uint64, value uint32) error {
-		digits[index] = '0' + byte(value)
+		digits[index] = '0' + byte(value&math.MaxUint8)
 		return nil
 	}
 	if err := clientMain(cmd, endpoints); err != nil {
