@@ -31,9 +31,9 @@ archives:
     name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
 source:
   enabled: true
+  name_template: '{{ .ProjectName }}.src'
 checksum:
-  name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
-  algorithm: sha256
+  name_template: 'checksums.txt'
 sboms:
   - id: archive
     artifacts: archive
@@ -42,54 +42,42 @@ sboms:
 signs:
   - artifacts: checksum
     cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    certificate: '${artifact}.pem'
+    signature: '${artifact}.sigstore.json'
     args:
       - sign-blob
-      - --output-certificate
-      - '${certificate}'
-      - --output-signature
-      - '${signature}'
+      - '--bundle=${signature}'
       - '${artifact}'
       - '--yes'
     output: true
 snapshot:
-  version_template: "{{ incpatch .Tag }}-next"
+  version_template: '{{ incpatch .Tag }}-next'
 changelog:
   disable: true
-dockers:
-  - goos: linux
-    goarch: amd64
-    image_templates:
-      - memes/{{ .ProjectName }}:latest
-      - memes/{{ .ProjectName }}:{{ .Tag }}
-      - memes/{{ .ProjectName }}:{{ .Major }}
-      - ghcr.io/memes/{{ .ProjectName }}:latest
-      - ghcr.io/memes/{{ .ProjectName }}:{{ .Tag }}
-      - ghcr.io/memes/{{ .ProjectName }}:{{ .Major }}
+dockers_v2:
+  - images:
+      - 'memes/{{ .ProjectName }}'
+      - 'ghcr.io/memes/{{ .ProjectName }}'
+    tags:
+      - latest
+      - '{{ .Tag }}'
+      - '{{ .Major }}'
     dockerfile: ../Dockerfile
-    use: docker
-    build_flag_templates:
-      # yamllint disable rule:line-length
-      - "--pull"
-      - "--label=maintainer=Matthew Emes <memes@matthewemes.com>"
-      - "--label=org.opencontainers.image.title={{ .ProjectName }}"
-      - "--label=org.opencontainers.image.authors=memes@matthewemes.com"
-      - "--label=org.opencontainers.image.description=Return the decimal digit of pi at an index"
-      - "--label=org.opencontainers.image.licenses=MIT"
-      - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source={{ .GitURL }}"
-      - "--label=org.opencontainers.image.documentation={{ .GitURL }}/tree/{{ .FullCommit }}/README.md"
-      - "--label=org.opencontainers.image.version={{ .Version }}"
-      - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
-      - "--label=org.opencontainers.image.url={{ .GitURL }}/tree/{{ .FullCommit }}/README.md"
-      # yamllint enable rule:line-length
+    labels:
+      maintainer: 'Matthew Emes <memes@matthewemes.com>'
+      org.opencontainers.image.title: '{{ .ProjectName }}'
+      org.opencontainers.image.authors: 'memes@matthewemes.com'
+      org.opencontainers.image.description: 'Return the decimal digit of pi at an index'
+      org.opencontainers.image.licenses: 'MIT'
+      org.opencontainers.image.created: '{{ .Date }}'
+      org.opencontainers.image.source: '{{ .GitURL }}'
+      org.opencontainers.image.documentation: '{{ .GitURL }}/tree/{{ .FullCommit }}/README.md'
+      org.opencontainers.image.version: '{{ .Version }}'
+      org.opencontainers.image.revision: '{{ .FullCommit }}'
+      org.opencontainers.image.url: '{{ .GitURL }}/tree/{{ .FullCommit }}/README.md'
+    annotations:
+      'index:org.opencontainers.image.description': Return the decimal digit of pi at an index
 docker_signs:
   - cmd: cosign
-    env:
-      - COSIGN_EXPERIMENTAL=1
-    artifacts: images
     output: true
     args:
       - sign
@@ -101,4 +89,4 @@ release:
 milestones:
   - close: true
     fail_on_error: false
-    name_template: "{{ .Tag }}"
+    name_template: '{{ .Tag }}'
