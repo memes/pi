@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 * **gosec:** Fix gosec overflow issues ([18fb260](https://github.com/memes/pi/commit/18fb2603c9f74f6cbf2dd39c370990a7efaec246))
 
+## [2.0.12](https://github.com/memes/pi/compare/v2.0.11...v2.0.12) (2026-04-27)
+
+
+### Bug Fixes
+
+* **gosec:** Fix gosec overflow issues ([18fb260](https://github.com/memes/pi/commit/18fb2603c9f74f6cbf2dd39c370990a7efaec246))
+
 ## [2.0.11](https://github.com/memes/pi/compare/v2.0.10...v2.0.11) (2025-09-15)
 
 
