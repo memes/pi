@@ -2,6 +2,9 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/memes/pi/v2.svg)](https://pkg.go.dev/github.com/memes/pi/v2)
 [![Go Report Card](https://goreportcard.com/badge/github.com/memes/pi/v2)](https://goreportcard.com/report/github.com/memes/pi/v2)
+![GitHub release](https://img.shields.io/github/v/release/memes/pi?sort=semver)
+![GitHub last commit](https://img.shields.io/github/last-commit/memes/pi)
+[![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-3.0-4baaaa.svg)](CODE_OF_CONDUCT.md)
 
 A simple distributed computing example that calculates the fractional decimal digit of
 &#x1D745; at the requested index.
@@ -206,7 +209,7 @@ Executing `BBPDigits(n)` function in [pi.go](pi.go) for `n = [0...9]` will retur
 these results.
 
 | index | result |
-|-------|--------|
+| ----- | ------ |
 | **0** | **141592653** |
 | 1 | 415926535 |
 | 2 | 159265358 |

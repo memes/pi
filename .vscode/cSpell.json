@@ -16,6 +16,7 @@
         "bufbuild",
         "cacerts",
         "cachepkg",
+        "cooldown",
         "devcontainers",
         "direnv",
         "errgroup",
