@@ -1,0 +1,10 @@
+---
+config:
+  default: true
+  line-length:
+    line_length: 120
+
+gitignore: true
+
+ignores:
+  - CHANGELOG.md
