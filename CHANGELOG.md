@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.15](https://github.com/memes/pi/compare/v2.0.14...v2.0.15) (2026-04-28)
+
+
+### Bug Fixes
+
+* Allow attestations in GitHub action ([c64a3a3](https://github.com/memes/pi/commit/c64a3a32f63e804da6dc4cdccc0350a565e54334))
+* Allow attestations in GitHub action ([9152668](https://github.com/memes/pi/commit/91526683483ef504d915fee5933e3e96ded62bdf))
+
 ## [2.0.14](https://github.com/memes/pi/compare/v2.0.13...v2.0.14) (2026-04-27)
 
 
