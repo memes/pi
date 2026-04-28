@@ -68,6 +68,7 @@
         "runtimeinstrumentation",
         "sdktrace",
         "semconv",
+        "sigstore",
         "stdr",
         "syft",
         "syncint",

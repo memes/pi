@@ -157,19 +157,23 @@ a signing certificate for download and verification of container images.
 1. Download the checksum, signature, and signing certificate file from GitHub
 
    ```shell
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi_2.0.1_SHA256SUMS
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.01/pi_2.0.1_SHA256SUMS.sig
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi_2.0.1_SHA256SUMS.pem
+   export VERSION="2.0.16"
+   curl -sLO https://github.com/memes/pi/releases/download/v${VERSION}/checksums.txt
+   curl -sLO https://github.com/memes/pi/releases/download/v${VERSION}/checksums.txt.sigstore.json
    ```
 
 2. Verify the SHA256SUMS have been signed with [cosign]
 
    ```shell
-   cosign verify-blob --cert pi_2.0.1_SHA256SUMS.pem --signature pi_2.0.1_SHA256SUMS.sig pi_2.0.1_SHA256SUMS
+   cosign verify-blob \
+        --certificate-identity "https://github.com/memespi/.github/workflows/release.yml@refs/tags/v${VERSION}" \
+        --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+        --bundle "checksums.txt.sigstore.json" \
+        ./checksums.txt
    ```
 
    ```text
-   verified OK
+   Verified OK
    ```
 
 3. Download and verify files
@@ -179,14 +183,12 @@ a signing certificate for download and verification of container images.
    For example
 
    ```shell
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi-2.0.1.tar.gz.sbom
-   curl -sLO https://github.com/memes/pi/releases/download/v2.0.1/pi_2.0.1_linux_amd64
-   sha256sum --ignore-missing -c pi_2.0.1_SHA256SUMS
+   curl -sLO https://github.com/memes/pi/releases/download/v${VERSION}$/pi_${VERSION}$_linux_amd64
+   sha256sum --ignore-missing -c checksums.txt
    ```
 
    ```text
-   pi-2.0.1.tar.gz.sbom: OK
-   pi_2.0.1_linux_amd64: OK
+   pi_2.0.16_linux_amd64: OK
    ```
 
 ### Verify container image
@@ -194,7 +196,10 @@ a signing certificate for download and verification of container images.
 Use [cosign]s experimental OCI signature support to validate the container.
 
 ```shell
-COSIGN_EXPERIMENTAL=1 cosign verify ghcr.io/memes/pi:v2.0.1
+cosign verify \
+    --certificate-identity "https://github.com/memes/pi/.github/workflows/release.yml@refs/tags/${VERSION}" \
+    --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+    "ghcr.io/memes/pi:${VERSION}"
 ```
 
 ## Background
