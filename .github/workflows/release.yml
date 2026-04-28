@@ -60,10 +60,10 @@ jobs:
           workdir: v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - uses: actions/attest-build-provenance@v4.1.0
+      - uses: actions/attest@v4.1.0
         with:
           subject-checksums: ./v2/dist/checksums.txt
-      - uses: actions/attest-build-provenance@v4.1.0
+      - uses: actions/attest@v4.1.0
         with:
           subject-checksums: ./v2/dist/digests.txt
       - name: Trigger Go Report update
