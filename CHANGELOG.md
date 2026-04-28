@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.16](https://github.com/memes/pi/compare/v2.0.15...v2.0.16) (2026-04-28)
 
+Test attestations in `release.yml` action.
 
 ### Bug Fixes
 
