@@ -7,6 +7,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.16](https://github.com/memes/pi/compare/v2.0.15...v2.0.16) (2026-04-28)
+
+Test attestations in `release.yml` action.
+
+### Bug Fixes
+
+* Trigger release for attestation ([9662741](https://github.com/memes/pi/commit/96627415b83e71d21f0efef3d7a624ad7c249ded))
+
 ## [2.0.15](https://github.com/memes/pi/compare/v2.0.14...v2.0.15) (2026-04-28)
 
 
