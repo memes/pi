@@ -13,6 +13,7 @@ permissions:
   packages: write
   id-token: write
   attestations: write
+  artifact-metadata: write
 
 jobs:
   goreleaser:
@@ -61,12 +62,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/attest-build-provenance@v4.1.0
         with:
-          subject-checksums: ./dist/checksums.txt
+          subject-checksums: ./v2/dist/checksums.txt
       - uses: actions/attest-build-provenance@v4.1.0
         with:
-          subject-checksums: ./dist/digests.txt
+          subject-checksums: ./v2/dist/digests.txt
       - name: Trigger Go Report update
-        if: ${{ success() }}
         uses: fjogeleit/http-request-action@v2.0.0
         with:
           url: 'https://goreportcard.com/checks'
