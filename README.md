@@ -166,7 +166,7 @@ a signing certificate for download and verification of container images.
 
    ```shell
    cosign verify-blob \
-        --certificate-identity "https://github.com/memespi/.github/workflows/release.yml@refs/tags/v${VERSION}" \
+        --certificate-identity "https://github.com/memes/pi/.github/workflows/release.yml@refs/tags/v${VERSION}" \
         --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
         --bundle "checksums.txt.sigstore.json" \
         ./checksums.txt
@@ -183,7 +183,7 @@ a signing certificate for download and verification of container images.
    For example
 
    ```shell
-   curl -sLO https://github.com/memes/pi/releases/download/v${VERSION}$/pi_${VERSION}$_linux_amd64
+   curl -sLO https://github.com/memes/pi/releases/download/v${VERSION}/pi_${VERSION}_linux_amd64
    sha256sum --ignore-missing -c checksums.txt
    ```
 
@@ -199,7 +199,7 @@ Use [cosign]s experimental OCI signature support to validate the container.
 cosign verify \
     --certificate-identity "https://github.com/memes/pi/.github/workflows/release.yml@refs/tags/${VERSION}" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
-    "ghcr.io/memes/pi:${VERSION}"
+    "ghcr.io/memes/pi:v${VERSION}"
 ```
 
 ## Background
