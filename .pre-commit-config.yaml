@@ -12,7 +12,7 @@ repos:
           - yaml
         entry: yamllint --strict
   - repo: https://github.com/DavidAnson/markdownlint-cli2
-    rev: v0.20.0
+    rev: v0.22.1
     hooks:
       - id: markdownlint-cli2
   - repo: https://github.com/compilerla/conventional-pre-commit

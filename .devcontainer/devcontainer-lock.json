@@ -1,0 +1,34 @@
+{
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:3": {
+      "version": "3.1.0",
+      "resolved": "ghcr.io/devcontainers/features/docker-in-docker@sha256:62e04ec83d944da4fd2830f68a677d1f5466c0654aea1e4baa30232d16029ac1",
+      "integrity": "sha256:62e04ec83d944da4fd2830f68a677d1f5466c0654aea1e4baa30232d16029ac1"
+    },
+    "ghcr.io/memes/devcontainers-features/buf:1": {
+      "version": "1.1.1",
+      "resolved": "ghcr.io/memes/devcontainers-features/buf@sha256:edb8d26a47e9097580e0504d9ba7de428b7defd6adb889341f4fb993ac3ab1db",
+      "integrity": "sha256:edb8d26a47e9097580e0504d9ba7de428b7defd6adb889341f4fb993ac3ab1db"
+    },
+    "ghcr.io/memes/devcontainers-features/direnv:1": {
+      "version": "1.1.1",
+      "resolved": "ghcr.io/memes/devcontainers-features/direnv@sha256:5805278468f5403e2ffbd0aa0f4ce59bf3fc54acc7fe754908d203a6a43704b6",
+      "integrity": "sha256:5805278468f5403e2ffbd0aa0f4ce59bf3fc54acc7fe754908d203a6a43704b6"
+    },
+    "ghcr.io/memes/devcontainers-features/goreleaser:1": {
+      "version": "1.1.1",
+      "resolved": "ghcr.io/memes/devcontainers-features/goreleaser@sha256:c8bf341d35d2b179782906eba97a0b209f87c26503e653f605ac4901ac222bf0",
+      "integrity": "sha256:c8bf341d35d2b179782906eba97a0b209f87c26503e653f605ac4901ac222bf0"
+    },
+    "ghcr.io/memes/devcontainers-features/starship:1": {
+      "version": "1.1.1",
+      "resolved": "ghcr.io/memes/devcontainers-features/starship@sha256:bd7bca02af0d5237ca12002890ba34ad973bcac267dba1d22def32496db07d1b",
+      "integrity": "sha256:bd7bca02af0d5237ca12002890ba34ad973bcac267dba1d22def32496db07d1b"
+    },
+    "ghcr.io/memes/devcontainers-features/talisman:1": {
+      "version": "1.1.1",
+      "resolved": "ghcr.io/memes/devcontainers-features/talisman@sha256:c14d0e3e4bf494629461dc2ad0785b3613451460ec1dc3b58be3ba7e861fff0f",
+      "integrity": "sha256:c14d0e3e4bf494629461dc2ad0785b3613451460ec1dc3b58be3ba7e861fff0f"
+    }
+  }
+}

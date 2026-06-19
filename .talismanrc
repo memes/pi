@@ -75,3 +75,6 @@ fileignoreconfig:
 - filename: buf.lock
   checksum: 7434d9b63952d36b39b9cc63010b24ca1be9925c8948fbebeb6ec9197a550dc7
   ignore_detectors: []
+- filename: .devcontainer/devcontainer-lock.json
+  checksum: 3a250b83b134dcb626cb8321021a59d443626d90616e573586d897754b538ec9
+  ignore_detectors: []

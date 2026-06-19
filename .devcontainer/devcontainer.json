@@ -5,7 +5,6 @@
         "ghcr.io/devcontainers/features/docker-in-docker:3": {},
         "ghcr.io/memes/devcontainers-features/buf:1": {},
         "ghcr.io/memes/devcontainers-features/direnv:1": {},
-        "ghcr.io/memes/devcontainers-features/golangci-lint:1": {},
         "ghcr.io/memes/devcontainers-features/goreleaser:1": {},
         "ghcr.io/memes/devcontainers-features/starship:1": {},
         "ghcr.io/memes/devcontainers-features/talisman:1": {}
@@ -16,7 +15,6 @@
                 "bufbuild.vscode-buf",
                 "DavidAnson.vscode-markdownlint",
                 "esbenp.prettier-vscode",
-                "Gruntfuggly.todo-tree",
                 "peterj.proto",
                 "redhat.vscode-yaml",
                 "streetsidesoftware.code-spell-checker",
@@ -27,7 +25,7 @@
     },
     "containerUser": "vscode",
     "onCreateCommand": {
-        "pre-commit": "sudo sh -c 'apt update && apt install -y --no-install-recommends pipx && rm -rf /var/lib/apt/lists/*' && pipx install pre-commit"
+        "pre-commit": "sudo sh -c 'apt update && apt install -y --no-install-recommends fzf pipx && rm -rf /var/lib/apt/lists/*' && pipx install pre-commit"
     },
     "updateContentCommand": {
         "pre-commit": "pre-commit install --hook-type commit-msg --hook-type pre-commit"
