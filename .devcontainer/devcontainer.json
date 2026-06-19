@@ -5,7 +5,6 @@
         "ghcr.io/devcontainers/features/docker-in-docker:3": {},
         "ghcr.io/memes/devcontainers-features/buf:1": {},
         "ghcr.io/memes/devcontainers-features/direnv:1": {},
-        "ghcr.io/memes/devcontainers-features/golangci-lint:1": {},
         "ghcr.io/memes/devcontainers-features/goreleaser:1": {},
         "ghcr.io/memes/devcontainers-features/starship:1": {},
         "ghcr.io/memes/devcontainers-features/talisman:1": {}

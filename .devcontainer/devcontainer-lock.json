@@ -15,11 +15,6 @@
       "resolved": "ghcr.io/memes/devcontainers-features/direnv@sha256:5805278468f5403e2ffbd0aa0f4ce59bf3fc54acc7fe754908d203a6a43704b6",
       "integrity": "sha256:5805278468f5403e2ffbd0aa0f4ce59bf3fc54acc7fe754908d203a6a43704b6"
     },
-    "ghcr.io/memes/devcontainers-features/golangci-lint:1": {
-      "version": "1.1.1",
-      "resolved": "ghcr.io/memes/devcontainers-features/golangci-lint@sha256:3392479865cdd191f36a63680e1f98375a4ddae041b0afb045efbb52c61452d6",
-      "integrity": "sha256:3392479865cdd191f36a63680e1f98375a4ddae041b0afb045efbb52c61452d6"
-    },
     "ghcr.io/memes/devcontainers-features/goreleaser:1": {
       "version": "1.1.1",
       "resolved": "ghcr.io/memes/devcontainers-features/goreleaser@sha256:c8bf341d35d2b179782906eba97a0b209f87c26503e653f605ac4901ac222bf0",
