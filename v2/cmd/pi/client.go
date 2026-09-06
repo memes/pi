@@ -77,7 +77,8 @@ func clientMain(_ *cobra.Command, endpoints []string) error {
 	defer shutdownFunctions.Execute(ctx, logger)
 
 	logger.V(0).Info("Preparing OpenTelemetry")
-	telemetryShutdownFuncs, err := initTelemetry(ctx, ClientServiceName,
+	telemetryShutdownFuncs, err := initTelemetry(
+		ctx, ClientServiceName,
 		sdktrace.TraceIDRatioBased(viper.GetFloat64(OpenTelemetrySamplingRatioFlagName)),
 	)
 	if err != nil {
@@ -107,7 +108,7 @@ func clientMain(_ *cobra.Command, endpoints []string) error {
 	shutdownFunctions.AppendFunction(piClient.Shutdown)
 
 	// Randomize the retrieval of numbers
-	indices := rand.Perm(count)
+	indices := rand.Perm(count) //nolint:gosec // Randomizing selection of indices does not need to be cryptographically secure
 	var wg sync.WaitGroup
 	for _, index := range indices {
 		wg.Add(1)
