@@ -67,7 +67,7 @@ jobs:
         with:
           subject-checksums: ./v2/dist/digests.txt
       - name: Trigger Go Report update
-        uses: fjogeleit/http-request-action@v2.0.0
+        uses: fjogeleit/http-request-action@v2.0.1
         with:
           url: 'https://goreportcard.com/checks'
           method: 'POST'
