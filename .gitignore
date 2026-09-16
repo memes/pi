@@ -14,3 +14,7 @@ scripts/*.csr
 scripts/*.json
 scripts/*.pem
 scripts/otel-all-in-one-tls.yaml
+
+# Ignore go workplace files
+go.work
+go.work.sum
